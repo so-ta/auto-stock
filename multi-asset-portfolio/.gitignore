@@ -82,6 +82,7 @@ output/
 .ipynb_checkpoints/
 
 # Environment variables (DO NOT COMMIT)
+.env
 .env.local
 .env.*.local
 
