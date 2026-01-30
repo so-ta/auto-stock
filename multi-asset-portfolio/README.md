@@ -49,12 +49,35 @@ Multi-Asset Portfolioは以下を目的とした定量ポートフォリオ管�
 git clone git@github.com:so-ta/auto-stock.git
 cd auto-stock/multi-asset-portfolio
 
+# 仮想環境を作成（推奨）
+python3 -m venv .venv
+source .venv/bin/activate
+
 # pipでインストール
 pip install -e ".[dev]"
 
 # または uv（より高速）
-pip install uv
-uv sync
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv venv .venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+```
+
+### オプション依存関係
+
+```bash
+# S3キャッシュサポート
+pip install -e ".[s3]"
+# または: uv pip install -e ".[s3]"
+
+# GPU加速（NVIDIA CUDA）
+pip install -e ".[gpu]"
+
+# Ray分散処理
+pip install -e ".[distributed]"
+
+# 全てインストール
+pip install -e ".[dev,s3]"
 ```
 
 ### インストール確認
@@ -307,20 +330,32 @@ uv run python -m src.main --backtest
 git clone git@github.com:so-ta/auto-stock.git
 cd auto-stock/multi-asset-portfolio
 
-# 依存関係インストール（uvを推奨）
-pip install uv
-uv sync
+# uvをインストール（未インストールの場合）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 仮想環境を作成して依存関係をインストール
+uv venv .venv
+source .venv/bin/activate
+uv pip install -e ".[dev,s3]"
+
+# S3を使用する場合：認証情報を設定
+cat > .env << 'EOF'
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=ap-northeast-1
+EOF
+source .env
 
 # リソース設定初期化（CPU/RAM/GPUを自動検出）
-uv run python -c "from src.config import print_resource_summary; print_resource_summary()"
+python -c "from src.config import print_resource_summary; print_resource_summary()"
 
 # 15年バックテスト実行（全頻度）
-uv run python scripts/run_all_backtests.py
+python scripts/run_all_backtests.py
 
 # または特定頻度で実行
-uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency monthly
-uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency weekly
-uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency daily
+python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency monthly
+python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency weekly
+python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency daily
 ```
 
 ### 2. バックテスト実行オプション
@@ -418,15 +453,26 @@ print(f"GPU利用可能: {config.use_gpu}")
 インスタンス間で共有キャッシュを使用するクラウドデプロイ用：
 
 ```bash
-# AWS認証情報を設定
+# S3サポートをインストール
+uv pip install -e ".[dev,s3]"
+
+# AWS認証情報を.envファイルで管理（推奨）
+cat > .env << 'EOF'
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=ap-northeast-1
+EOF
+
+# 環境変数を読み込み
+source .env
+
+# または直接エクスポート
 export AWS_ACCESS_KEY_ID=your_access_key
 export AWS_SECRET_ACCESS_KEY=your_secret_key
-
-# config/settings.yamlでS3バックエンドを設定
 ```
 
 ```yaml
-# config/settings.yaml
+# config/local.yaml でS3バックエンドを設定
 storage:
   backend: "s3"  # "local" または "s3"
   s3_bucket: "your-bucket-name"
@@ -435,6 +481,8 @@ storage:
   local_cache_path: "/tmp/.backtest_cache"
   local_cache_ttl_hours: 24
 ```
+
+> **Note**: `.env` ファイルは `.gitignore` に含まれており、リポジトリにコミットされません。
 
 ### 7. 既存キャッシュのS3移行
 
@@ -513,4 +561,4 @@ uv run python -m src.main --backtest --engine ray
 
 ---
 
-**Version**: 1.3.0 | **Last Updated**: 2026-01-30
+**Version**: 1.3.1 | **Last Updated**: 2026-01-30
