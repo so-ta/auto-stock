@@ -299,7 +299,93 @@ python -m src.main --backtest
 
 For running on a dedicated server with full resource utilization:
 
-### 1. Dynamic Resource Configuration
+### 1. Quick Start (Dedicated Server)
+
+```bash
+# Clone and setup
+git clone git@github.com:so-ta/auto-stock.git
+cd auto-stock/multi-asset-portfolio
+
+# Install dependencies (uv recommended for speed)
+pip install uv
+uv sync
+
+# Initialize resource configuration (auto-detects CPU/RAM/GPU)
+uv run python -c "from src.config import print_resource_summary; print_resource_summary()"
+
+# Run 15-year backtest (all frequencies)
+uv run python scripts/run_all_backtests.py
+
+# Or run specific frequency
+uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency monthly
+uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency weekly
+uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency daily
+```
+
+### 2. Backtest Execution Options
+
+#### Standard Backtest (Recommended)
+```bash
+# Monthly rebalancing (fastest, ~1-2 min)
+uv run python scripts/run_standard_backtest.py \
+  --start 2010-01-01 \
+  --end 2025-01-01 \
+  --frequency monthly
+
+# Weekly rebalancing (~5-10 min)
+uv run python scripts/run_standard_backtest.py \
+  --start 2010-01-01 \
+  --end 2025-01-01 \
+  --frequency weekly
+
+# Daily rebalancing (~30-60 min without optimization)
+uv run python scripts/run_standard_backtest.py \
+  --start 2010-01-01 \
+  --end 2025-01-01 \
+  --frequency daily
+```
+
+#### High-Performance Backtest (Numba Parallel)
+```bash
+# With Numba parallel optimization (1137x faster)
+uv run python -c "
+from src.config import init_resource_config
+from src.orchestrator.unified_executor import UnifiedExecutor
+
+# Initialize with full resource utilization
+config = init_resource_config(dedicated_server=True)
+print(f'Using {config.max_workers} workers, {config.cache_max_memory_mb}MB cache')
+
+# Run backtest
+executor = UnifiedExecutor()
+result = executor.run_backtest_with_checkpoint(
+    start_date='2010-01-01',
+    end_date='2025-01-01',
+    frequency='daily',
+    checkpoint_interval=100,
+)
+print(f'Sharpe: {result.sharpe_ratio:.3f}, Return: {result.total_return:.2%}')
+"
+```
+
+#### Resumable Backtest (Checkpoint Support)
+```bash
+# Start with checkpoints (auto-saves progress)
+uv run python scripts/run_all_backtests.py --checkpoint-interval 50
+
+# Resume from checkpoint if interrupted
+uv run python scripts/run_all_backtests.py --resume
+```
+
+### 3. Expected Results
+
+| Frequency | Rebalances | Time (Optimized) | Sharpe (Target) |
+|-----------|------------|------------------|-----------------|
+| Monthly | ~180 | 1-2 min | > 0.7 |
+| Weekly | ~780 | 5-10 min | > 0.6 |
+| Daily | ~3,900 | 10-30 min | > 0.5 |
+
+### 4. Dynamic Resource Configuration
 
 The system automatically detects and utilizes available hardware resources:
 
@@ -316,7 +402,7 @@ print(f"Cache Memory: {config.cache_max_memory_mb} MB")
 print(f"GPU Available: {config.use_gpu}")
 ```
 
-### 2. Resource Configuration Options
+### 5. Resource Configuration Options
 
 | Setting | Default (Shared) | Dedicated Server |
 |---------|------------------|------------------|
@@ -326,7 +412,7 @@ print(f"GPU Available: {config.use_gpu}")
 | `disable_chunking` | False | True (if RAM >= 16GB) |
 | `cache_max_disk_mb` | 10% of free | Unlimited |
 
-### 3. S3 Cache Setup (Cloud Environments)
+### 6. S3 Cache Setup (Cloud Environments)
 
 For cloud deployments with shared cache across instances:
 
@@ -349,7 +435,7 @@ storage:
   local_cache_ttl_hours: 24
 ```
 
-### 4. Migrate Existing Cache to S3
+### 7. Migrate Existing Cache to S3
 
 ```bash
 # Dry run (preview files to upload)
@@ -359,7 +445,7 @@ python scripts/migrate_cache_to_s3.py --dry-run
 python scripts/migrate_cache_to_s3.py --bucket your-bucket-name
 ```
 
-### 5. GPU Acceleration (Optional)
+### 8. GPU Acceleration (Optional)
 
 For NVIDIA GPU support:
 
@@ -376,7 +462,7 @@ python -c "import cupy; print(cupy.cuda.runtime.getDeviceCount())"
 
 The system will automatically detect and use GPU when available.
 
-### 6. Ray Distributed Processing (Optional)
+### 9. Ray Distributed Processing (Optional)
 
 For distributed processing across multiple cores/machines:
 
@@ -388,7 +474,7 @@ pip install ray
 python -m src.main --backtest --engine ray
 ```
 
-### 7. Recommended Server Specs
+### 10. Recommended Server Specs
 
 | Workload | CPU | RAM | Storage | GPU |
 |----------|-----|-----|---------|-----|
@@ -426,4 +512,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 1.2.0 | **Last Updated**: 2026-01-30
+**Version**: 1.3.0 | **Last Updated**: 2026-01-30
