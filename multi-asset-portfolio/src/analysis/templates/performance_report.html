@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パフォーマンスレポート - {{ portfolio_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .meta-info {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .meta-info .item {
+            text-align: center;
+        }
+
+        .meta-info .label {
+            font-size: 0.85em;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .meta-info .value {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 1.5em;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: right;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #1a1a2e;
+            font-weight: 600;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        th:first-child, td:first-child {
+            text-align: left;
+            font-weight: 500;
+        }
+
+        td {
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        .positive {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        }
+
+        .highlight td:first-child {
+            font-weight: 600;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .card .label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card .value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-top: 8px;
+            color: #1a1a2e;
+        }
+
+        .card.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .card.primary .label,
+        .card.primary .value {
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .meta-info {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            table {
+                font-size: 0.85em;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ portfolio_name }}</h1>
+            <p class="subtitle">パフォーマンスレポート</p>
+            <div class="meta-info">
+                <div class="item">
+                    <div class="label">開始日</div>
+                    <div class="value">{{ start_date }}</div>
+                </div>
+                <div class="item">
+                    <div class="label">終了日</div>
+                    <div class="value">{{ end_date }}</div>
+                </div>
+                <div class="item">
+                    <div class="label">生成日時</div>
+                    <div class="value">{{ generated_at }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- サマリーカード -->
+            <section class="section">
+                <h2>パフォーマンスサマリー</h2>
+                <div class="summary-cards">
+                    <div class="card primary">
+                        <div class="label">年率リターン</div>
+                        <div class="value">{{ summary.portfolio.annual_return | format_pct }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">シャープレシオ</div>
+                        <div class="value">{{ summary.portfolio.sharpe_ratio | format_ratio }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">最大ドローダウン</div>
+                        <div class="value">{{ summary.portfolio.max_drawdown | format_pct }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">ボラティリティ</div>
+                        <div class="value">{{ summary.portfolio.volatility | format_pct }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- リターン比較 -->
+            <section class="section">
+                <h2>リターン比較</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>メトリクス</th>
+                            <th>ポートフォリオ</th>
+                            {% for bm in comparison.benchmarks %}
+                            <th>{{ bm }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in returns_table %}
+                        <tr{% if loop.index == 1 %} class="highlight"{% endif %}>
+                            <td>{{ row.metric }}</td>
+                            <td class="{% if row.portfolio > 0 %}positive{% elif row.portfolio < 0 %}negative{% endif %}">
+                                {{ row.portfolio | format_pct }}
+                            </td>
+                            {% for bm in comparison.benchmarks %}
+                            <td>{{ row.benchmarks[bm] | format_pct }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- リスク指標 -->
+            <section class="section">
+                <h2>リスク指標</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>メトリクス</th>
+                            <th>ポートフォリオ</th>
+                            {% for bm in comparison.benchmarks %}
+                            <th>{{ bm }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in risk_table %}
+                        <tr>
+                            <td>{{ row.metric }}</td>
+                            <td>{{ row.portfolio | format_pct }}</td>
+                            {% for bm in comparison.benchmarks %}
+                            <td>{{ row.benchmarks[bm] | format_pct }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- リスク調整リターン -->
+            <section class="section">
+                <h2>リスク調整リターン</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>レシオ</th>
+                            <th>ポートフォリオ</th>
+                            {% for bm in comparison.benchmarks %}
+                            <th>{{ bm }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in ratio_table %}
+                        <tr{% if row.metric == 'シャープレシオ' %} class="highlight"{% endif %}>
+                            <td>{{ row.metric }}</td>
+                            <td>{{ row.portfolio | format_ratio }}</td>
+                            {% for bm in comparison.benchmarks %}
+                            <td>{{ row.benchmarks[bm] | format_ratio }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <div class="footer">
+            <p>Generated by <strong>ReportGenerator</strong> | multi-asset-portfolio</p>
+        </div>
+    </div>
+</body>
+</html>

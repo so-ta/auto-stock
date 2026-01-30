@@ -16,9 +16,20 @@ from numpy.typing import NDArray
 # Numba imports with fallback
 try:
     from numba import njit, prange, config
+    import os
     NUMBA_AVAILABLE = True
-    # Enable parallel threading
-    config.THREADING_LAYER = 'threadsafe'
+
+    # スレッディングレイヤーの設定（優先順位: tbb > omp > workqueue）
+    # 環境変数が設定されていない場合のみ自動設定
+    if 'NUMBA_THREADING_LAYER' not in os.environ:
+        # macOSではTBB/OpenMPが利用できないことが多いため、workqueueをデフォルトに
+        import platform
+        if platform.system() == 'Darwin':
+            os.environ['NUMBA_THREADING_LAYER'] = 'workqueue'
+        else:
+            # Linux/Windowsでは利用可能なレイヤーを自動検出
+            os.environ['NUMBA_THREADING_LAYER'] = 'default'
+
 except ImportError:
     NUMBA_AVAILABLE = False
     # Fallback: define dummy decorators

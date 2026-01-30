@@ -31,7 +31,7 @@ from typing import Any
 
 import structlog
 
-from src.backtest.engine import BacktestConfig, BacktestEngine
+from src.backtest import BacktestConfig, BacktestEngine
 from src.config.settings import Settings, load_settings_from_yaml
 from src.orchestrator.pipeline import Pipeline, PipelineConfig, PipelineResult
 from src.utils.logger import setup_logging
@@ -72,6 +72,14 @@ Examples:
     python -m src.main --backtest --no-cache  # Disable caching
     python -m src.main --backtest --cache-dir /tmp/cache  # Custom cache dir
     python -m src.main --backtest -j 4  # Use 4 parallel workers
+
+    # Performance report generation
+    python -m src.main --report --start 2010-01-01 --end 2025-01-01 \\
+        --benchmarks SPY,QQQ,DIA --report-output reports/performance.html
+
+    # Interactive dashboard
+    python -m src.main --dashboard --port 8050 \\
+        --start 2020-01-01 --end 2025-01-01
 """,
     )
 
@@ -258,6 +266,38 @@ Examples:
         "--run-id",
         type=str,
         help="Specific run ID (auto-generated if not provided)",
+    )
+
+    # Report generation
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Generate performance report with benchmark comparison",
+    )
+    parser.add_argument(
+        "--benchmarks",
+        type=str,
+        default="SPY,QQQ,DIA",
+        help="Benchmark tickers for comparison (comma-separated, default: SPY,QQQ,DIA)",
+    )
+    parser.add_argument(
+        "--report-output",
+        type=str,
+        default="reports/performance_report.html",
+        help="Report output path (default: reports/performance_report.html)",
+    )
+
+    # Dashboard
+    parser.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="Launch interactive performance dashboard",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8050,
+        help="Dashboard port (default: 8050)",
     )
 
     # Logging
@@ -542,11 +582,11 @@ def run_backtest_engine(args: argparse.Namespace, logger: Any) -> int:
             logger.warning("Config file not found, using defaults", path=str(args.config))
 
     # Create BacktestConfig with performance options
+    # Note: train_period_days is not supported by BacktestConfig
     backtest_config = BacktestConfig(
         start_date=start_date,
         end_date=end_date,
         rebalance_frequency=args.rebalance,
-        train_period_days=args.train_days,
         initial_capital=args.capital,
         transaction_cost_bps=args.cost_bps,
     )
@@ -584,10 +624,34 @@ def run_backtest_engine(args: argparse.Namespace, logger: Any) -> int:
             print(f"   GPU acceleration: ON (10-50x additional speedup)")
         print()
 
+    # Fetch price data
+    from src.data import BatchDataFetcher
+    import pandas as pd
+    print("   Fetching price data...")
+    fetcher = BatchDataFetcher()
+    prices_raw = fetcher.fetch_all_sync(
+        tickers=universe,
+        start_date=start_date.strftime("%Y-%m-%d"),
+        end_date=end_date.strftime("%Y-%m-%d"),
+    )
+    # Convert Dict[str, pl.DataFrame] to pd.DataFrame (columns=assets, index=timestamp)
+    price_series = {}
+    for symbol, df in prices_raw.items():
+        pdf = df.to_pandas()
+        if 'close' in pdf.columns:
+            pdf = pdf.set_index('timestamp') if 'timestamp' in pdf.columns else pdf
+            price_series[symbol] = pdf['close']
+    prices = pd.DataFrame(price_series)
+    if prices.empty:
+        logger.error("No price data fetched")
+        print("Error: Could not fetch price data")
+        return 1
+    logger.info("Fetched price data", symbols=len(prices.columns), rows=len(prices))
+
     # Run BacktestEngine
     try:
-        engine = BacktestEngine(backtest_config, settings)
-        result = engine.run(universe=universe)
+        engine = BacktestEngine(backtest_config)
+        result = engine.run(prices=prices)
     except Exception as e:
         logger.exception("BacktestEngine failed", error=str(e))
         print(f"Error: Backtest failed - {e}")
@@ -685,6 +749,347 @@ def save_backtest_engine_json(result: Any, config: BacktestConfig, output_path: 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, default=str)
+
+
+def run_report_generation(args: argparse.Namespace, logger: Any) -> int:
+    """Generate performance report with benchmark comparison.
+
+    Args:
+        args: Parsed command line arguments
+        logger: Logger instance
+
+    Returns:
+        Exit code (0=success, 1=failure)
+    """
+    # Require --start and --end
+    if args.start is None or args.end is None:
+        logger.error("Report generation requires both --start and --end flags")
+        print("Error: Report generation requires --start and --end date arguments")
+        print("Example: --report --start 2010-01-01 --end 2025-01-01")
+        return 1
+
+    # Parse dates
+    try:
+        start_date = datetime.strptime(args.start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_date = datetime.strptime(args.end, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError) as e:
+        logger.error("Invalid date format", error=str(e))
+        print("Error: Dates must be in YYYY-MM-DD format")
+        return 1
+
+    # Parse benchmarks
+    benchmarks = [b.strip() for b in args.benchmarks.split(",")]
+
+    logger.info(
+        "Starting report generation",
+        start=start_date.strftime("%Y-%m-%d"),
+        end=end_date.strftime("%Y-%m-%d"),
+        benchmarks=benchmarks,
+        output=args.report_output,
+    )
+
+    print(f"\n📊 Generating Performance Report")
+    print(f"   Period: {args.start} to {args.end}")
+    print(f"   Benchmarks: {', '.join(benchmarks)}")
+    print(f"   Output: {args.report_output}")
+    print()
+
+    try:
+        # Import required modules
+        from src.analysis.benchmark_fetcher import BenchmarkFetcher
+        from src.analysis.performance_comparator import PerformanceComparator
+        from src.analysis.report_generator import ReportGenerator
+        from src.analysis.chart_generator import ChartGenerator
+
+        # Run backtest to get portfolio returns
+        # Set universe
+        if args.universe:
+            universe = [s.strip() for s in args.universe.split(",")]
+        else:
+            universe = DEFAULT_BACKTEST_UNIVERSE
+            logger.info("Using default universe", universe=universe)
+
+        # Load settings
+        if args.config and args.config.exists():
+            settings = load_settings_from_yaml(args.config)
+        else:
+            settings = Settings()
+
+        # Create BacktestConfig
+        backtest_config = BacktestConfig(
+            start_date=start_date,
+            end_date=end_date,
+            rebalance_frequency=args.rebalance,
+            train_period_days=args.train_days,
+            initial_capital=args.capital,
+            transaction_cost_bps=args.cost_bps,
+        )
+
+        # Fetch price data for backtest
+        from src.data import BatchDataFetcher
+        import pandas as pd
+        print("   Fetching price data...")
+        price_fetcher = BatchDataFetcher()
+        prices_raw = price_fetcher.fetch_all_sync(
+            tickers=universe,
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+        )
+        # Convert Dict[str, pl.DataFrame] to pd.DataFrame
+        price_series = {}
+        for symbol, df in prices_raw.items():
+            pdf = df.to_pandas()
+            if 'close' in pdf.columns:
+                pdf = pdf.set_index('timestamp') if 'timestamp' in pdf.columns else pdf
+                price_series[symbol] = pdf['close']
+        prices = pd.DataFrame(price_series)
+        if prices.empty:
+            logger.error("No price data fetched for report")
+            print("Error: Could not fetch price data")
+            return 1
+
+        print("   Running backtest...")
+        engine = BacktestEngine(backtest_config)
+        result = engine.run(prices=prices)
+
+        # Get portfolio returns from equity curve
+        if hasattr(result, 'equity_curve') and result.equity_curve is not None:
+            portfolio_values = result.equity_curve
+            portfolio_returns = portfolio_values.pct_change().dropna()
+        else:
+            logger.error("Backtest result has no equity curve")
+            print("Error: Could not extract portfolio returns from backtest")
+            return 1
+
+        # Fetch benchmark data
+        print("   Fetching benchmark data...")
+        fetcher = BenchmarkFetcher()
+        benchmark_prices = fetcher.fetch_benchmarks(
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+            benchmarks=benchmarks,
+        )
+        benchmark_returns = fetcher.calculate_returns(benchmark_prices, frequency="daily")
+
+        # Align indices
+        common_idx = portfolio_returns.index.intersection(benchmark_returns.index)
+        portfolio_returns = portfolio_returns.loc[common_idx]
+        benchmark_returns = benchmark_returns.loc[common_idx]
+
+        # Compare performance
+        print("   Analyzing performance...")
+        comparator = PerformanceComparator()
+        comparison = comparator.compare(portfolio_returns, benchmark_returns)
+
+        # Generate report
+        print("   Generating report...")
+        report_generator = ReportGenerator()
+
+        # Create output directory
+        output_path = Path(args.report_output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Generate charts
+        chart_generator = ChartGenerator()
+
+        # Save equity comparison chart
+        charts_dir = output_path.parent / "charts"
+        charts_dir.mkdir(parents=True, exist_ok=True)
+
+        equity_fig = chart_generator.plot_equity_comparison(
+            portfolio=portfolio_returns,
+            benchmarks=benchmark_returns,
+            title="資産推移比較",
+        )
+        chart_generator.save_chart(
+            equity_fig,
+            charts_dir / "equity_comparison.html",
+        )
+
+        # Generate HTML report
+        html = report_generator.generate_html_report(
+            comparison=comparison,
+            portfolio_name="Portfolio",
+            start_date=args.start,
+            end_date=args.end,
+            output_path=str(output_path),
+        )
+
+        print(f"\n✅ Report generated: {output_path}")
+        print(f"   Charts saved to: {charts_dir}")
+
+        # Print summary
+        print("\n" + "=" * 60)
+        print("  PERFORMANCE SUMMARY")
+        print("=" * 60)
+        pm = comparison.portfolio_metrics
+        print(f"  Total Return:      {pm.get('total_return', 0):>10.2%}")
+        print(f"  Annualized Return: {pm.get('annualized_return', 0):>10.2%}")
+        print(f"  Sharpe Ratio:      {pm.get('sharpe_ratio', 0):>10.3f}")
+        print(f"  Max Drawdown:      {pm.get('max_drawdown', 0):>10.2%}")
+        print(f"  Volatility (ann.): {pm.get('volatility', 0):>10.2%}")
+        print("=" * 60 + "\n")
+
+        return 0
+
+    except ImportError as e:
+        logger.error("Missing required module", error=str(e))
+        print(f"Error: Missing required module - {e}")
+        print("Install with: pip install plotly jinja2")
+        return 1
+    except Exception as e:
+        logger.exception("Report generation failed", error=str(e))
+        print(f"Error: Report generation failed - {e}")
+        return 1
+
+
+def run_dashboard(args: argparse.Namespace, logger: Any) -> int:
+    """Launch interactive performance dashboard.
+
+    Args:
+        args: Parsed command line arguments
+        logger: Logger instance
+
+    Returns:
+        Exit code (0=success, 1=failure)
+    """
+    # Require --start and --end
+    if args.start is None or args.end is None:
+        logger.error("Dashboard requires both --start and --end flags")
+        print("Error: Dashboard requires --start and --end date arguments")
+        print("Example: --dashboard --start 2020-01-01 --end 2025-01-01")
+        return 1
+
+    # Parse dates
+    try:
+        start_date = datetime.strptime(args.start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_date = datetime.strptime(args.end, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError) as e:
+        logger.error("Invalid date format", error=str(e))
+        print("Error: Dates must be in YYYY-MM-DD format")
+        return 1
+
+    # Parse benchmarks
+    benchmarks = [b.strip() for b in args.benchmarks.split(",")]
+
+    logger.info(
+        "Starting dashboard",
+        start=start_date.strftime("%Y-%m-%d"),
+        end=end_date.strftime("%Y-%m-%d"),
+        benchmarks=benchmarks,
+        port=args.port,
+    )
+
+    print(f"\n🚀 Launching Performance Dashboard")
+    print(f"   Period: {args.start} to {args.end}")
+    print(f"   Benchmarks: {', '.join(benchmarks)}")
+    print(f"   Port: {args.port}")
+    print()
+
+    try:
+        # Import required modules
+        from src.analysis.benchmark_fetcher import BenchmarkFetcher
+        from src.analysis.dashboard import create_dashboard
+
+        # Run backtest to get portfolio returns
+        if args.universe:
+            universe = [s.strip() for s in args.universe.split(",")]
+        else:
+            universe = DEFAULT_BACKTEST_UNIVERSE
+            logger.info("Using default universe", universe=universe)
+
+        # Load settings
+        if args.config and args.config.exists():
+            settings = load_settings_from_yaml(args.config)
+        else:
+            settings = Settings()
+
+        # Create BacktestConfig
+        backtest_config = BacktestConfig(
+            start_date=start_date,
+            end_date=end_date,
+            rebalance_frequency=args.rebalance,
+            train_period_days=args.train_days,
+            initial_capital=args.capital,
+            transaction_cost_bps=args.cost_bps,
+        )
+
+        # Fetch price data for backtest
+        from src.data import BatchDataFetcher
+        import pandas as pd
+        print("   Fetching price data...")
+        price_fetcher = BatchDataFetcher()
+        prices_raw = price_fetcher.fetch_all_sync(
+            tickers=universe,
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+        )
+        # Convert Dict[str, pl.DataFrame] to pd.DataFrame
+        price_series = {}
+        for symbol, df in prices_raw.items():
+            pdf = df.to_pandas()
+            if 'close' in pdf.columns:
+                pdf = pdf.set_index('timestamp') if 'timestamp' in pdf.columns else pdf
+                price_series[symbol] = pdf['close']
+        prices = pd.DataFrame(price_series)
+        if prices.empty:
+            logger.error("No price data fetched for dashboard")
+            print("Error: Could not fetch price data")
+            return 1
+
+        print("   Running backtest...")
+        engine = BacktestEngine(backtest_config)
+        result = engine.run(prices=prices)
+
+        # Get portfolio returns from equity curve
+        if hasattr(result, 'equity_curve') and result.equity_curve is not None:
+            portfolio_values = result.equity_curve
+            portfolio_returns = portfolio_values.pct_change().dropna()
+        else:
+            logger.error("Backtest result has no equity curve")
+            print("Error: Could not extract portfolio returns from backtest")
+            return 1
+
+        # Fetch benchmark data
+        print("   Fetching benchmark data...")
+        fetcher = BenchmarkFetcher()
+        benchmark_prices = fetcher.fetch_benchmarks(
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+            benchmarks=benchmarks,
+        )
+        benchmark_returns = fetcher.calculate_returns(benchmark_prices, frequency="daily")
+
+        # Align indices
+        common_idx = portfolio_returns.index.intersection(benchmark_returns.index)
+        portfolio_returns = portfolio_returns.loc[common_idx]
+        benchmark_returns = benchmark_returns.loc[common_idx]
+
+        # Create and run dashboard
+        print(f"\n   Starting dashboard at http://127.0.0.1:{args.port}")
+        print("   Press Ctrl+C to stop\n")
+
+        dashboard = create_dashboard(
+            portfolio_returns=portfolio_returns,
+            benchmark_returns=benchmark_returns,
+            title="Portfolio Performance Dashboard",
+        )
+        dashboard.run(port=args.port)
+
+        return 0
+
+    except ImportError as e:
+        logger.error("Missing required module", error=str(e))
+        print(f"Error: Missing required module - {e}")
+        print("Install with: pip install dash dash-bootstrap-components plotly")
+        return 1
+    except KeyboardInterrupt:
+        print("\nDashboard stopped by user")
+        return 0
+    except Exception as e:
+        logger.exception("Dashboard failed", error=str(e))
+        print(f"Error: Dashboard failed - {e}")
+        return 1
 
 
 def load_previous_weights(path: Path) -> dict[str, float]:
@@ -802,6 +1207,14 @@ def main() -> int:
     )
 
     try:
+        # Check for report mode
+        if args.report:
+            return run_report_generation(args, logger)
+
+        # Check for dashboard mode
+        if args.dashboard:
+            return run_dashboard(args, logger)
+
         # Check for backtest mode
         if args.backtest:
             return run_backtest(args, logger)

@@ -42,7 +42,7 @@ import pandas as pd
 import polars as pl
 
 from src.backtest.base import UnifiedBacktestConfig, UnifiedBacktestResult
-from src.backtest.factory import BacktestEngineFactory
+from src.backtest.factory import create_engine
 from src.config.settings import Settings
 from src.orchestrator.pipeline import Pipeline, PipelineConfig, PipelineResult
 
@@ -306,17 +306,13 @@ class UnifiedExecutor:
         )
 
         # エンジン作成
-        engine = BacktestEngineFactory.create(
-            mode="vectorbt",
-            config=config,
-            universe_size=len(universe),
-        )
+        engine = create_engine(config=config)
         logger.info(f"Using engine: {engine.ENGINE_NAME}")
 
-        # バックテスト実行
-        result = engine.run(
+        # バックテスト実行（run_unified使用: 外部形式weights_funcを内部形式に変換）
+        result = engine.run_unified(
             universe=universe,
-            prices=prices,
+            prices=prices,  # Dict形式をそのまま渡す（run_unified内で変換）
             config=config,
             weights_func=pipeline_weights_func,
         )
@@ -675,16 +671,13 @@ class UnifiedExecutor:
             return weights_history[-1] if weights_history else {s: 1.0/len(universe) for s in universe}
 
         # Use backtest engine for final result calculation
-        from src.backtest.factory import BacktestEngineFactory
-        engine = BacktestEngineFactory.create(
-            mode="vectorbt",
-            config=config,
-            universe_size=len(universe),
-        )
+        from src.backtest.factory import create_engine as _create_engine
+        engine = _create_engine(config=config)
 
-        result = engine.run(
+        # バックテスト実行（run_unified使用: 外部形式weights_funcを内部形式に変換）
+        result = engine.run_unified(
             universe=universe,
-            prices=prices,
+            prices=prices,  # Dict形式をそのまま渡す（run_unified内で変換）
             config=config,
             weights_func=precomputed_weights_func,
         )

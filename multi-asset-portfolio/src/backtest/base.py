@@ -665,7 +665,7 @@ class WeightsFuncProtocol(Protocol):
             return {symbol: 1.0 / n for symbol in universe}
 
         # 全エンジンで同一関数を使用可能
-        result = engine.run(universe, prices, config, weights_func=my_weights_func)
+        result = engine.run(prices=prices, weights_func=my_weights_func)
     """
 
     def __call__(

@@ -1,35 +1,34 @@
 """
-Fast Backtest Engine - 高速バックテストエンジン
+Backtest Engine - Numba JIT高速化バックテストエンジン（1137x高速化）
 
-Phase 1 で作成したモジュールを統合した高速バックテストエンジン。
-事前計算シグナル、インクリメンタル共分散、ベクトル化計算を組み合わせて
-3-5倍の高速化を実現。
-
-Phase 2（task_022_7）: Numba/GPU統合により累積50-100倍高速化。
+事前計算シグナル、インクリメンタル共分散、ベクトル化計算、Numba JITを組み合わせた
+高性能バックテストエンジン。
 
 主な高速化ポイント:
 - シグナル: 事前計算済みをメモリマップで読み込み
 - 共分散: インクリメンタル更新（毎回再計算しない）
 - ポートフォリオ計算: ベクトル化
 - メインループ: NumPy配列で効率的に計算
-- Numba: @njit(parallel=True) でJITコンパイル高速化
-- GPU: CuPy対応時にGPUで行列演算
+- Numba: @njit(parallel=True) でJITコンパイル高速化（デフォルト有効）
+- GPU: CuPy対応時にGPUで行列演算（オプション）
 
 使用例:
-    from src.backtest.fast_engine import FastBacktestEngine, FastBacktestConfig
+    from src.backtest.fast_engine import BacktestEngine, BacktestConfig
     from datetime import datetime
 
-    config = FastBacktestConfig(
+    config = BacktestConfig(
         start_date=datetime(2020, 1, 1),
         end_date=datetime(2024, 12, 31),
         rebalance_frequency="monthly",
         initial_capital=100000.0,
-        use_numba=True,   # Numba JIT高速化
-        use_gpu=False,    # GPU使用（CuPy必要）
     )
 
-    engine = FastBacktestEngine(config)
+    engine = BacktestEngine(config)
     result = engine.run(prices_df, asset_names=["SPY", "QQQ", "TLT", "GLD"])
+
+後方互換性:
+    FastBacktestEngine, FastBacktestConfig は非推奨エイリアスとして残存。
+    新規コードでは BacktestEngine, BacktestConfig を使用すること。
 """
 
 from __future__ import annotations
@@ -170,8 +169,8 @@ class RebalanceFrequency(str, Enum):
 
 
 @dataclass
-class FastBacktestConfig:
-    """高速バックテスト設定
+class BacktestConfig:
+    """バックテスト設定（Numba JIT高速化対応）
 
     Attributes:
         start_date: 開始日
@@ -185,9 +184,9 @@ class FastBacktestConfig:
         cov_cache_dir: 共分散キャッシュディレクトリ
         min_weight: 最小ウェイト
         max_weight: 最大ウェイト
-        use_numba: Numba JIT高速化を使用
-        use_gpu: GPU計算を使用（CuPy必要）
-        numba_parallel: Numba並列化を有効化
+        use_numba: Numba JIT高速化を使用（デフォルト: True）
+        use_gpu: GPU計算を使用（デフォルト: False、CuPy必要）
+        numba_parallel: Numba並列化を有効化（デフォルト: True）
         warmup_jit: JITコンパイル事前ウォームアップ
     """
 
@@ -208,7 +207,7 @@ class FastBacktestConfig:
     #   1. CuPyをインストール: pip install cupy-cuda12x (CUDA 12.x) or cupy-cuda11x (CUDA 11.x)
     #   2. use_gpu=True を設定
     #   3. scripts/check_gpu.py で環境確認可能
-    # ResourceConfigからの自動検出: FastBacktestConfig.from_resource_config() を使用
+    # ResourceConfigからの自動検出: BacktestConfig.from_resource_config() を使用
     use_numba: bool = True
     use_gpu: bool = False
     gpu_memory_fraction: float = 0.8  # GPU使用時のメモリ使用率（0.0-1.0）
@@ -253,11 +252,11 @@ class FastBacktestConfig:
         start_date: datetime,
         end_date: datetime,
         **kwargs,
-    ) -> "FastBacktestConfig":
+    ) -> "BacktestConfig":
         """
         ResourceConfigからインスタンスを生成
 
-        システムリソースに基づいた最適な設定でFastBacktestConfigを作成する。
+        システムリソースに基づいた最適な設定でBacktestConfigを作成する。
         start_date/end_dateは必須。その他のパラメータはkwargsでオーバーライド可能。
 
         Parameters
@@ -271,12 +270,12 @@ class FastBacktestConfig:
 
         Returns
         -------
-        FastBacktestConfig
+        BacktestConfig
             ResourceConfigベースの設定
 
         Example
         -------
-        >>> config = FastBacktestConfig.from_resource_config(
+        >>> config = BacktestConfig.from_resource_config(
         ...     start_date=datetime(2020, 1, 1),
         ...     end_date=datetime(2024, 12, 31),
         ...     rebalance_frequency="weekly",
@@ -345,7 +344,7 @@ class _WeightsFuncAdapter:
     """
     外部weights_funcを内部形式に変換するアダプター
 
-    WeightsFuncProtocol準拠の外部関数を、FastBacktestEngine内部の
+    WeightsFuncProtocol準拠の外部関数を、BacktestEngine内部の
     (signals, cov_matrix) -> np.ndarray 形式に変換する。
 
     リバランス時に正確な日付と現在ウェイトを外部関数に渡すため、
@@ -437,41 +436,39 @@ class _WeightsFuncAdapter:
         return new_weights
 
 
-class FastBacktestEngine(BacktestEngineBase):
+class BacktestEngine(BacktestEngineBase):
     """
-    高速バックテストエンジン（BacktestEngineBase準拠）
+    Numba JIT高速化バックテストエンジン（1137x高速化）
 
-    Phase 1 で作成した以下のモジュールを統合:
+    以下のモジュールを統合した高性能バックテストエンジン:
     - SignalPrecomputer: 事前計算シグナル
     - IncrementalCovarianceEstimator: インクリメンタル共分散
     - IncrementalSignalEngine: インクリメンタルシグナル（オプション）
 
-    Phase 2: Numba/GPU計算バックエンド統合
-    - use_gpu=True: GPU(CuPy)で高速行列演算
-    - use_numba=True: Numba JITで高速化
+    高速化機能:
+    - use_numba=True（デフォルト）: Numba JITで高速化
+    - use_gpu=True（オプション）: GPU(CuPy)で高速行列演算
     - フォールバック: NumPy
 
     INT-003: BacktestEngineBase準拠（共通インターフェース）
     - run()とvalidate_inputs()を実装
-    - FastBacktestConfigとUnifiedBacktestConfigの両方に対応
+    - BacktestConfigとUnifiedBacktestConfigの両方に対応
 
     Usage:
-        config = FastBacktestConfig(
+        config = BacktestConfig(
             start_date=datetime(2020, 1, 1),
             end_date=datetime(2024, 12, 31),
-            use_numba=True,
-            use_gpu=False,
         )
-        engine = FastBacktestEngine(config)
+        engine = BacktestEngine(config)
         result = engine.run(prices_df)
     """
 
     # エンジン名（BacktestEngineBase準拠）
-    ENGINE_NAME: str = "FastBacktestEngine"
+    ENGINE_NAME: str = "BacktestEngine"
 
     def __init__(
         self,
-        config: Union[FastBacktestConfig, UnifiedBacktestConfig],
+        config: Union[BacktestConfig, UnifiedBacktestConfig],
         signal_precomputer: Optional[Any] = None,
         incremental_engine: Optional[Any] = None,
     ):
@@ -480,14 +477,14 @@ class FastBacktestEngine(BacktestEngineBase):
 
         Parameters
         ----------
-        config : FastBacktestConfig | UnifiedBacktestConfig
+        config : BacktestConfig | UnifiedBacktestConfig
             バックテスト設定（両方の設定形式に対応）
         signal_precomputer : SignalPrecomputer, optional
             シグナル事前計算器（Noneの場合は新規作成）
         incremental_engine : IncrementalSignalEngine, optional
             インクリメンタルシグナルエンジン
         """
-        # UnifiedBacktestConfigの場合はFastBacktestConfigに変換
+        # UnifiedBacktestConfigの場合はBacktestConfigに変換
         if isinstance(config, UnifiedBacktestConfig):
             fast_config = self._convert_from_unified_config(config)
             self._unified_config = config
@@ -604,7 +601,7 @@ class FastBacktestEngine(BacktestEngineBase):
             )
 
         logger.info(
-            "FastBacktestEngine initialized: %s to %s, freq=%s, backend=%s, regime=%s, dd=%s, vix=%s, dw=%s, div=%s",
+            "BacktestEngine initialized: %s to %s, freq=%s, backend=%s, regime=%s, dd=%s, vix=%s, dw=%s, div=%s",
             config.start_date,
             config.end_date,
             config.rebalance_frequency,
@@ -617,9 +614,9 @@ class FastBacktestEngine(BacktestEngineBase):
         )
 
     @staticmethod
-    def _convert_from_unified_config(config: UnifiedBacktestConfig) -> "FastBacktestConfig":
+    def _convert_from_unified_config(config: UnifiedBacktestConfig) -> "BacktestConfig":
         """
-        UnifiedBacktestConfigからFastBacktestConfigに変換（INT-003）
+        UnifiedBacktestConfigからBacktestConfigに変換（INT-003）
 
         Parameters
         ----------
@@ -628,13 +625,13 @@ class FastBacktestEngine(BacktestEngineBase):
 
         Returns
         -------
-        FastBacktestConfig
+        BacktestConfig
             エンジン固有設定
         """
         # engine_specific_configからエンジン固有設定を取得
         specific = config.engine_specific_config or {}
 
-        return FastBacktestConfig(
+        return BacktestConfig(
             start_date=config.start_date if isinstance(config.start_date, datetime) else datetime.strptime(config.start_date, "%Y-%m-%d"),
             end_date=config.end_date if isinstance(config.end_date, datetime) else datetime.strptime(config.end_date, "%Y-%m-%d"),
             initial_capital=config.initial_capital,
@@ -692,7 +689,7 @@ class FastBacktestEngine(BacktestEngineBase):
         for warning in warnings:
             logger.warning(warning)
 
-        # FastBacktestEngine固有の検証
+        # BacktestEngine固有の検証
         if config.initial_capital <= 0:
             raise ValueError("initial_capital must be positive")
 
@@ -911,7 +908,7 @@ class FastBacktestEngine(BacktestEngineBase):
         elif self._unified_config is not None:
             config = self._unified_config
         else:
-            # FastBacktestConfigからUnifiedBacktestConfigを作成
+            # BacktestConfigからUnifiedBacktestConfigを作成
             config = UnifiedBacktestConfig(
                 start_date=self.config.start_date,
                 end_date=self.config.end_date,
@@ -2235,7 +2232,7 @@ def run_fast_backtest(
     BacktestResult
         バックテスト結果
     """
-    config = FastBacktestConfig(
+    config = BacktestConfig(
         start_date=start_date,
         end_date=end_date,
         rebalance_frequency=rebalance_frequency,
@@ -2246,5 +2243,13 @@ def run_fast_backtest(
         vix_cash_enabled=vix_cash_enabled,
     )
 
-    engine = FastBacktestEngine(config)
+    engine = BacktestEngine(config)
     return engine.run(prices, weights_func=weights_func, vix_data=vix_data)
+
+
+# ==============================================================================
+# 後方互換エイリアス（非推奨）
+# ==============================================================================
+# 新規コードでは BacktestConfig, BacktestEngine を使用すること
+FastBacktestConfig = BacktestConfig
+FastBacktestEngine = BacktestEngine

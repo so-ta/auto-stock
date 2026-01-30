@@ -39,6 +39,30 @@ from .portfolio_specific_params import (
     ThresholdCalculatorProtocol,
     create_adaptive_parameter_manager,
 )
+from .benchmark_fetcher import (
+    BenchmarkFetcher,
+    BenchmarkFetcherError,
+)
+from .report_generator import (
+    PortfolioMetrics,
+    ComparisonResult,
+    ReportGenerator,
+)
+# Static charts (requires matplotlib)
+try:
+    from .static_charts import StaticChartGenerator
+    HAS_STATIC_CHARTS = True
+except ImportError:
+    StaticChartGenerator = None
+    HAS_STATIC_CHARTS = False
+# Interactive charts (requires plotly)
+try:
+    from .chart_generator import ChartGenerator, ChartGeneratorError
+    HAS_PLOTLY_CHARTS = True
+except ImportError:
+    ChartGenerator = None
+    ChartGeneratorError = None
+    HAS_PLOTLY_CHARTS = False
 # Note: dynamic_threshold.py と dynamic_thresholds.py は非推奨・削除済み
 # 代わりに src.meta.dynamic_params.DynamicParamsManager を使用してください
 # 互換性のため一部クラスを再エクスポート
@@ -85,4 +109,16 @@ __all__ = [
     "calculate_rebalance_threshold",
     "calculate_smoothing_alpha",
     "calculate_position_limit",
+    # Benchmark fetcher
+    "BenchmarkFetcher",
+    "BenchmarkFetcherError",
+    # Report generator
+    "PortfolioMetrics",
+    "ComparisonResult",
+    "ReportGenerator",
+    # Static charts
+    "StaticChartGenerator",
+    # Interactive charts (Plotly)
+    "ChartGenerator",
+    "ChartGeneratorError",
 ]

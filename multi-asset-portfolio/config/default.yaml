@@ -131,6 +131,7 @@ rebalance:
 signals:
   # Momentum signal parameters
   momentum:
+    lookback: 119                 # Optimal momentum lookback (cmd_051 optimized: was 90)
     short_window: 20              # Short-term momentum lookback
     medium_window: 60             # Medium-term momentum lookback
     long_window: 120              # Long-term momentum lookback
@@ -157,7 +158,7 @@ signals:
 
   # Bollinger Bands parameters
   bollinger:
-    window: 20                    # Moving average window
+    window: 11                    # Moving average window (cmd_051 optimized: was 20)
     num_std: 2.0                  # Number of standard deviations
 
   # Regime detection parameters
@@ -273,7 +274,7 @@ hard_gates:
 # -----------------------------------------------------------------------------
 strategy_selection:
   method: "top_n"                  # "top_n" or "gate" (legacy mode)
-  top_n: 7                         # Number of strategies to adopt (cmd_012 optimized: range 5-15)
+  top_n: 4                         # Number of strategies to adopt (cmd_051 optimized: was 7)
   cash_score: 0.0                  # Fixed score for cash (baseline)
   min_score: -999                  # Minimum score threshold (below this is excluded)
   weight_method: "softmax"         # "softmax" or "equal"
@@ -283,7 +284,7 @@ strategy_selection:
 # Strategy Weighting (Meta Layer)
 # -----------------------------------------------------------------------------
 strategy_weighting:
-  beta: 2.5                       # Softmax temperature (cmd_012 optimized: range 1.5-3.0)
+  beta: 2.307                     # Softmax temperature (cmd_051 optimized: was 2.5)
   w_strategy_max: 0.5             # Max weight per strategy
   entropy_min: 0.8                # Minimum entropy (diversity)
 
@@ -402,7 +403,7 @@ nco:
   inter_method: "equal"           # Inter-cluster combination method
 
   # Constraints
-  w_asset_max: 0.2                # Max weight per asset
+  w_asset_max: 0.223              # Max weight per asset (cmd_051 optimized: was 0.2)
   w_asset_min: 0.0                # Min weight per asset (0 = long only)
   delta_max: 0.05                 # Max weight change per rebalance
 
@@ -622,43 +623,6 @@ backtest:
     ray_engine:
       num_workers: 4
       chunk_size: 1000
-
-# =============================================================================
-# Optimized Parameters (Bayesian Optimization Results - task_013_6)
-# =============================================================================
-# These parameters were discovered through Bayesian optimization
-# to maximize Sharpe ratio using walk-forward cross-validation.
-
-optimized_params:
-  # Signal parameters (cmd_012 optimized)
-  signals:
-    momentum_lookback: 90         # Optimal momentum lookback period (range: 20-120)
-    rsi_period: 5                 # Optimal RSI period
-    bollinger_period: 20          # Optimal Bollinger Bands period (range: 14-30)
-
-  # Layer weights for hierarchical ensemble
-  layer_weights:
-    trend: 0.311                  # Trend-following layer weight
-    reversion: 0.495              # Mean-reversion layer weight
-    macro: 0.379                  # Macro layer weight
-
-  # Meta learner parameters (cmd_012 optimized)
-  meta_learner:
-    beta: 2.5                     # Softmax temperature (range: 1.5-3.0)
-    top_n: 7                      # Number of top strategies to select (range: 5-15)
-
-  # Asset allocation constraints (cmd_012 optimized)
-  allocation:
-    w_asset_max: 0.20             # Maximum weight per asset (range: 0.15-0.25)
-
-  # Optimization metadata
-  optimization_metadata:
-    method: "bayesian_optimization"
-    n_calls: 100                  # Number of optimization iterations
-    best_sharpe: 0.835            # Best achieved Sharpe ratio
-    optimized_at: "2026-01-28"    # Optimization date
-    cv_folds: 5                   # Cross-validation folds
-    data_period: "2015-2024"      # Training data period
 
 # -----------------------------------------------------------------------------
 # Hierarchical Ensemble Configuration
