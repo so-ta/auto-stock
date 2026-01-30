@@ -1,0 +1,98 @@
+# =============================================================================
+# Multi-Asset Portfolio - Git Ignore
+# =============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Documentation
+site/
+docs/_build/
+
+# Local configuration (DO NOT COMMIT)
+config/local.yaml
+config/local.yml
+
+# Cache directories
+.cache/
+*.cache
+/tmp/
+
+# Logs
+logs/
+*.log
+
+# Data files (potentially large)
+data/
+*.parquet
+*.duckdb
+
+# Results and outputs
+results/
+output/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables (DO NOT COMMIT)
+.env.local
+.env.*.local
+
+# AWS credentials (DO NOT COMMIT)
+.aws/
+credentials
+
+# MacOS
+.DS_Store
+
+# Secrets (DO NOT COMMIT)
+*.pem
+*.key
+secrets/

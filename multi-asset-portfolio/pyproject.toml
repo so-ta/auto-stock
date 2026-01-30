@@ -62,12 +62,29 @@ dependencies = [
     # Storage
     "duckdb>=0.9.0",
     "pyarrow>=14.0.0",
+    "fsspec>=2023.10.0",
 
     # Memory Profiling
     "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
+# S3 storage backend support
+s3 = [
+    "s3fs>=2023.10.0",
+    "boto3>=1.26.0",
+]
+
+# GPU acceleration (NVIDIA CUDA)
+gpu = [
+    "cupy-cuda11x>=12.0.0",
+]
+
+# Distributed processing with Ray
+distributed = [
+    "ray>=2.7.0",
+]
+
 dev = [
     # Testing
     "pytest>=7.4.0",
