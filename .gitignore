@@ -50,7 +50,6 @@ build/
 *.egg
 
 # Environment
-.env
 .env.local
 *.local
 
