@@ -1,93 +1,94 @@
 # Multi-Asset Portfolio
 
-> Automated multi-asset portfolio management system with dynamic allocation, walk-forward validation, and multi-strategy ensemble.
+> 動的配分、ウォークフォワード検証、マルチ戦略アンサンブルを備えた自動マルチアセットポートフォリオ管理システム
 
-[![CI](https://github.com/YOUR_ORG/multi-asset-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/multi-asset-portfolio/actions/workflows/ci.yml)
+[![CI](https://github.com/so-ta/auto-stock/actions/workflows/ci.yml/badge.svg)](https://github.com/so-ta/auto-stock/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+## 概要
 
-Multi-Asset Portfolio is a quantitative portfolio management system designed for:
+Multi-Asset Portfolioは以下を目的とした定量ポートフォリオ管理システムです：
 
-- **Multi-asset allocation** across stocks, ETFs, forex, and commodities
-- **Walk-forward validation** to prevent overfitting
-- **Dynamic rebalancing** based on market regimes
-- **Risk management** with drawdown protection and fallback modes
+- **マルチアセット配分** - 株式、ETF、FX、コモディティを横断した配分
+- **ウォークフォワード検証** - オーバーフィッティング防止
+- **動的リバランス** - 市場レジームに基づく調整
+- **リスク管理** - ドローダウン保護とフォールバックモード
 
-## Features
+## 機能
 
-### Core Capabilities
+### コア機能
 
-| Feature | Description |
-|---------|-------------|
-| **HRP Allocation** | Hierarchical Risk Parity for robust diversification |
-| **Risk Parity** | Equal risk contribution across assets |
-| **Walk-Forward** | Rolling train/test validation |
-| **Multi-Strategy** | Ensemble of momentum, mean-reversion, macro signals |
-| **Regime Detection** | Adaptive parameters based on market conditions |
+| 機能 | 説明 |
+|------|------|
+| **HRP配分** | 階層的リスクパリティによる堅牢な分散投資 |
+| **リスクパリティ** | アセット間の均等リスク寄与 |
+| **ウォークフォワード** | ローリング訓練/テスト検証 |
+| **マルチ戦略** | モメンタム、平均回帰、マクロシグナルのアンサンブル |
+| **レジーム検出** | 市場状況に基づく適応パラメータ |
 
-### Advanced Features
+### 高度な機能
 
-- **Numba JIT acceleration** for 5-10x faster calculations
-- **Multiple backtest engines** (Fast, Streaming, VectorBT-style)
-- **Transaction cost optimization** with turnover constraints
-- **Drawdown protection** with staged risk reduction
-- **Fallback modes** for system resilience
+- **Numba JIT高速化** - 5-10倍の計算高速化
+- **複数バックテストエンジン** - Fast、Streaming、VectorBTスタイル
+- **取引コスト最適化** - ターンオーバー制約付き
+- **ドローダウン保護** - 段階的リスク削減
+- **フォールバックモード** - システム耐障害性
 
-## Installation
+## インストール
 
-### Prerequisites
+### 前提条件
 
-- Python 3.11 or higher
-- pip or uv package manager
+- Python 3.11以上
+- pip または uv パッケージマネージャ
 
-### Quick Install
+### クイックインストール
 
 ```bash
-# Clone the repository
-git clone https://github.com/YOUR_ORG/multi-asset-portfolio.git
-cd multi-asset-portfolio
+# リポジトリをクローン
+git clone git@github.com:so-ta/auto-stock.git
+cd auto-stock/multi-asset-portfolio
 
-# Install with pip
+# pipでインストール
 pip install -e ".[dev]"
 
-# Or with uv (faster)
-uv pip install -e ".[dev]"
+# または uv（より高速）
+pip install uv
+uv sync
 ```
 
-### Verify Installation
+### インストール確認
 
 ```bash
-# Run tests
+# テスト実行
 make test
 
-# Check lint
+# リントチェック
 make lint
 ```
 
-## Quick Start
+## クイックスタート
 
-### 1. Basic Backtest
+### 1. 基本バックテスト
 
 ```bash
-# Run backtest with default universe
-python -m src.main --backtest --start 2020-01-01 --end 2024-12-31
+# デフォルトユニバースでバックテスト実行
+uv run python -m src.main --backtest --start 2020-01-01 --end 2024-12-31
 
-# Run with specific assets
-python -m src.main --backtest --universe SPY,QQQ,TLT,GLD,BTC-USD
+# 特定アセットで実行
+uv run python -m src.main --backtest --universe SPY,QQQ,TLT,GLD,BTC-USD
 ```
 
-### 2. Using Custom Configuration
+### 2. カスタム設定の使用
 
 ```bash
-# Use default config
-python -m src.main --config config/default.yaml
+# デフォルト設定を使用
+uv run python -m src.main --config config/default.yaml
 
-# Use local overrides
+# ローカルオーバーライドを使用
 cp config/default.yaml config/local.yaml
-# Edit config/local.yaml
-python -m src.main --config config/local.yaml
+# config/local.yaml を編集
+uv run python -m src.main --config config/local.yaml
 ```
 
 ### 3. Python API
@@ -96,7 +97,7 @@ python -m src.main --config config/local.yaml
 from src.backtest.fast_engine import FastBacktestEngine, FastBacktestConfig
 from datetime import datetime
 
-# Configure
+# 設定
 config = FastBacktestConfig(
     start_date=datetime(2020, 1, 1),
     end_date=datetime(2024, 12, 31),
@@ -104,259 +105,259 @@ config = FastBacktestConfig(
     rebalance_frequency="monthly",
 )
 
-# Run backtest
+# バックテスト実行
 engine = FastBacktestEngine(config)
 result = engine.run(prices_df)
 
-# View results
-print(f"Sharpe Ratio: {result.sharpe_ratio:.2f}")
-print(f"Max Drawdown: {result.max_drawdown:.2%}")
-print(f"Total Return: {result.total_return:.2%}")
+# 結果表示
+print(f"シャープレシオ: {result.sharpe_ratio:.2f}")
+print(f"最大ドローダウン: {result.max_drawdown:.2%}")
+print(f"トータルリターン: {result.total_return:.2%}")
 ```
 
-## CLI Usage
+## CLI使用方法
 
 ```bash
-# Show help
-python -m src.main --help
+# ヘルプ表示
+uv run python -m src.main --help
 
-# Backtest mode
-python -m src.main --backtest [OPTIONS]
+# バックテストモード
+uv run python -m src.main --backtest [オプション]
 
-# Live mode (paper trading)
-python -m src.main --live [OPTIONS]
+# ライブモード（ペーパートレード）
+uv run python -m src.main --live [オプション]
 
-# Options:
-#   --config PATH       Path to YAML config file
-#   --universe ASSETS   Comma-separated asset list
-#   --start DATE        Start date (YYYY-MM-DD)
-#   --end DATE          End date (YYYY-MM-DD)
-#   --capital AMOUNT    Initial capital
-#   --output PATH       Output directory for results
+# オプション:
+#   --config PATH       YAML設定ファイルパス
+#   --universe ASSETS   カンマ区切りアセットリスト
+#   --start DATE        開始日 (YYYY-MM-DD)
+#   --end DATE          終了日 (YYYY-MM-DD)
+#   --capital AMOUNT    初期資本
+#   --output PATH       結果出力ディレクトリ
 ```
 
-## Configuration
+## 設定
 
-Configuration is managed via YAML files in `config/`:
+設定は `config/` 内のYAMLファイルで管理：
 
 ```
 config/
-├── default.yaml      # Default settings (source of truth)
-├── local.yaml        # Local overrides (gitignored)
-├── universe.yaml     # Asset universe definition
-└── universe_full.yaml # Full universe (800+ assets)
+├── default.yaml      # デフォルト設定（マスター）
+├── local.yaml        # ローカルオーバーライド（gitignore対象）
+├── universe.yaml     # アセットユニバース定義
+└── universe_full.yaml # フルユニバース（800+アセット）
 ```
 
-### Key Configuration Sections
+### 主要設定セクション
 
 ```yaml
-# Rebalancing
+# リバランス
 rebalance:
   frequency: "monthly"        # weekly | monthly | quarterly
-  min_trade_threshold: 0.02   # Skip trades < 2%
+  min_trade_threshold: 0.02   # 2%未満の取引はスキップ
 
-# Walk-Forward Validation
+# ウォークフォワード検証
 walk_forward:
-  train_period_days: 504      # ~2 years training
-  test_period_days: 126       # ~6 months testing
-  purge_gap_days: 5           # Gap to prevent leakage
+  train_period_days: 504      # 約2年の訓練期間
+  test_period_days: 126       # 約6ヶ月のテスト期間
+  purge_gap_days: 5           # データリーク防止ギャップ
 
-# Risk Management
+# リスク管理
 hard_gates:
   min_sharpe_ratio: 0.5
   max_drawdown_pct: 25.0
   min_win_rate_pct: 45.0
 
-# Asset Allocation
+# アセット配分
 asset_allocation:
   method: "HRP"               # HRP | risk_parity | mean_variance
-  w_asset_max: 0.2            # Max 20% per asset
+  w_asset_max: 0.2            # 1アセット最大20%
 ```
 
-See `config/default.yaml` for full configuration options.
+詳細は `config/default.yaml` を参照。
 
-## Architecture
+## アーキテクチャ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Pipeline Orchestrator                     │
+│                    パイプラインオーケストレータ              │
 │                   (src/orchestrator/pipeline.py)             │
 └─────────────────────────────────────────────────────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
         ▼                     ▼                     ▼
 ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-│     Data      │    │    Signals    │    │  Allocation   │
+│    データ     │    │   シグナル    │    │    配分       │
 │  (src/data/)  │    │ (src/signals/)│    │(src/allocation│
 │               │    │               │    │               │
-│ - Fetchers    │    │ - Momentum    │    │ - HRP         │
-│ - Quality     │    │ - Reversion   │    │ - Risk Parity │
-│ - Cache       │    │ - Regime      │    │ - CVaR        │
+│ - フェッチャー│    │ - モメンタム  │    │ - HRP         │
+│ - 品質チェック│    │ - 平均回帰    │    │ - リスクパリティ│
+│ - キャッシュ  │    │ - レジーム    │    │ - CVaR        │
 └───────────────┘    └───────────────┘    └───────────────┘
                               │
                     ┌─────────┴─────────┐
                     ▼                   ▼
             ┌───────────────┐    ┌───────────────┐
-            │   Backtest    │    │     Risk      │
+            │  バックテスト │    │    リスク     │
             │(src/backtest/)│    │  (src/risk/)  │
             │               │    │               │
-            │ - Fast Engine │    │ - Drawdown    │
-            │ - Streaming   │    │ - VaR/CVaR    │
-            │ - VectorBT    │    │ - Stress Test │
+            │ - Fastエンジン│    │ - ドローダウン│
+            │ - Streaming   │    │ - VaR/CVaR   │
+            │ - VectorBT    │    │ - ストレステスト│
             └───────────────┘    └───────────────┘
 ```
 
-### Module Overview
+### モジュール概要
 
-| Module | Purpose |
-|--------|---------|
-| `src/data/` | Data fetching, caching, quality checks |
-| `src/signals/` | Signal generation (momentum, reversion, macro) |
-| `src/allocation/` | Portfolio allocation algorithms |
-| `src/backtest/` | Backtest engines |
-| `src/orchestrator/` | Pipeline coordination |
-| `src/risk/` | Risk metrics and management |
-| `src/strategy/` | Strategy evaluation and gates |
-| `src/config/` | Configuration management |
+| モジュール | 目的 |
+|-----------|------|
+| `src/data/` | データ取得、キャッシュ、品質チェック |
+| `src/signals/` | シグナル生成（モメンタム、平均回帰、マクロ） |
+| `src/allocation/` | ポートフォリオ配分アルゴリズム |
+| `src/backtest/` | バックテストエンジン |
+| `src/orchestrator/` | パイプライン統合 |
+| `src/risk/` | リスク指標と管理 |
+| `src/strategy/` | 戦略評価とゲート |
+| `src/config/` | 設定管理 |
 
-## Testing
+## テスト
 
 ```bash
-# Run all tests
+# 全テスト実行
 make test
 
-# Run with coverage
+# カバレッジ付き実行
 make test-cov
 
-# Run specific test file
-pytest tests/unit/test_fast_engine.py -v
+# 特定テストファイル実行
+uv run pytest tests/unit/test_fast_engine.py -v
 
-# Run integration tests
-pytest tests/integration/ -v
+# 統合テスト実行
+uv run pytest tests/integration/ -v
 ```
 
-### Test Structure
+### テスト構造
 
 ```
 tests/
-├── unit/              # Unit tests for individual modules
-├── integration/       # Integration tests for engine compatibility
-└── conftest.py        # Shared fixtures
+├── unit/              # 個別モジュールのユニットテスト
+├── integration/       # エンジン互換性の統合テスト
+└── conftest.py        # 共有フィクスチャ
 ```
 
-## Troubleshooting
+## トラブルシューティング
 
-### Common Issues
+### よくある問題
 
-#### 1. Import Errors
+#### 1. インポートエラー
 
 ```bash
-# Ensure package is installed in development mode
+# 開発モードでパッケージがインストールされていることを確認
 pip install -e ".[dev]"
 ```
 
-#### 2. Numba Threading Error
+#### 2. Numbaスレッディングエラー
 
 ```
 ValueError: No threading layer could be loaded
 ```
 
-Solution:
+解決策：
 ```bash
-pip install tbb  # or intel-openmp
+pip install tbb  # または intel-openmp
 ```
 
-#### 3. Data Fetching Fails
+#### 3. データ取得失敗
 
-- Check internet connection
-- Verify API rate limits
-- Check `config/universe.yaml` for valid tickers
+- インターネット接続を確認
+- APIレート制限を確認
+- `config/universe.yaml` のティッカーが有効か確認
 
-#### 4. Memory Issues with Large Universe
+#### 4. 大規模ユニバースでのメモリ問題
 
 ```yaml
-# In config/default.yaml, reduce:
+# config/default.yaml で以下を減少:
 universe:
-  max_assets: 100  # Reduce from 500
+  max_assets: 100  # 500から減少
 ```
 
-### Debug Mode
+### デバッグモード
 
 ```bash
-# Enable debug logging
+# デバッグログを有効化
 export PORTFOLIO_LOG_LEVEL=DEBUG
-python -m src.main --backtest
+uv run python -m src.main --backtest
 ```
 
-## Performance Tips
+## パフォーマンスのヒント
 
-1. **Use Numba** - Enable `use_numba: true` in config for 5-10x speedup
-2. **Cache Data** - Enable data caching to avoid repeated API calls
-3. **Reduce Universe** - Limit assets for faster iteration during development
-4. **Use FastBacktestEngine** - Fastest engine for most use cases
+1. **Numbaを使用** - 設定で `use_numba: true` を有効化で5-10倍高速化
+2. **データキャッシュ** - データキャッシュを有効化してAPI呼び出しを削減
+3. **ユニバースを縮小** - 開発時はアセット数を制限して高速化
+4. **FastBacktestEngine** - ほとんどのケースで最速のエンジン
 
-## Dedicated Server Setup
+## 専用サーバーセットアップ
 
-For running on a dedicated server with full resource utilization:
+専用サーバーでフルリソースを活用して実行する場合：
 
-### 1. Quick Start (Dedicated Server)
+### 1. クイックスタート（専用サーバー）
 
 ```bash
-# Clone and setup
+# クローンとセットアップ
 git clone git@github.com:so-ta/auto-stock.git
 cd auto-stock/multi-asset-portfolio
 
-# Install dependencies (uv recommended for speed)
+# 依存関係インストール（uvを推奨）
 pip install uv
 uv sync
 
-# Initialize resource configuration (auto-detects CPU/RAM/GPU)
+# リソース設定初期化（CPU/RAM/GPUを自動検出）
 uv run python -c "from src.config import print_resource_summary; print_resource_summary()"
 
-# Run 15-year backtest (all frequencies)
+# 15年バックテスト実行（全頻度）
 uv run python scripts/run_all_backtests.py
 
-# Or run specific frequency
+# または特定頻度で実行
 uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency monthly
 uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency weekly
 uv run python scripts/run_standard_backtest.py --start 2010-01-01 --end 2025-01-01 --frequency daily
 ```
 
-### 2. Backtest Execution Options
+### 2. バックテスト実行オプション
 
-#### Standard Backtest (Recommended)
+#### 標準バックテスト（推奨）
 ```bash
-# Monthly rebalancing (fastest, ~1-2 min)
+# 月次リバランス（最速、約1-2分）
 uv run python scripts/run_standard_backtest.py \
   --start 2010-01-01 \
   --end 2025-01-01 \
   --frequency monthly
 
-# Weekly rebalancing (~5-10 min)
+# 週次リバランス（約5-10分）
 uv run python scripts/run_standard_backtest.py \
   --start 2010-01-01 \
   --end 2025-01-01 \
   --frequency weekly
 
-# Daily rebalancing (~30-60 min without optimization)
+# 日次リバランス（最適化なしで約30-60分）
 uv run python scripts/run_standard_backtest.py \
   --start 2010-01-01 \
   --end 2025-01-01 \
   --frequency daily
 ```
 
-#### High-Performance Backtest (Numba Parallel)
+#### 高性能バックテスト（Numba並列）
 ```bash
-# With Numba parallel optimization (1137x faster)
+# Numba並列最適化で実行（1137倍高速化）
 uv run python -c "
 from src.config import init_resource_config
 from src.orchestrator.unified_executor import UnifiedExecutor
 
-# Initialize with full resource utilization
+# フルリソース使用で初期化
 config = init_resource_config(dedicated_server=True)
-print(f'Using {config.max_workers} workers, {config.cache_max_memory_mb}MB cache')
+print(f'{config.max_workers}ワーカー、{config.cache_max_memory_mb}MBキャッシュを使用')
 
-# Run backtest
+# バックテスト実行
 executor = UnifiedExecutor()
 result = executor.run_backtest_with_checkpoint(
     start_date='2010-01-01',
@@ -364,70 +365,70 @@ result = executor.run_backtest_with_checkpoint(
     frequency='daily',
     checkpoint_interval=100,
 )
-print(f'Sharpe: {result.sharpe_ratio:.3f}, Return: {result.total_return:.2%}')
+print(f'シャープ: {result.sharpe_ratio:.3f}, リターン: {result.total_return:.2%}')
 "
 ```
 
-#### Resumable Backtest (Checkpoint Support)
+#### 再開可能バックテスト（チェックポイントサポート）
 ```bash
-# Start with checkpoints (auto-saves progress)
+# チェックポイント付きで開始（進捗を自動保存）
 uv run python scripts/run_all_backtests.py --checkpoint-interval 50
 
-# Resume from checkpoint if interrupted
+# 中断した場合はチェックポイントから再開
 uv run python scripts/run_all_backtests.py --resume
 ```
 
-### 3. Expected Results
+### 3. 期待される結果
 
-| Frequency | Rebalances | Time (Optimized) | Sharpe (Target) |
-|-----------|------------|------------------|-----------------|
-| Monthly | ~180 | 1-2 min | > 0.7 |
-| Weekly | ~780 | 5-10 min | > 0.6 |
-| Daily | ~3,900 | 10-30 min | > 0.5 |
+| 頻度 | リバランス回数 | 所要時間（最適化後） | シャープ（目標） |
+|------|--------------|-------------------|----------------|
+| 月次 | 約180 | 1-2分 | > 0.7 |
+| 週次 | 約780 | 5-10分 | > 0.6 |
+| 日次 | 約3,900 | 10-30分 | > 0.5 |
 
-### 4. Dynamic Resource Configuration
+### 4. 動的リソース設定
 
-The system automatically detects and utilizes available hardware resources:
+システムは利用可能なハードウェアリソースを自動検出して使用：
 
 ```python
 from src.config import get_current_resource_config, print_resource_summary
 
-# View detected resources and calculated settings
+# 検出されたリソースと計算された設定を表示
 print_resource_summary()
 
-# Access configuration programmatically
+# プログラムから設定にアクセス
 config = get_current_resource_config()
-print(f"CPU Workers: {config.max_workers}")
-print(f"Cache Memory: {config.cache_max_memory_mb} MB")
-print(f"GPU Available: {config.use_gpu}")
+print(f"CPUワーカー: {config.max_workers}")
+print(f"キャッシュメモリ: {config.cache_max_memory_mb} MB")
+print(f"GPU利用可能: {config.use_gpu}")
 ```
 
-### 5. Resource Configuration Options
+### 5. リソース設定オプション
 
-| Setting | Default (Shared) | Dedicated Server |
-|---------|------------------|------------------|
-| `max_workers` | CPU cores - 1 | All CPU cores |
-| `cache_max_memory_mb` | 25% of available | 70% of available |
-| `cache_max_entries` | 5,000 | Memory-based (auto) |
-| `disable_chunking` | False | True (if RAM >= 16GB) |
-| `cache_max_disk_mb` | 10% of free | Unlimited |
+| 設定 | デフォルト（共有） | 専用サーバー |
+|-----|------------------|-------------|
+| `max_workers` | CPUコア数 - 1 | 全CPUコア |
+| `cache_max_memory_mb` | 利用可能の25% | 利用可能の70% |
+| `cache_max_entries` | 5,000 | メモリベース（自動） |
+| `disable_chunking` | False | True（RAM >= 16GBの場合） |
+| `cache_max_disk_mb` | 空き容量の10% | 無制限 |
 
-### 6. S3 Cache Setup (Cloud Environments)
+### 6. S3キャッシュセットアップ（クラウド環境）
 
-For cloud deployments with shared cache across instances:
+インスタンス間で共有キャッシュを使用するクラウドデプロイ用：
 
 ```bash
-# Set AWS credentials
+# AWS認証情報を設定
 export AWS_ACCESS_KEY_ID=your_access_key
 export AWS_SECRET_ACCESS_KEY=your_secret_key
 
-# Configure S3 backend in config/settings.yaml
+# config/settings.yamlでS3バックエンドを設定
 ```
 
 ```yaml
 # config/settings.yaml
 storage:
-  backend: "s3"  # "local" or "s3"
+  backend: "s3"  # "local" または "s3"
   s3_bucket: "your-bucket-name"
   s3_prefix: ".cache"
   local_cache_enabled: true
@@ -435,80 +436,80 @@ storage:
   local_cache_ttl_hours: 24
 ```
 
-### 7. Migrate Existing Cache to S3
+### 7. 既存キャッシュのS3移行
 
 ```bash
-# Dry run (preview files to upload)
-python scripts/migrate_cache_to_s3.py --dry-run
+# ドライラン（アップロードファイルをプレビュー）
+uv run python scripts/migrate_cache_to_s3.py --dry-run
 
-# Execute migration
-python scripts/migrate_cache_to_s3.py --bucket your-bucket-name
+# 移行実行
+uv run python scripts/migrate_cache_to_s3.py --bucket your-bucket-name
 ```
 
-### 8. GPU Acceleration (Optional)
+### 8. GPUアクセラレーション（オプション）
 
-For NVIDIA GPU support:
+NVIDIA GPUサポート用：
 
 ```bash
-# Install CuPy (CUDA 11.x)
+# CuPyをインストール（CUDA 11.x）
 pip install cupy-cuda11x
 
-# Or for CUDA 12.x
+# またはCUDA 12.x用
 pip install cupy-cuda12x
 
-# Verify installation
+# インストール確認
 python -c "import cupy; print(cupy.cuda.runtime.getDeviceCount())"
 ```
 
-The system will automatically detect and use GPU when available.
+システムは利用可能な場合、自動的にGPUを検出して使用します。
 
-### 9. Ray Distributed Processing (Optional)
+### 9. Ray分散処理（オプション）
 
-For distributed processing across multiple cores/machines:
+複数コア/マシンでの分散処理用：
 
 ```bash
-# Install Ray
+# Rayをインストール
 pip install ray
 
-# Run with Ray backend
-python -m src.main --backtest --engine ray
+# Rayバックエンドで実行
+uv run python -m src.main --backtest --engine ray
 ```
 
-### 10. Recommended Server Specs
+### 10. 推奨サーバースペック
 
-| Workload | CPU | RAM | Storage | GPU |
-|----------|-----|-----|---------|-----|
-| Development | 4+ cores | 8GB | SSD 50GB | - |
-| Production (Monthly) | 8+ cores | 16GB | SSD 100GB | Optional |
-| Production (Daily) | 16+ cores | 32GB+ | SSD 200GB | Recommended |
-| High-Performance | 32+ cores | 64GB+ | NVMe 500GB | Required |
+| ワークロード | CPU | RAM | ストレージ | GPU |
+|------------|-----|-----|-----------|-----|
+| 開発 | 4+コア | 8GB | SSD 50GB | - |
+| 本番（月次） | 8+コア | 16GB | SSD 100GB | オプション |
+| 本番（日次） | 16+コア | 32GB+ | SSD 200GB | 推奨 |
+| 高性能 | 32+コア | 64GB+ | NVMe 500GB | 必須 |
 
-## Contributing
+## コントリビュート
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Run tests (`make test`)
-4. Run linters (`make lint`)
-5. Commit changes (`git commit -m 'Add amazing feature'`)
-6. Push to branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+1. リポジトリをフォーク
+2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
+3. テストを実行 (`make test`)
+4. リンターを実行 (`make lint`)
+5. 変更をコミット (`git commit -m 'Add amazing feature'`)
+6. ブランチにプッシュ (`git push origin feature/amazing-feature`)
+7. プルリクエストを作成
 
-### Code Style
+### コードスタイル
 
-- Python 3.11+ type hints required
-- Ruff for linting
-- MyPy for type checking
-- Black for formatting (via ruff)
+- Python 3.11+ 型ヒント必須
+- Ruffでリント
+- MyPyで型チェック
+- Black（ruff経由）でフォーマット
 
-## License
+## ライセンス
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+このプロジェクトはMITライセンスの下でライセンスされています - 詳細は [LICENSE](LICENSE) ファイルを参照。
 
-## Acknowledgments
+## 謝辞
 
-- VectorBT for architecture inspiration
-- PyPortfolioOpt for allocation algorithms
-- Numba team for JIT compilation support
+- VectorBT - アーキテクチャのインスピレーション
+- PyPortfolioOpt - 配分アルゴリズム
+- Numbaチーム - JITコンパイルサポート
 
 ---
 
