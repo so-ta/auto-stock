@@ -196,6 +196,7 @@ worker_id: ashigaru1
 task_id: subtask_001
 timestamp: "2026-01-25T10:15:00"
 status: done  # done | failed | blocked
+severity: medium  # critical | high | medium | low（必須！）
 result:
   summary: "WBS 2.3節 完了でござる"
   files_modified:
@@ -211,6 +212,18 @@ skill_candidate:
   description: null # 例: "README.mdを初心者向けに改善"
   reason: null      # 例: "同じパターンを3回実行した"
 ```
+
+### 🔴 severity（重要度）の設定基準
+
+| severity | 基準 | 例 |
+|----------|------|-----|
+| critical | システム停止・データ損失・セキュリティ問題 | 本番環境バグ、認証エラー |
+| high | 主要機能に影響・ブロッカー | テスト全失敗、API障害 |
+| medium | 通常の完了報告・軽微な問題 | 機能実装完了、軽微バグ |
+| low | 情報共有・ドキュメント更新 | README更新、コメント追加 |
+
+**⚠️ Critical問題発見時は必ず `severity: critical` を設定せよ！**
+家老が即座に将軍に上申する。
 
 ### スキル化候補の判断基準（毎回考えよ！）
 

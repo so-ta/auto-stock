@@ -1,0 +1,111 @@
+# Pre-commit Configuration
+# QA-008: コード品質の自動チェック
+#
+# Usage:
+#   pip install pre-commit
+#   pre-commit install
+#   pre-commit run --all-files  # 全ファイルに対して実行
+#
+# Note: CIでも同じチェックを実行することを推奨
+
+repos:
+  # 基本的なファイル品質チェック
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Remove trailing whitespace
+      - id: end-of-file-fixer
+        name: Ensure files end with newline
+      - id: check-yaml
+        name: Check YAML syntax
+      - id: check-toml
+        name: Check TOML syntax
+      - id: check-json
+        name: Check JSON syntax
+      - id: check-added-large-files
+        name: Check for large files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-case-conflict
+        name: Check for case conflicts
+      - id: detect-private-key
+        name: Detect private keys
+
+  # Ruff - 高速なPythonリンター＆フォーマッター
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        name: Ruff linter
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: Ruff formatter
+        types_or: [python, pyi]
+
+  # MyPy - 静的型チェック
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: MyPy type checker
+        additional_dependencies:
+          - types-PyYAML
+          - types-requests
+          - pandas-stubs
+          - numpy
+        args:
+          - --ignore-missing-imports
+          - --no-strict-optional
+          - --allow-untyped-decorators
+        exclude: ^(tests/|scripts/|\.venv/)
+
+  # ローカルカスタムフック
+  - repo: local
+    hooks:
+      # 循環依存チェック（オプション）
+      - id: circular-import-check
+        name: Check circular imports
+        entry: python -c "import sys; sys.path.insert(0, 'src'); import src"
+        language: python
+        pass_filenames: false
+        stages: [commit]
+
+      # Pytestスモークテスト（コミット前の基本テスト）
+      - id: pytest-smoke
+        name: Run smoke tests
+        entry: python -m pytest tests/unit/ -x -q --tb=no -m "not slow"
+        language: system
+        pass_filenames: false
+        stages: [push]
+        always_run: true
+
+# デフォルトのステージ設定
+default_stages: [commit]
+
+# 除外パターン
+exclude: |
+    (?x)^(
+        \.venv/|
+        \.git/|
+        __pycache__/|
+        \.pytest_cache/|
+        \.mypy_cache/|
+        \.ruff_cache/|
+        data/|
+        cache/|
+        \.cache/|
+        outputs/|
+        logs/
+    )
+
+# CI環境での実行を想定
+ci:
+    autofix_commit_msg: |
+        [pre-commit.ci] auto fixes from pre-commit hooks
+    autofix_prs: true
+    autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+    autoupdate_schedule: weekly
+    skip: [pytest-smoke]  # CIでは別途テストを実行

@@ -1,0 +1,357 @@
+# =============================================================================
+# Asset Universe Configuration
+# =============================================================================
+# This file defines the investable universe for the multi-asset portfolio system.
+# Assets are organized by class and can be selectively enabled/disabled.
+#
+# Sources:
+# - Stock indices: S&P 500, NASDAQ 100, Nikkei 225, TOPIX Core30
+# - ETFs: Equity, Bonds, Sector, Commodity, International
+# - Commodities: Futures contracts (via Yahoo Finance)
+# - Forex: Major currency pairs
+# =============================================================================
+
+universe:
+  # ---------------------------------------------------------------------------
+  # US Stocks
+  # ---------------------------------------------------------------------------
+  us_stocks:
+    enabled: true
+    source: "sp500"  # sp500 | nasdaq100 | custom
+
+    # Top 30 S&P 500 by market cap (representative sample)
+    default_tickers:
+      - AAPL   # Apple
+      - MSFT   # Microsoft
+      - GOOGL  # Alphabet
+      - AMZN   # Amazon
+      - NVDA   # NVIDIA
+      - META   # Meta Platforms
+      - TSLA   # Tesla
+      - BRK-B  # Berkshire Hathaway
+      - UNH    # UnitedHealth
+      - JPM    # JPMorgan Chase
+      - V      # Visa
+      - JNJ    # Johnson & Johnson
+      - XOM    # Exxon Mobil
+      - MA     # Mastercard
+      - PG     # Procter & Gamble
+      - HD     # Home Depot
+      - CVX    # Chevron
+      - MRK    # Merck
+      - ABBV   # AbbVie
+      - LLY    # Eli Lilly
+      - PEP    # PepsiCo
+      - COST   # Costco
+      - KO     # Coca-Cola
+      - AVGO   # Broadcom
+      - WMT    # Walmart
+      - MCD    # McDonald's
+      - CSCO   # Cisco
+      - ACN    # Accenture
+      - TMO    # Thermo Fisher
+      - ABT    # Abbott Labs
+
+    # Custom tickers (add your own)
+    custom_tickers: []
+
+  # ---------------------------------------------------------------------------
+  # Japan Stocks
+  # ---------------------------------------------------------------------------
+  japan_stocks:
+    enabled: true
+    source: "nikkei225"  # nikkei225 | topix_core30 | custom
+    suffix: ".T"         # Tokyo Stock Exchange suffix
+    currency: "JPY"
+
+    # TOPIX Core30 (most liquid Japanese stocks)
+    default_tickers:
+      - "7203"   # Toyota Motor
+      - "6758"   # Sony Group
+      - "9984"   # SoftBank Group
+      - "6861"   # Keyence
+      - "7974"   # Nintendo
+      - "8306"   # Mitsubishi UFJ
+      - "9432"   # NTT
+      - "6501"   # Hitachi
+      - "4502"   # Takeda Pharmaceutical
+      - "6902"   # Denso
+      - "7267"   # Honda Motor
+      - "8035"   # Tokyo Electron
+      - "6367"   # Daikin Industries
+      - "4063"   # Shin-Etsu Chemical
+      - "6594"   # Nidec
+      - "8316"   # Sumitomo Mitsui FG
+      - "9433"   # KDDI
+      - "2914"   # Japan Tobacco
+      - "4503"   # Astellas Pharma
+      - "6752"   # Panasonic
+
+    custom_tickers: []
+
+  # ---------------------------------------------------------------------------
+  # ETFs (Exchange Traded Funds)
+  # ---------------------------------------------------------------------------
+  etfs:
+    enabled: true
+
+    categories:
+      # Broad Market Equity ETFs
+      equity:
+        - SPY    # S&P 500
+        - QQQ    # NASDAQ 100
+        - IWM    # Russell 2000 (Small Cap)
+        - VTI    # Total Stock Market
+        - VOO    # Vanguard S&P 500
+        - DIA    # Dow Jones Industrial
+
+      # Fixed Income ETFs
+      bonds:
+        - TLT    # 20+ Year Treasury
+        - IEF    # 7-10 Year Treasury
+        - BND    # Total Bond Market
+        - AGG    # Aggregate Bond
+        - LQD    # Investment Grade Corporate
+        - HYG    # High Yield Corporate
+        - TIP    # Treasury Inflation-Protected
+        - SHY    # 1-3 Year Treasury
+
+      # Sector ETFs (SPDR Select Sector)
+      sector:
+        - XLF    # Financial
+        - XLK    # Technology
+        - XLE    # Energy
+        - XLV    # Healthcare
+        - XLI    # Industrial
+        - XLY    # Consumer Discretionary
+        - XLP    # Consumer Staples
+        - XLU    # Utilities
+        - XLB    # Materials
+        - XLRE   # Real Estate
+        - XLC    # Communication Services
+
+      # Commodity ETFs
+      commodity:
+        - GLD    # Gold
+        - SLV    # Silver
+        - USO    # Oil
+        - UNG    # Natural Gas
+        - DBA    # Agriculture
+        - DBC    # Commodity Index
+        - PDBC   # Optimum Yield Diversified
+
+      # International ETFs
+      international:
+        - EFA    # EAFE (Developed ex-US)
+        - EEM    # Emerging Markets
+        - VWO    # Vanguard Emerging Markets
+        - IEFA   # iShares Core EAFE
+        - VEA    # Vanguard FTSE Developed
+        - IEMG   # iShares Core Emerging
+        - VGK    # Vanguard FTSE Europe
+        - EWJ    # iShares MSCI Japan
+
+      # Volatility & Alternative ETFs
+      alternative:
+        - VXX    # VIX Short-Term Futures (caution: decay)
+        - VIXY   # ProShares VIX Short-Term
+        - GDX    # Gold Miners
+        - XBI    # Biotech
+        - ARKK   # ARK Innovation
+
+      # Extended Alternative ETFs (Low Correlation)
+      alternative_extended:
+        - USRT   # iShares Core US REIT
+        - SCHH   # Schwab US REIT
+        - IFRA   # iShares US Infrastructure
+        - BNDX   # Vanguard Total International Bond
+
+      # Extended Commodity ETFs
+      commodity_extended:
+        - GSG    # iShares S&P GSCI Commodity-Indexed Trust
+        - CPER   # United States Copper Index Fund
+        - URA    # Global X Uranium ETF
+
+      # Growth/Small Cap ETFs
+      growth_small:
+        - VBK    # Vanguard Small-Cap Growth
+        - IWO    # iShares Russell 2000 Growth
+        - VTWO   # Vanguard Russell 2000
+        - SCHA   # Schwab US Small-Cap
+
+      # Emerging Market (Country-Specific) ETFs
+      emerging_specific:
+        - VNM    # VanEck Vietnam ETF (replaced FM - data unavailable)
+        - FXI    # iShares China Large-Cap
+        - EWZ    # iShares MSCI Brazil
+        - INDA   # iShares MSCI India
+
+      # Extended Bond ETFs
+      bonds_extended:
+        - ANGL   # VanEck Fallen Angel High Yield Bond
+        - VGIT   # Vanguard Intermediate-Term Treasury
+        - SHYG   # iShares 0-5 Year High Yield Corporate Bond
+        - EMB    # iShares JP Morgan USD Emerging Markets Bond
+
+  # ---------------------------------------------------------------------------
+  # Commodities (via Futures - Yahoo Finance format)
+  # ---------------------------------------------------------------------------
+  commodities:
+    enabled: true
+
+    tickers:
+      # Precious Metals
+      gold: "GC=F"
+      silver: "SI=F"
+      platinum: "PL=F"
+      palladium: "PA=F"
+
+      # Energy
+      crude_oil: "CL=F"
+      brent_oil: "BZ=F"
+      natural_gas: "NG=F"
+      heating_oil: "HO=F"
+      gasoline: "RB=F"
+
+      # Agriculture
+      corn: "ZC=F"
+      wheat: "ZW=F"
+      soybeans: "ZS=F"
+      sugar: "SB=F"
+      coffee: "KC=F"
+      cotton: "CT=F"
+
+      # Metals
+      copper: "HG=F"
+      aluminum: "ALI=F"
+
+  # ---------------------------------------------------------------------------
+  # Forex (Currency Pairs - Yahoo Finance format)
+  # ---------------------------------------------------------------------------
+  forex:
+    enabled: true
+
+    pairs:
+      # Major Pairs
+      - USDJPY=X    # US Dollar / Japanese Yen
+      - EURUSD=X    # Euro / US Dollar
+      - GBPUSD=X    # British Pound / US Dollar
+      - AUDUSD=X    # Australian Dollar / US Dollar
+      - USDCHF=X    # US Dollar / Swiss Franc
+      - USDCAD=X    # US Dollar / Canadian Dollar
+      - NZDUSD=X    # New Zealand Dollar / US Dollar
+
+      # Cross Pairs
+      - EURJPY=X    # Euro / Japanese Yen
+      - GBPJPY=X    # British Pound / Japanese Yen
+      - EURGBP=X    # Euro / British Pound
+      - AUDJPY=X    # Australian Dollar / Japanese Yen
+
+  # ---------------------------------------------------------------------------
+  # Crypto (if enabled - requires CryptoAdapter)
+  # ---------------------------------------------------------------------------
+  crypto:
+    enabled: false  # Set to true if ccxt is available
+    exchange: "binance"
+
+    pairs:
+      - BTC/USDT   # Bitcoin
+      - ETH/USDT   # Ethereum
+      - BNB/USDT   # Binance Coin
+      - XRP/USDT   # Ripple
+      - SOL/USDT   # Solana
+      - ADA/USDT   # Cardano
+      - DOGE/USDT  # Dogecoin
+      - DOT/USDT   # Polkadot
+      - AVAX/USDT  # Avalanche
+      - MATIC/USDT # Polygon
+
+  # ---------------------------------------------------------------------------
+  # Filters (Applied to all assets)
+  # ---------------------------------------------------------------------------
+  filters:
+    # Minimum data requirements
+    min_history_days: 504       # 2 years of data required
+    min_train_samples: 200      # Minimum training samples
+
+    # Liquidity filters
+    min_avg_volume: 100000      # Minimum average daily volume
+    min_dollar_volume: 1000000  # Minimum average daily dollar volume
+
+    # Quality filters
+    max_spread_pct: 0.5         # Maximum bid-ask spread (%)
+    max_gap_pct: 20.0           # Maximum overnight gap (%)
+    max_missing_pct: 5.0        # Maximum missing data (%)
+
+    # Price filters
+    min_price: 1.0              # Minimum price (avoid penny stocks)
+    max_price: 10000.0          # Maximum price
+
+# =============================================================================
+# Predefined Universes (Quick Selection)
+# =============================================================================
+predefined:
+  # Conservative: Low volatility, high liquidity
+  conservative:
+    description: "Low volatility, bond-heavy portfolio"
+    include:
+      - etfs.equity: [SPY, VOO]
+      - etfs.bonds: [TLT, IEF, BND, AGG]
+      - commodities: [gold]
+
+  # Balanced: Mix of stocks, bonds, and alternatives
+  balanced:
+    description: "Diversified multi-asset portfolio"
+    include:
+      - etfs.equity: [SPY, QQQ, IWM]
+      - etfs.bonds: [TLT, IEF, LQD]
+      - etfs.international: [EFA, EEM]
+      - commodities: [gold, crude_oil]
+
+  # Aggressive: Growth-focused, higher volatility
+  aggressive:
+    description: "Growth-focused equity portfolio"
+    include:
+      - us_stocks: [AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA]
+      - etfs.equity: [QQQ, IWM]
+      - etfs.sector: [XLK, XLY]
+
+  # Global Macro: Currencies, commodities, bonds
+  global_macro:
+    description: "Macro-focused trading universe"
+    include:
+      - etfs.bonds: [TLT, IEF, TIP]
+      - commodities: [gold, silver, crude_oil, natural_gas]
+      - forex: [USDJPY=X, EURUSD=X, GBPUSD=X]
+
+  # Japan Focus: Japanese market exposure
+  japan_focus:
+    description: "Japan-focused portfolio"
+    include:
+      - japan_stocks: all
+      - etfs.international: [EWJ]
+      - forex: [USDJPY=X]
+
+  # High Sharpe: Maximum diversification for Sharpe optimization
+  high_sharpe:
+    description: "Maximum diversification portfolio for Sharpe optimization"
+    include:
+      - etfs.equity: [SPY, QQQ, IWM, VTI]
+      - etfs.bonds: [TLT, IEF, LQD, HYG, TIP]
+      - etfs.bonds_extended: [ANGL, VGIT, SHYG, EMB]
+      - etfs.international: [EFA, EEM, VWO, VGK]
+      - etfs.emerging_specific: [FM, FXI, EWZ, INDA]
+      - etfs.commodity: [GLD, SLV, DBC, PDBC]
+      - etfs.commodity_extended: [GSG, CPER, URA]
+      - etfs.growth_small: [VBK, IWO, VTWO]
+      - etfs.alternative_extended: [USRT, SCHH, IFRA, BNDX]
+
+  # Low Correlation: Assets with historically low correlation to SPY
+  low_correlation:
+    description: "Low correlation to SPY for crisis alpha"
+    include:
+      - etfs.bonds: [TLT, IEF, TIP, SHY]
+      - commodities: [gold, silver]
+      - etfs.commodity_extended: [GSG, URA]
+      - etfs.alternative_extended: [USRT, BNDX]
+      - forex: [USDJPY=X, USDCHF=X]

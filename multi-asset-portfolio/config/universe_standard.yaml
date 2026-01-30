@@ -1,0 +1,1762 @@
+version: '1.0'
+name: Standard Universe
+description: Quality-filtered 828-symbol universe for all backtests
+generated_at: '2026-01-29T12:56:56.095054'
+source: config/universe_filtered.yaml
+total_symbols: 828
+summary:
+  us_stocks: 471
+  japan_stocks: 219
+  etfs: 103
+  forex: 35
+us_stocks:
+  description: S&P 500 constituents (quality filtered)
+  count: 471
+  symbols:
+  - AAL
+  - AAPL
+  - ABNB
+  - ABT
+  - ACGL
+  - ACN
+  - ADBE
+  - ADI
+  - ADM
+  - ADP
+  - ADSK
+  - AEE
+  - AEP
+  - AES
+  - AFL
+  - AIG
+  - AIZ
+  - AJG
+  - AKAM
+  - ALB
+  - ALGN
+  - ALL
+  - ALLE
+  - AMAT
+  - AMCR
+  - AMD
+  - AME
+  - AMGN
+  - AMP
+  - AMT
+  - AMZN
+  - ANET
+  - AON
+  - AOS
+  - APA
+  - APD
+  - APH
+  - APTV
+  - ARE
+  - ATO
+  - AVB
+  - AVGO
+  - AVY
+  - AWK
+  - AXON
+  - AXP
+  - AZO
+  - BA
+  - BAC
+  - BALL
+  - BAX
+  - BBWI
+  - BBY
+  - BDX
+  - BEN
+  - BF-B
+  - BG
+  - BIIB
+  - BIO
+  - BK
+  - BKNG
+  - BKR
+  - BLDR
+  - BLK
+  - BMY
+  - BR
+  - BRK-B
+  - BRO
+  - BSX
+  - BWA
+  - BX
+  - BXP
+  - C
+  - CAG
+  - CAH
+  - CARR
+  - CAT
+  - CB
+  - CBOE
+  - CBRE
+  - CCI
+  - CCL
+  - CDNS
+  - CDW
+  - CE
+  - CEG
+  - CF
+  - CHTR
+  - CI
+  - CINF
+  - CL
+  - CLX
+  - CMA
+  - CMCSA
+  - CME
+  - CMG
+  - CMI
+  - CNP
+  - COF
+  - COO
+  - COP
+  - COR
+  - COST
+  - CPAY
+  - CPB
+  - CPRT
+  - CPT
+  - CRL
+  - CRM
+  - CRWD
+  - CSCO
+  - CSGP
+  - CSX
+  - CTAS
+  - CTLT
+  - CTRA
+  - CTSH
+  - CVX
+  - D
+  - DAL
+  - DAY
+  - DD
+  - DE
+  - DECK
+  - DFS
+  - DG
+  - DGX
+  - DHI
+  - DHR
+  - DIS
+  - DLR
+  - DLTR
+  - DOC
+  - DOV
+  - DOW
+  - DPZ
+  - DRI
+  - DTE
+  - DUK
+  - DVA
+  - DVN
+  - DXCM
+  - EA
+  - EBAY
+  - ECL
+  - ED
+  - EFX
+  - EG
+  - EIX
+  - EL
+  - ELV
+  - EMR
+  - ENPH
+  - EOG
+  - EPAM
+  - EQIX
+  - EQR
+  - EQT
+  - ERIE
+  - ES
+  - ESS
+  - ETN
+  - ETR
+  - EXC
+  - EXPD
+  - EXPE
+  - EXR
+  - F
+  - FANG
+  - FAST
+  - FCX
+  - FDS
+  - FDX
+  - FE
+  - FFIV
+  - FI
+  - FICO
+  - FIS
+  - FITB
+  - FLT
+  - FMC
+  - FOX
+  - FOXA
+  - FTNT
+  - FTV
+  - GD
+  - GDDY
+  - GE
+  - GEHC
+  - GEN
+  - GEV
+  - GILD
+  - GIS
+  - GL
+  - GLW
+  - GM
+  - GNRC
+  - GOOG
+  - GOOGL
+  - GPC
+  - GPN
+  - GRMN
+  - GS
+  - HAS
+  - HBAN
+  - HCA
+  - HD
+  - HES
+  - HIG
+  - HII
+  - HLT
+  - HOLX
+  - HON
+  - HPE
+  - HPQ
+  - HRL
+  - HSIC
+  - HST
+  - HWM
+  - IBM
+  - ICE
+  - IDXX
+  - IEX
+  - IFF
+  - INCY
+  - INTC
+  - INTU
+  - INVH
+  - IP
+  - IPG
+  - IQV
+  - IR
+  - IRM
+  - ISRG
+  - IT
+  - ITW
+  - J
+  - JBHT
+  - JBL
+  - JCI
+  - JKHY
+  - JNJ
+  - JNPR
+  - JPM
+  - K
+  - KDP
+  - KEY
+  - KEYS
+  - KHC
+  - KIM
+  - KKR
+  - KLAC
+  - KMB
+  - KMI
+  - KMX
+  - KO
+  - KR
+  - L
+  - LDOS
+  - LEN
+  - LH
+  - LHX
+  - LIN
+  - LKQ
+  - LLY
+  - LMT
+  - LNT
+  - LOW
+  - LRCX
+  - LULU
+  - LUV
+  - LVS
+  - LW
+  - LYB
+  - LYV
+  - MA
+  - MAA
+  - MCHP
+  - MCK
+  - MCO
+  - MDLZ
+  - MDT
+  - MET
+  - META
+  - MGM
+  - MHK
+  - MKC
+  - MKTX
+  - MLM
+  - MMC
+  - MMM
+  - MNST
+  - MO
+  - MOH
+  - MOS
+  - MPC
+  - MPWR
+  - MRK
+  - MRNA
+  - MRO
+  - MS
+  - MSCI
+  - MSFT
+  - MSI
+  - MTB
+  - MTCH
+  - MTD
+  - MU
+  - NCLH
+  - NDAQ
+  - NDSN
+  - NEE
+  - NEM
+  - NFLX
+  - NI
+  - NKE
+  - NOC
+  - NOW
+  - NRG
+  - NSC
+  - NTAP
+  - NTRS
+  - NUE
+  - NVDA
+  - NVR
+  - NWS
+  - NWSA
+  - O
+  - ODFL
+  - OKE
+  - OMC
+  - 'ON'
+  - ORCL
+  - ORLY
+  - OTIS
+  - OXY
+  - PAYC
+  - PAYX
+  - PCAR
+  - PCG
+  - PEG
+  - PEP
+  - PFE
+  - PFG
+  - PG
+  - PGR
+  - PH
+  - PHM
+  - PKG
+  - PLD
+  - PLTR
+  - PNC
+  - PNR
+  - PNW
+  - PODD
+  - POOL
+  - PPG
+  - PPL
+  - PRU
+  - PSA
+  - PSX
+  - PTC
+  - PWR
+  - PXD
+  - QCOM
+  - QRVO
+  - RCL
+  - REG
+  - REGN
+  - RF
+  - RJF
+  - RL
+  - RMD
+  - ROK
+  - ROL
+  - ROP
+  - ROST
+  - RSG
+  - RTX
+  - SBAC
+  - SBUX
+  - SCHW
+  - SHW
+  - SJM
+  - SLB
+  - SMCI
+  - SNA
+  - SNPS
+  - SO
+  - SOLV
+  - SPG
+  - SPGI
+  - SRE
+  - STE
+  - STLD
+  - STT
+  - STX
+  - STZ
+  - SWK
+  - SWKS
+  - SYF
+  - SYK
+  - SYY
+  - T
+  - TAP
+  - TDG
+  - TDY
+  - TECH
+  - TEL
+  - TER
+  - TFC
+  - TFX
+  - TGT
+  - TJX
+  - TMO
+  - TMUS
+  - TPR
+  - TRGP
+  - TRV
+  - TSCO
+  - TSLA
+  - TSN
+  - TT
+  - TTWO
+  - TXN
+  - TXT
+  - TYL
+  - UAL
+  - UBER
+  - UDR
+  - UHS
+  - ULTA
+  - UNH
+  - UNP
+  - UPS
+  - URI
+  - USB
+  - V
+  - VLO
+  - VLTO
+  - VMC
+  - VRSK
+  - VRSN
+  - VRTX
+  - VST
+  - VTR
+  - VTRS
+  - VZ
+  - WAB
+  - WAT
+  - WBA
+  - WBD
+  - WDC
+  - WEC
+  - WELL
+  - WFC
+  - WM
+  - WMB
+  - WMT
+  - WRB
+  - WST
+  - WTW
+  - WY
+  - WYNN
+  - XEL
+  - XOM
+  - XYL
+  - YUM
+  - ZBH
+  - ZBRA
+  - ZTS
+japan_stocks:
+  description: Nikkei 225 constituents (quality filtered)
+  count: 219
+  suffix: .T
+  symbols:
+  - 1332.T
+  - 1333.T
+  - 1605.T
+  - 1721.T
+  - 1801.T
+  - 1802.T
+  - 1803.T
+  - 1808.T
+  - 1812.T
+  - 1925.T
+  - 1928.T
+  - 1963.T
+  - 2002.T
+  - 2269.T
+  - 2282.T
+  - 2413.T
+  - 2432.T
+  - 2501.T
+  - 2502.T
+  - 2503.T
+  - 2531.T
+  - 2768.T
+  - 2801.T
+  - 2802.T
+  - 2871.T
+  - 2914.T
+  - 3086.T
+  - 3099.T
+  - 3101.T
+  - 3103.T
+  - 3105.T
+  - 3289.T
+  - 3382.T
+  - 3401.T
+  - 3402.T
+  - 3405.T
+  - 3407.T
+  - 3436.T
+  - 3861.T
+  - 3863.T
+  - 4004.T
+  - 4005.T
+  - 4021.T
+  - 4042.T
+  - 4043.T
+  - 4061.T
+  - 4063.T
+  - 4151.T
+  - 4183.T
+  - 4188.T
+  - 4208.T
+  - 4272.T
+  - 4324.T
+  - 4452.T
+  - 4502.T
+  - 4503.T
+  - 4506.T
+  - 4507.T
+  - 4519.T
+  - 4523.T
+  - 4543.T
+  - 4568.T
+  - 4578.T
+  - 4631.T
+  - 4661.T
+  - 4689.T
+  - 4704.T
+  - 4751.T
+  - 4755.T
+  - 4901.T
+  - 4902.T
+  - 4911.T
+  - 5019.T
+  - 5020.T
+  - 5101.T
+  - 5108.T
+  - 5201.T
+  - 5202.T
+  - 5214.T
+  - 5232.T
+  - 5233.T
+  - 5301.T
+  - 5631.T
+  - 5703.T
+  - 5706.T
+  - 5707.T
+  - 5711.T
+  - 5713.T
+  - 5714.T
+  - 5801.T
+  - 5802.T
+  - 5803.T
+  - 5901.T
+  - 6098.T
+  - 6103.T
+  - 6113.T
+  - 6178.T
+  - 6273.T
+  - 6301.T
+  - 6302.T
+  - 6305.T
+  - 6326.T
+  - 6361.T
+  - 6367.T
+  - 6471.T
+  - 6472.T
+  - 6473.T
+  - 6501.T
+  - 6502.T
+  - 6503.T
+  - 6504.T
+  - 6506.T
+  - 6645.T
+  - 6674.T
+  - 6701.T
+  - 6702.T
+  - 6703.T
+  - 6724.T
+  - 6752.T
+  - 6753.T
+  - 6758.T
+  - 6762.T
+  - 6770.T
+  - 6841.T
+  - 6857.T
+  - 6861.T
+  - 6902.T
+  - 6952.T
+  - 6954.T
+  - 6971.T
+  - 6976.T
+  - 6981.T
+  - 6988.T
+  - 7003.T
+  - 7004.T
+  - 7011.T
+  - 7012.T
+  - 7013.T
+  - 7205.T
+  - 7211.T
+  - 7261.T
+  - 7267.T
+  - 7269.T
+  - 7270.T
+  - 7272.T
+  - 7731.T
+  - 7733.T
+  - 7735.T
+  - 7751.T
+  - 7752.T
+  - 7762.T
+  - 7832.T
+  - 7911.T
+  - 7912.T
+  - 7951.T
+  - 8001.T
+  - 8002.T
+  - 8015.T
+  - 8028.T
+  - 8031.T
+  - 8035.T
+  - 8053.T
+  - 8058.T
+  - 8233.T
+  - 8252.T
+  - 8253.T
+  - 8267.T
+  - 8303.T
+  - 8304.T
+  - 8306.T
+  - 8308.T
+  - 8309.T
+  - 8316.T
+  - 8331.T
+  - 8354.T
+  - 8355.T
+  - 8411.T
+  - 8591.T
+  - 8601.T
+  - 8604.T
+  - 8628.T
+  - 8630.T
+  - 8697.T
+  - 8725.T
+  - 8750.T
+  - 8766.T
+  - 8795.T
+  - 8801.T
+  - 8802.T
+  - 8804.T
+  - 8830.T
+  - 9001.T
+  - 9005.T
+  - 9007.T
+  - 9008.T
+  - 9009.T
+  - 9020.T
+  - 9021.T
+  - 9022.T
+  - 9062.T
+  - 9064.T
+  - 9101.T
+  - 9104.T
+  - 9107.T
+  - 9202.T
+  - 9301.T
+  - 9412.T
+  - 9432.T
+  - 9433.T
+  - 9434.T
+  - 9501.T
+  - 9502.T
+  - 9503.T
+  - 9531.T
+  - 9532.T
+  - 9602.T
+  - 9613.T
+  - 9681.T
+  - 9735.T
+etfs:
+  equity_us:
+    description: US broad market ETFs
+    count: 9
+    symbols:
+    - IJH
+    - IJR
+    - IWD
+    - IWF
+    - IWM
+    - MDY
+    - QQQ
+    - SPY
+    - VB
+  sector:
+    description: US sector ETFs
+    count: 20
+    symbols:
+    - VAW
+    - VCR
+    - VDC
+    - VFH
+    - VGT
+    - VHT
+    - VIS
+    - VNQ
+    - VPU
+    - XLB
+    - XLC
+    - XLE
+    - XLF
+    - XLI
+    - XLK
+    - XLP
+    - XLRE
+    - XLU
+    - XLV
+    - XLY
+  bond:
+    description: Fixed income ETFs
+    count: 16
+    symbols:
+    - AGG
+    - BND
+    - BNDX
+    - EMB
+    - GOVT
+    - HYG
+    - IAGG
+    - IEF
+    - JNK
+    - LQD
+    - MUB
+    - SHY
+    - TIP
+    - TLT
+    - VCIT
+    - VCSH
+  commodity:
+    description: Commodity ETFs
+    count: 13
+    symbols:
+    - BNO
+    - DBA
+    - DBC
+    - GDX
+    - GDXJ
+    - GLD
+    - GSG
+    - IAU
+    - PDBC
+    - SGOL
+    - SLV
+    - UNG
+    - USO
+  international:
+    description: International equity ETFs
+    count: 10
+    symbols:
+    - ACWI
+    - ACWX
+    - EEM
+    - EFA
+    - FM
+    - IXUS
+    - SCZ
+    - VEA
+    - VSS
+    - VT
+  real_estate:
+    description: Real estate ETFs
+    count: 5
+    symbols:
+    - IYR
+    - MORT
+    - REM
+    - SCHH
+    - VNQI
+  thematic:
+    description: Thematic/Innovation ETFs
+    count: 16
+    symbols:
+    - ARKF
+    - ARKG
+    - ARKK
+    - ARKQ
+    - ARKW
+    - BOTZ
+    - CLOU
+    - HACK
+    - ICLN
+    - IGV
+    - LIT
+    - QCLN
+    - ROBO
+    - SKYY
+    - TAN
+    - WCLD
+  volatility:
+    description: Volatility ETFs
+    count: 2
+    symbols:
+    - VIXY
+    - VXX
+  leveraged:
+    description: Leveraged/Inverse ETFs
+    count: 12
+    symbols:
+    - FAS
+    - FAZ
+    - LABD
+    - LABU
+    - SOXL
+    - SOXS
+    - SPXU
+    - SQQQ
+    - TNA
+    - TQQQ
+    - TZA
+    - UPRO
+forex:
+  major:
+    description: Major currency pairs
+    count: 7
+    symbols:
+    - AUDUSD_X
+    - EURUSD_X
+    - GBPUSD_X
+    - NZDUSD_X
+    - USDCAD_X
+    - USDCHF_X
+    - USDJPY_X
+  cross:
+    description: Cross currency pairs
+    count: 18
+    symbols:
+    - AUDCAD_X
+    - AUDCHF_X
+    - AUDJPY_X
+    - AUDNZD_X
+    - CADJPY_X
+    - CHFJPY_X
+    - EURAUD_X
+    - EURCAD_X
+    - EURCHF_X
+    - EURGBP_X
+    - EURJPY_X
+    - EURNZD_X
+    - GBPAUD_X
+    - GBPCAD_X
+    - GBPCHF_X
+    - GBPJPY_X
+    - GBPNZD_X
+    - NZDJPY_X
+  emerging:
+    description: Emerging market currency pairs
+    count: 10
+    symbols:
+    - USDBRL_X
+    - USDCNY_X
+    - USDHKD_X
+    - USDIDR_X
+    - USDINR_X
+    - USDKRW_X
+    - USDMXN_X
+    - USDMYR_X
+    - USDSGD_X
+    - USDTHB_X
+data_quality:
+  filter_thresholds:
+    max_missing_rate: 0.05
+    max_ohlc_error_rate: 0.01
+    min_avg_volume: 100000
+    min_trading_days: 500
+  data_period: 2010-01-01 to 2024-12-31
+  availability:
+    total_checked: 828
+    fully_available: 748
+    partial_data: 80
+    missing_data: 0
+  partial_data_tickers:
+  - 1803.T
+  - 1808.T
+  - 4578.T
+  - 4631.T
+  - 4661.T
+  - 6098.T
+  - 6103.T
+  - 7752.T
+  - 7762.T
+  - 7832.T
+  - 9104.T
+  - 9107.T
+  - 9202.T
+  - 9301.T
+  - AGG
+  - APA
+  - APD
+  - ATO
+  - AVB
+  - AVGO
+  missing_tickers: []
+all_symbols: &id001
+- 1332.T
+- 1333.T
+- 1605.T
+- 1721.T
+- 1801.T
+- 1802.T
+- 1803.T
+- 1808.T
+- 1812.T
+- 1925.T
+- 1928.T
+- 1963.T
+- 2002.T
+- 2269.T
+- 2282.T
+- 2413.T
+- 2432.T
+- 2501.T
+- 2502.T
+- 2503.T
+- 2531.T
+- 2768.T
+- 2801.T
+- 2802.T
+- 2871.T
+- 2914.T
+- 3086.T
+- 3099.T
+- 3101.T
+- 3103.T
+- 3105.T
+- 3289.T
+- 3382.T
+- 3401.T
+- 3402.T
+- 3405.T
+- 3407.T
+- 3436.T
+- 3861.T
+- 3863.T
+- 4004.T
+- 4005.T
+- 4021.T
+- 4042.T
+- 4043.T
+- 4061.T
+- 4063.T
+- 4151.T
+- 4183.T
+- 4188.T
+- 4208.T
+- 4272.T
+- 4324.T
+- 4452.T
+- 4502.T
+- 4503.T
+- 4506.T
+- 4507.T
+- 4519.T
+- 4523.T
+- 4543.T
+- 4568.T
+- 4578.T
+- 4631.T
+- 4661.T
+- 4689.T
+- 4704.T
+- 4751.T
+- 4755.T
+- 4901.T
+- 4902.T
+- 4911.T
+- 5019.T
+- 5020.T
+- 5101.T
+- 5108.T
+- 5201.T
+- 5202.T
+- 5214.T
+- 5232.T
+- 5233.T
+- 5301.T
+- 5631.T
+- 5703.T
+- 5706.T
+- 5707.T
+- 5711.T
+- 5713.T
+- 5714.T
+- 5801.T
+- 5802.T
+- 5803.T
+- 5901.T
+- 6098.T
+- 6103.T
+- 6113.T
+- 6178.T
+- 6273.T
+- 6301.T
+- 6302.T
+- 6305.T
+- 6326.T
+- 6361.T
+- 6367.T
+- 6471.T
+- 6472.T
+- 6473.T
+- 6501.T
+- 6502.T
+- 6503.T
+- 6504.T
+- 6506.T
+- 6645.T
+- 6674.T
+- 6701.T
+- 6702.T
+- 6703.T
+- 6724.T
+- 6752.T
+- 6753.T
+- 6758.T
+- 6762.T
+- 6770.T
+- 6841.T
+- 6857.T
+- 6861.T
+- 6902.T
+- 6952.T
+- 6954.T
+- 6971.T
+- 6976.T
+- 6981.T
+- 6988.T
+- 7003.T
+- 7004.T
+- 7011.T
+- 7012.T
+- 7013.T
+- 7205.T
+- 7211.T
+- 7261.T
+- 7267.T
+- 7269.T
+- 7270.T
+- 7272.T
+- 7731.T
+- 7733.T
+- 7735.T
+- 7751.T
+- 7752.T
+- 7762.T
+- 7832.T
+- 7911.T
+- 7912.T
+- 7951.T
+- 8001.T
+- 8002.T
+- 8015.T
+- 8028.T
+- 8031.T
+- 8035.T
+- 8053.T
+- 8058.T
+- 8233.T
+- 8252.T
+- 8253.T
+- 8267.T
+- 8303.T
+- 8304.T
+- 8306.T
+- 8308.T
+- 8309.T
+- 8316.T
+- 8331.T
+- 8354.T
+- 8355.T
+- 8411.T
+- 8591.T
+- 8601.T
+- 8604.T
+- 8628.T
+- 8630.T
+- 8697.T
+- 8725.T
+- 8750.T
+- 8766.T
+- 8795.T
+- 8801.T
+- 8802.T
+- 8804.T
+- 8830.T
+- 9001.T
+- 9005.T
+- 9007.T
+- 9008.T
+- 9009.T
+- 9020.T
+- 9021.T
+- 9022.T
+- 9062.T
+- 9064.T
+- 9101.T
+- 9104.T
+- 9107.T
+- 9202.T
+- 9301.T
+- 9412.T
+- 9432.T
+- 9433.T
+- 9434.T
+- 9501.T
+- 9502.T
+- 9503.T
+- 9531.T
+- 9532.T
+- 9602.T
+- 9613.T
+- 9681.T
+- 9735.T
+- AAL
+- AAPL
+- ABNB
+- ABT
+- ACGL
+- ACN
+- ACWI
+- ACWX
+- ADBE
+- ADI
+- ADM
+- ADP
+- ADSK
+- AEE
+- AEP
+- AES
+- AFL
+- AGG
+- AIG
+- AIZ
+- AJG
+- AKAM
+- ALB
+- ALGN
+- ALL
+- ALLE
+- AMAT
+- AMCR
+- AMD
+- AME
+- AMGN
+- AMP
+- AMT
+- AMZN
+- ANET
+- AON
+- AOS
+- APA
+- APD
+- APH
+- APTV
+- ARE
+- ARKF
+- ARKG
+- ARKK
+- ARKQ
+- ARKW
+- ATO
+- AUDCAD_X
+- AUDCHF_X
+- AUDJPY_X
+- AUDNZD_X
+- AUDUSD_X
+- AVB
+- AVGO
+- AVY
+- AWK
+- AXON
+- AXP
+- AZO
+- BA
+- BAC
+- BALL
+- BAX
+- BBWI
+- BBY
+- BDX
+- BEN
+- BF-B
+- BG
+- BIIB
+- BIO
+- BK
+- BKNG
+- BKR
+- BLDR
+- BLK
+- BMY
+- BND
+- BNDX
+- BNO
+- BOTZ
+- BR
+- BRK-B
+- BRO
+- BSX
+- BWA
+- BX
+- BXP
+- C
+- CADJPY_X
+- CAG
+- CAH
+- CARR
+- CAT
+- CB
+- CBOE
+- CBRE
+- CCI
+- CCL
+- CDNS
+- CDW
+- CE
+- CEG
+- CF
+- CHFJPY_X
+- CHTR
+- CI
+- CINF
+- CL
+- CLOU
+- CLX
+- CMA
+- CMCSA
+- CME
+- CMG
+- CMI
+- CNP
+- COF
+- COO
+- COP
+- COR
+- COST
+- CPAY
+- CPB
+- CPRT
+- CPT
+- CRL
+- CRM
+- CRWD
+- CSCO
+- CSGP
+- CSX
+- CTAS
+- CTLT
+- CTRA
+- CTSH
+- CVX
+- D
+- DAL
+- DAY
+- DBA
+- DBC
+- DD
+- DE
+- DECK
+- DFS
+- DG
+- DGX
+- DHI
+- DHR
+- DIS
+- DLR
+- DLTR
+- DOC
+- DOV
+- DOW
+- DPZ
+- DRI
+- DTE
+- DUK
+- DVA
+- DVN
+- DXCM
+- EA
+- EBAY
+- ECL
+- ED
+- EEM
+- EFA
+- EFX
+- EG
+- EIX
+- EL
+- ELV
+- EMB
+- EMR
+- ENPH
+- EOG
+- EPAM
+- EQIX
+- EQR
+- EQT
+- ERIE
+- ES
+- ESS
+- ETN
+- ETR
+- EURAUD_X
+- EURCAD_X
+- EURCHF_X
+- EURGBP_X
+- EURJPY_X
+- EURNZD_X
+- EURUSD_X
+- EXC
+- EXPD
+- EXPE
+- EXR
+- F
+- FANG
+- FAS
+- FAST
+- FAZ
+- FCX
+- FDS
+- FDX
+- FE
+- FFIV
+- FI
+- FICO
+- FIS
+- FITB
+- FLT
+- FM
+- FMC
+- FOX
+- FOXA
+- FTNT
+- FTV
+- GBPAUD_X
+- GBPCAD_X
+- GBPCHF_X
+- GBPJPY_X
+- GBPNZD_X
+- GBPUSD_X
+- GD
+- GDDY
+- GDX
+- GDXJ
+- GE
+- GEHC
+- GEN
+- GEV
+- GILD
+- GIS
+- GL
+- GLD
+- GLW
+- GM
+- GNRC
+- GOOG
+- GOOGL
+- GOVT
+- GPC
+- GPN
+- GRMN
+- GS
+- GSG
+- HACK
+- HAS
+- HBAN
+- HCA
+- HD
+- HES
+- HIG
+- HII
+- HLT
+- HOLX
+- HON
+- HPE
+- HPQ
+- HRL
+- HSIC
+- HST
+- HWM
+- HYG
+- IAGG
+- IAU
+- IBM
+- ICE
+- ICLN
+- IDXX
+- IEF
+- IEX
+- IFF
+- IGV
+- IJH
+- IJR
+- INCY
+- INTC
+- INTU
+- INVH
+- IP
+- IPG
+- IQV
+- IR
+- IRM
+- ISRG
+- IT
+- ITW
+- IWD
+- IWF
+- IWM
+- IXUS
+- IYR
+- J
+- JBHT
+- JBL
+- JCI
+- JKHY
+- JNJ
+- JNK
+- JNPR
+- JPM
+- K
+- KDP
+- KEY
+- KEYS
+- KHC
+- KIM
+- KKR
+- KLAC
+- KMB
+- KMI
+- KMX
+- KO
+- KR
+- L
+- LABD
+- LABU
+- LDOS
+- LEN
+- LH
+- LHX
+- LIN
+- LIT
+- LKQ
+- LLY
+- LMT
+- LNT
+- LOW
+- LQD
+- LRCX
+- LULU
+- LUV
+- LVS
+- LW
+- LYB
+- LYV
+- MA
+- MAA
+- MCHP
+- MCK
+- MCO
+- MDLZ
+- MDT
+- MDY
+- MET
+- META
+- MGM
+- MHK
+- MKC
+- MKTX
+- MLM
+- MMC
+- MMM
+- MNST
+- MO
+- MOH
+- MORT
+- MOS
+- MPC
+- MPWR
+- MRK
+- MRNA
+- MRO
+- MS
+- MSCI
+- MSFT
+- MSI
+- MTB
+- MTCH
+- MTD
+- MU
+- MUB
+- NCLH
+- NDAQ
+- NDSN
+- NEE
+- NEM
+- NFLX
+- NI
+- NKE
+- NOC
+- NOW
+- NRG
+- NSC
+- NTAP
+- NTRS
+- NUE
+- NVDA
+- NVR
+- NWS
+- NWSA
+- NZDJPY_X
+- NZDUSD_X
+- O
+- ODFL
+- OKE
+- OMC
+- 'ON'
+- ORCL
+- ORLY
+- OTIS
+- OXY
+- PAYC
+- PAYX
+- PCAR
+- PCG
+- PDBC
+- PEG
+- PEP
+- PFE
+- PFG
+- PG
+- PGR
+- PH
+- PHM
+- PKG
+- PLD
+- PLTR
+- PNC
+- PNR
+- PNW
+- PODD
+- POOL
+- PPG
+- PPL
+- PRU
+- PSA
+- PSX
+- PTC
+- PWR
+- PXD
+- QCLN
+- QCOM
+- QQQ
+- QRVO
+- RCL
+- REG
+- REGN
+- REM
+- RF
+- RJF
+- RL
+- RMD
+- ROBO
+- ROK
+- ROL
+- ROP
+- ROST
+- RSG
+- RTX
+- SBAC
+- SBUX
+- SCHH
+- SCHW
+- SCZ
+- SGOL
+- SHW
+- SHY
+- SJM
+- SKYY
+- SLB
+- SLV
+- SMCI
+- SNA
+- SNPS
+- SO
+- SOLV
+- SOXL
+- SOXS
+- SPG
+- SPGI
+- SPXU
+- SPY
+- SQQQ
+- SRE
+- STE
+- STLD
+- STT
+- STX
+- STZ
+- SWK
+- SWKS
+- SYF
+- SYK
+- SYY
+- T
+- TAN
+- TAP
+- TDG
+- TDY
+- TECH
+- TEL
+- TER
+- TFC
+- TFX
+- TGT
+- TIP
+- TJX
+- TLT
+- TMO
+- TMUS
+- TNA
+- TPR
+- TQQQ
+- TRGP
+- TRV
+- TSCO
+- TSLA
+- TSN
+- TT
+- TTWO
+- TXN
+- TXT
+- TYL
+- TZA
+- UAL
+- UBER
+- UDR
+- UHS
+- ULTA
+- UNG
+- UNH
+- UNP
+- UPRO
+- UPS
+- URI
+- USB
+- USDBRL_X
+- USDCAD_X
+- USDCHF_X
+- USDCNY_X
+- USDHKD_X
+- USDIDR_X
+- USDINR_X
+- USDJPY_X
+- USDKRW_X
+- USDMXN_X
+- USDMYR_X
+- USDSGD_X
+- USDTHB_X
+- USO
+- V
+- VAW
+- VB
+- VCIT
+- VCR
+- VCSH
+- VDC
+- VEA
+- VFH
+- VGT
+- VHT
+- VIS
+- VIXY
+- VLO
+- VLTO
+- VMC
+- VNQ
+- VNQI
+- VPU
+- VRSK
+- VRSN
+- VRTX
+- VSS
+- VST
+- VT
+- VTR
+- VTRS
+- VXX
+- VZ
+- WAB
+- WAT
+- WBA
+- WBD
+- WCLD
+- WDC
+- WEC
+- WELL
+- WFC
+- WM
+- WMB
+- WMT
+- WRB
+- WST
+- WTW
+- WY
+- WYNN
+- XEL
+- XLB
+- XLC
+- XLE
+- XLF
+- XLI
+- XLK
+- XLP
+- XLRE
+- XLU
+- XLV
+- XLY
+- XOM
+- XYL
+- YUM
+- ZBH
+- ZBRA
+- ZTS
+tickers: *id001

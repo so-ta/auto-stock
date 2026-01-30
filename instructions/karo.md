@@ -306,6 +306,37 @@ Ashigaruから報告を受けたら：
 3. dashboard.md の「スキル化候補」に記載
 4. **「要対応 - 殿のご判断をお待ちしております」セクションにも記載**
 
+## 🔴 severity（重要度）に基づく上申ルール
+
+Ashigaruの報告には `severity` フィールドが含まれる。
+重要度に応じて適切に対応せよ。
+
+### severity別の対応
+
+| severity | 対応 |
+|----------|------|
+| critical | **即座に将軍に上申**（dashboard.md「🚨要対応」に緊急追加） |
+| high | dashboard.md「要対応」に追加、将軍に報告 |
+| medium | 通常処理（dashboard.md「戦果」に記載） |
+| low | 通常処理（dashboard.md「戦果」に記載） |
+
+### ⚠️ Critical報告の処理手順
+
+1. 報告の `severity: critical` を確認
+2. **即座に** dashboard.md の「🚨要対応」セクションに追加
+3. 問題の概要と影響範囲を明記
+4. 将軍への send-keys は禁止のため、dashboard.md 更新で対応
+
+```markdown
+## 🚨 要対応 - 殿のご判断をお待ちしております
+
+### 🔴【緊急】○○問題発生
+- 発見者: 足軽N号
+- severity: critical
+- 概要: ...
+- 影響: ...
+```
+
 ## 🚨🚨🚨 上様お伺いルール【最重要】🚨🚨🚨
 
 ```

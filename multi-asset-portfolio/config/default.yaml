@@ -1,0 +1,1163 @@
+# =============================================================================
+# Multi-Asset Portfolio System - Default Configuration
+# =============================================================================
+# Version: 1.0.0
+# Last Updated: 2026-01-28
+#
+# This configuration file defines all system parameters.
+# Copy to config/local.yaml and modify for local overrides.
+
+# -----------------------------------------------------------------------------
+# System Settings
+# -----------------------------------------------------------------------------
+system:
+  name: "multi-asset-portfolio"
+  version: "1.0.0"
+  timezone: "UTC"
+  base_currency: "USD"
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# Storage Backend Settings (S3/ローカルストレージ設定)
+# -----------------------------------------------------------------------------
+# AWS認証情報は環境変数から取得:
+#   - AWS_ACCESS_KEY_ID
+#   - AWS_SECRET_ACCESS_KEY
+#   - AWS_DEFAULT_REGION (optional)
+storage:
+  backend: "local"                      # "local" or "s3" - ストレージバックエンドタイプ
+  base_path: ".cache"                   # ローカルモード時のベースパス
+  s3_bucket: "stock-local-dev-014498665038"  # S3バケット名（s3モード時使用）
+  s3_prefix: ".cache"                   # S3オブジェクトプレフィックス
+  s3_region: "ap-northeast-1"           # AWSリージョン
+  local_cache_enabled: true             # S3モード時のローカルキャッシュ有効化
+  local_cache_path: "/tmp/.backtest_cache"   # ローカルキャッシュパス
+  local_cache_ttl_hours: 24             # ローカルキャッシュTTL（時間）
+
+# -----------------------------------------------------------------------------
+# Data Quality Settings (トップレベル - Settings.data_quality にマッピング)
+# -----------------------------------------------------------------------------
+data_quality:
+  max_missing_rate: 0.05
+  max_consecutive_missing: 5
+  spike_threshold_pct: 50.0
+  min_volume_threshold: 0
+  check_monotonic_time: true
+  ohlc_inconsistency_threshold: 0.01  # 1.0% = OHLC不整合許容率
+
+# -----------------------------------------------------------------------------
+# Data Sources
+# -----------------------------------------------------------------------------
+data:
+  # Batch processing settings
+  batch_size: 50                  # Number of assets to fetch at once
+  parallel_workers: 4             # Number of parallel workers for data fetching
+  base_currency: "USD"            # Base currency for all calculations
+  retry_count: 3                  # Number of retries on API failure
+  rate_limit_delay: 0.5           # Delay between API calls (seconds)
+
+  # Cache settings
+  cache:
+    enabled: true
+    backend: "parquet"  # parquet | duckdb
+    directory: ".cache/data"
+    max_age_days: 1
+    cleanup_on_startup: true
+
+  # Crypto adapter settings
+  crypto:
+    enabled: true
+    default_exchange: "binance"
+    supported_exchanges:
+      - binance
+      - coinbase
+      - kraken
+    rate_limit_buffer_ms: 100
+
+  # Stock adapter settings
+  stock:
+    enabled: true
+    default_market: "US"
+    supported_markets:
+      US:
+        suffix: ""
+        timezone: "America/New_York"
+        trading_hours:
+          start: "09:30"
+          end: "16:00"
+      JP:
+        suffix: ".T"
+        timezone: "Asia/Tokyo"
+        trading_hours:
+          start: "09:00"
+          end: "15:00"
+    use_adjusted_prices: true
+
+  # FX adapter settings
+  fx:
+    enabled: true
+    source: "yahoo"
+    major_pairs:
+      - EURUSD
+      - USDJPY
+      - GBPUSD
+      - USDCHF
+      - AUDUSD
+      - USDCAD
+      - NZDUSD
+
+  # Data quality thresholds
+  quality:
+    max_missing_rate: 0.05       # 5% max missing data
+    max_consecutive_missing: 5   # Max consecutive missing bars
+    spike_threshold_pct: 50.0    # Price change > 50% is flagged as spike
+    min_volume_threshold: 0      # Volume below this is flagged
+    check_monotonic_time: true   # Verify timestamps are increasing
+    ohlc_inconsistency_threshold: 0.01  # 1.0% = OHLC不整合許容率（EEM 0.54%対応で0.5%→1%に修正）
+
+# -----------------------------------------------------------------------------
+# Rebalance Settings
+# -----------------------------------------------------------------------------
+rebalance:
+  frequency: "monthly"            # weekly | monthly | quarterly
+  execution_day: "last_business_day"  # first_business_day | last_business_day | specific_day
+  specific_day: null              # 1-28, used when execution_day is specific_day
+  min_trade_threshold: 0.02       # Skip trades < 2% of portfolio
+  max_turnover_pct: 100           # Max monthly turnover
+
+# -----------------------------------------------------------------------------
+# Signal Common Settings (QA-009: Hardcoded values migration)
+# -----------------------------------------------------------------------------
+signals:
+  # Momentum signal parameters
+  momentum:
+    short_window: 20              # Short-term momentum lookback
+    medium_window: 60             # Medium-term momentum lookback
+    long_window: 120              # Long-term momentum lookback
+    smoothing: 5                  # Smoothing period
+
+  # Mean reversion signal parameters
+  mean_reversion:
+    window: 20                    # Lookback window for mean calculation
+    z_threshold: 2.0              # Z-score threshold for entry
+    z_exit: 0.5                   # Z-score threshold for exit
+    halflife: 21                  # Mean reversion half-life
+
+  # Volatility signal parameters
+  volatility:
+    window: 20                    # Volatility calculation window
+    annualization_factor: 252     # Trading days per year
+    target_vol: 0.15              # Target annualized volatility
+
+  # RSI parameters
+  rsi:
+    period: 14                    # RSI calculation period
+    overbought: 70                # Overbought threshold
+    oversold: 30                  # Oversold threshold
+
+  # Bollinger Bands parameters
+  bollinger:
+    window: 20                    # Moving average window
+    num_std: 2.0                  # Number of standard deviations
+
+  # Regime detection parameters
+  regime:
+    lookback: 60                  # Lookback for regime detection
+    vol_threshold_low: 0.10       # Low volatility threshold
+    vol_threshold_high: 0.25      # High volatility threshold
+
+  # Multi-timeframe momentum parameters
+  multi_timeframe:
+    enabled: true
+    timeframes:
+      daily:
+        lookbacks: [5, 10, 20]    # Short-term price action
+        weight: 0.30              # 30% weight
+      weekly:
+        lookbacks: [20, 40, 60]   # Medium-term trend
+        weight: 0.35              # 35% weight
+      monthly:
+        lookbacks: [60, 120, 252] # Long-term trend
+        weight: 0.35              # 35% weight
+    consensus_threshold: 0.6      # 60% agreement required for strong signal
+
+# -----------------------------------------------------------------------------
+# Walk-Forward Validation
+# -----------------------------------------------------------------------------
+walk_forward:
+  train_period_days: 504          # Training period (business days, ~2 years)
+  test_period_days: 126           # Test period (business days, ~6 months)
+  step_period_days: 21            # Step size (business days, ~1 month)
+  min_train_samples: 200          # Minimum training samples
+  purge_gap_days: 5               # Gap between train/test (prevent leakage)
+  embargo_days: 5                 # Embargo after test period
+
+# -----------------------------------------------------------------------------
+# Parameter Optimization
+# -----------------------------------------------------------------------------
+optimization:
+  # Maximum parameter combinations to evaluate
+  # Controls grid search explosion (e.g., 9 lookbacks * 20 bollinger combos = 180)
+  max_combinations: 500
+
+  # Cross-validation settings
+  cv_folds: 5                     # Number of time-series CV folds
+  cv_gap_days: 5                  # Gap between train/test in CV
+
+  # Scoring metric for optimization
+  scoring_metric: "sharpe"        # sharpe | sortino | calmar | expected_value
+
+  # Early stopping for poor performers
+  early_stopping:
+    enabled: true
+    min_sharpe_threshold: 0.0     # Stop if Sharpe drops below this
+    patience_folds: 2             # Stop if fails for N consecutive folds
+
+  # Parallelization
+  n_jobs: -1                      # -1 = use all cores
+  verbose: 1                      # 0 = silent, 1 = progress, 2 = detailed
+
+# -----------------------------------------------------------------------------
+# Cost Model
+# -----------------------------------------------------------------------------
+cost_model:
+  # Base costs (in basis points)
+  spread_bps: 10                  # Bid-ask spread
+  commission_bps: 5               # Trading commission
+  slippage_bps: 10                # Execution slippage
+
+  # Market cap adjustments
+  market_cap_adjustment:
+    large_cap:
+      threshold: 1_000_000_000_000  # > 1 trillion
+      spread_multiplier: 0.5
+      slippage_multiplier: 0.5
+    mid_cap:
+      threshold: 100_000_000_000    # > 100 billion
+      spread_multiplier: 1.0
+      slippage_multiplier: 1.0
+    small_cap:
+      spread_multiplier: 1.5
+      slippage_multiplier: 2.0
+
+  # Fixed costs
+  fixed_costs:
+    rebalance_overhead: 0
+
+# -----------------------------------------------------------------------------
+# Hard Gates (Strategy Rejection Thresholds)
+# -----------------------------------------------------------------------------
+hard_gates:
+  # Required conditions (must all be met)
+  min_sharpe_ratio: 0.5
+  max_drawdown_pct: 25.0
+  min_win_rate_pct: 45.0
+  min_profit_factor: 1.2
+  min_trades: 30
+  min_expected_value: 0.0         # After cost deduction
+
+  # Optional conditions
+  optional:
+    min_calmar_ratio: 0.3
+    max_volatility_pct: 30.0
+    min_recovery_factor: 1.0
+
+  # Warning thresholds (log warnings if not met)
+  warnings:
+    min_sharpe_ratio: 1.0
+    max_drawdown_pct: 15.0
+    min_win_rate_pct: 50.0
+
+# -----------------------------------------------------------------------------
+# Strategy Selection (Top-N or Gate-based)
+# -----------------------------------------------------------------------------
+strategy_selection:
+  method: "top_n"                  # "top_n" or "gate" (legacy mode)
+  top_n: 7                         # Number of strategies to adopt (cmd_012 optimized: range 5-15)
+  cash_score: 0.0                  # Fixed score for cash (baseline)
+  min_score: -999                  # Minimum score threshold (below this is excluded)
+  weight_method: "softmax"         # "softmax" or "equal"
+  softmax_temperature: 1.0         # Temperature for softmax (higher = more uniform)
+
+# -----------------------------------------------------------------------------
+# Strategy Weighting (Meta Layer)
+# -----------------------------------------------------------------------------
+strategy_weighting:
+  beta: 2.5                       # Softmax temperature (cmd_012 optimized: range 1.5-3.0)
+  w_strategy_max: 0.5             # Max weight per strategy
+  entropy_min: 0.8                # Minimum entropy (diversity)
+
+  # Penalty coefficients (C3修正: フィールド名をsettings.pyに統一)
+  penalty_turnover: 0.1
+  penalty_mdd: 0.2
+  penalty_instability: 0.1
+
+# -----------------------------------------------------------------------------
+# Meta Layer Common Settings (QA-009: Hardcoded values migration)
+# -----------------------------------------------------------------------------
+meta:
+  # Scorer settings
+  scorer:
+    min_weight: 0.05              # Minimum strategy weight
+    max_weight: 0.30              # Maximum strategy weight
+    normalization: "softmax"      # softmax | rank | minmax
+    score_clip_low: -3.0          # Lower bound for score clipping
+    score_clip_high: 3.0          # Upper bound for score clipping
+
+  # Ensemble combiner settings
+  combiner:
+    method: "weighted_avg"        # weighted_avg | stacking | voting
+    min_models: 2                 # Minimum models for ensemble
+    decay_factor: 0.95            # Performance decay factor
+
+  # Dynamic weighter settings
+  weighter:
+    target_volatility: 0.15       # Target portfolio volatility
+    max_leverage: 1.0             # Maximum leverage (1.0 = no leverage)
+    rebalance_threshold: 0.05     # Weight change threshold for rebalance
+
+# -----------------------------------------------------------------------------
+# Dynamic Weighting (Market-Adaptive Adjustments)
+# -----------------------------------------------------------------------------
+dynamic_weighting:
+  enabled: true                   # Enable dynamic weight adjustments
+  target_volatility: 0.15         # Target annualized volatility
+  max_drawdown_trigger: 0.10      # Drawdown threshold for protection mode
+  regime_lookback_days: 60        # Lookback for regime detection
+  vol_scaling_enabled: true       # Enable volatility scaling
+  dd_protection_enabled: true     # Enable drawdown protection
+  regime_weighting_enabled: true  # Enable regime-based weighting
+
+# -----------------------------------------------------------------------------
+# Ensemble Combiner (Strategy Integration)
+# -----------------------------------------------------------------------------
+ensemble_combiner:
+  enabled: true                   # Enable ensemble combination
+  method: "weighted_avg"          # stacking | voting | weighted_avg
+  beta: 2.5                       # Temperature for weighted average (cmd_012 optimized)
+  vote_threshold: 0.3             # Threshold for voting method
+  weight_decay: 0.95              # Exponential decay for time weighting
+
+# -----------------------------------------------------------------------------
+# Meta Learner (Hierarchical Ensemble Integration)
+# -----------------------------------------------------------------------------
+meta_learner:
+  # 階層的アンサンブルモード
+  use_hierarchical_ensemble: true   # true: 3レイヤーアンサンブル, false: 従来モード
+
+  # スタッキングモデル設定
+  stacking_model_type: "xgboost"    # ridge | xgboost | simple_avg
+  # - ridge: 高速・安定
+  # - xgboost: 高精度（推奨）
+  # - simple_avg: 最シンプル
+
+  # 適応的ルックバック
+  use_adaptive_lookback: true       # レジームに応じてルックバック期間を動的調整
+
+  # ベイズ最適化
+  enable_bayesian_optimization: false  # パラメータ自動最適化（初回のみtrue推奨）
+  bayesian_n_calls: 50              # 最適化試行回数
+  bayesian_n_random_starts: 15      # 初期ランダム探索回数
+
+  # レジーム別レイヤー重み
+  regime_weights:
+    bull_trend:
+      trend: 0.50
+      reversion: 0.20
+      macro: 0.30
+    bear_market:
+      trend: 0.20
+      reversion: 0.30
+      macro: 0.50
+    high_vol:
+      trend: 0.25
+      reversion: 0.25
+      macro: 0.50
+    low_vol:
+      trend: 0.45
+      reversion: 0.35
+      macro: 0.20
+    range:
+      trend: 0.25
+      reversion: 0.50
+      macro: 0.25
+    default:
+      trend: 0.33
+      reversion: 0.34
+      macro: 0.33
+
+# -----------------------------------------------------------------------------
+# Asset Allocation
+# -----------------------------------------------------------------------------
+asset_allocation:
+  method: "nco"                   # nco | HRP | risk_parity | mean_variance
+
+# -----------------------------------------------------------------------------
+# NCO (Nested Clustered Optimization) Settings
+# -----------------------------------------------------------------------------
+nco:
+  enabled: true
+  n_clusters: 5                   # Number of clusters
+  intra_method: "max_sharpe"      # Intra-cluster optimization method
+  inter_method: "equal"           # Inter-cluster combination method
+
+  # Constraints
+  w_asset_max: 0.2                # Max weight per asset
+  w_asset_min: 0.0                # Min weight per asset (0 = long only)
+  delta_max: 0.05                 # Max weight change per rebalance
+
+  # Smoothing
+  smooth_alpha: 0.3               # w_final = alpha * w_new + (1-alpha) * w_prev
+
+  # Covariance estimation
+  covariance:
+    method: "ledoit_wolf"         # sample | ledoit_wolf | shrinkage
+    lookback_days: 252
+    min_observations: 60
+
+  # Cluster constraints (optional)
+  cluster_constraints:
+    enabled: false
+    max_cluster_weight: 0.4
+
+# -----------------------------------------------------------------------------
+# Degradation Mode (Fallback Behavior)
+# -----------------------------------------------------------------------------
+degradation_mode:
+  # Level definitions
+  levels:
+    level_0:  # Normal operation
+      min_adopted_strategies: 3
+      cash_ratio: 0.0
+    level_1:  # Reduced operation
+      min_adopted_strategies: 1
+      max_adopted_strategies: 2
+      cash_ratio: 0.3
+      position_size_multiplier: 0.7
+    level_2:  # Cash evacuation
+      adopted_strategies: 0
+      cash_ratio: 0.8
+      allow_defensive_only: true
+    level_3:  # Emergency stop
+      trigger: "anomaly_detected"
+      cash_ratio: 1.0
+      close_all_positions: true
+
+  # Triggers for cash evacuation
+  cash_evacuation_triggers:
+    - condition: "no_adopted_strategies"
+      action: "escalate_to_level_2"
+    - condition: "market_volatility_high"
+      threshold_vix: 30
+      action: "increase_cash_ratio"
+      additional_cash_pct: 20
+    - condition: "system_anomaly"
+      types:
+        - data_gap_detected
+        - api_failure
+        - price_staleness
+      action: "escalate_to_level_3"
+
+  # Recovery conditions
+  recovery:
+    level_2_to_level_1:
+      require_adopted_strategies: 1
+      cooldown_days: 5
+    level_1_to_level_0:
+      require_adopted_strategies: 3
+      cooldown_days: 3
+    level_3_to_level_2:
+      require_manual_approval: true
+
+# -----------------------------------------------------------------------------
+# Logging & Notifications
+# -----------------------------------------------------------------------------
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  output:
+    - type: "console"
+    - type: "file"
+      path: "logs/system.log"
+      max_size_mb: 100
+      backup_count: 5
+
+notifications:
+  enabled: false
+  channels:
+    slack:
+      enabled: false
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      events:
+        - rebalance_complete
+        - degradation_level_change
+        - anomaly_detected
+        - hard_gate_failure
+
+# -----------------------------------------------------------------------------
+# Reproducibility
+# -----------------------------------------------------------------------------
+reproducibility:
+  random_seed: 42
+  save_intermediate_results: true
+  results_directory: "results"
+  checkpoint_frequency: "daily"
+
+# -----------------------------------------------------------------------------
+# Performance Settings (Resource Management)
+# -----------------------------------------------------------------------------
+performance:
+  # Disk cache for intermediate results
+  use_disk_cache: true            # Enable disk caching for large datasets
+  cache_format: "parquet"         # parquet | json (parquet is faster/smaller)
+  cache_expiry_days: 7            # Days before cached data expires
+
+  # Memory management
+  memory_limit_gb: 8              # Maximum memory usage (GB)
+  gc_frequency: 100               # Run garbage collection every N operations
+  lazy_loading: true              # Load data on-demand instead of all at once
+
+  # Computation optimization
+  use_numba: true                 # Use Numba JIT compilation where available
+  chunk_size: 10000               # Process data in chunks of this size
+
+# -----------------------------------------------------------------------------
+# Parallel Processing (Signal Generation)
+# -----------------------------------------------------------------------------
+parallel:
+  enabled: true                   # Enable parallel signal generation
+  max_workers: auto               # Number of worker processes (auto = CPU count - 1)
+  chunk_size: 50                  # Symbols per chunk for parallel processing
+
+# -----------------------------------------------------------------------------
+# Universe (Asset List)
+# -----------------------------------------------------------------------------
+universe:
+  # Define your asset universe here
+  assets: []
+
+  # Or load from file
+  config_file: "config/universe.yaml"
+
+  # Asset class toggles
+  enable_us_stocks: true          # US equities (NYSE, NASDAQ)
+  enable_japan_stocks: true       # Japanese equities (TSE)
+  enable_etfs: true               # Exchange Traded Funds
+  enable_commodities: true        # Commodities (Gold, Oil, etc.)
+  enable_forex: true              # Foreign Exchange pairs
+  enable_crypto: false            # Cryptocurrency (disabled by default)
+
+  # Resource limits
+  max_assets: 500                 # Maximum assets to process (memory limit)
+
+  # Filtering rules
+  filters:
+    min_history_days: 252
+    min_avg_volume: 1000000
+    exclude_delisted: true
+
+# -----------------------------------------------------------------------------
+# Backtest Settings
+# -----------------------------------------------------------------------------
+backtest:
+  # Initial capital for backtesting
+  initial_capital: 100000.0
+
+  # Transaction costs in basis points (1 bps = 0.01%)
+  transaction_cost_bps: 10.0
+
+  # Dividend handling: reinvest | cash | ignore
+  # - reinvest: Automatically reinvest dividends in the same stock
+  # - cash: Keep dividends as cash balance
+  # - ignore: Use adjusted prices (dividends already reflected)
+  dividend_handling: "reinvest"
+
+  # Whether to use adjusted prices (accounts for splits and dividends)
+  # If true with dividend_handling: "ignore", dividends are reflected in prices
+  # If false, raw prices are used and dividends must be handled separately
+  use_adjusted_prices: true
+
+  # Slippage model: none | fixed | proportional
+  slippage_model: "fixed"
+  slippage_bps: 5.0              # Slippage in basis points
+
+  # Market impact model (for large orders)
+  market_impact:
+    enabled: false
+    model: "linear"              # linear | sqrt
+    coefficient: 0.1
+
+  # Execution assumptions
+  execution:
+    assume_end_of_day: true      # Execute at end of day prices
+    allow_fractional_shares: true  # Allow fractional share positions
+
+  # Common constants (QA-009: Hardcoded values migration)
+  constants:
+    # Trading days per year (used for annualization)
+    trading_days_per_year: 252
+    # Default lookback periods
+    default_lookback_short: 20     # Short-term lookback (days)
+    default_lookback_medium: 60    # Medium-term lookback (days)
+    default_lookback_long: 252     # Long-term lookback (days)
+    # Covariance estimation
+    cov_halflife: 60               # Half-life for exponential weighting
+    # Chunk sizes for processing
+    default_chunk_size: 1000       # Default chunk size for batch processing
+    streaming_chunk_size: 100      # Chunk size for streaming processing
+    # Cache sizes
+    default_cache_size: 1000       # Default cache entries
+    signal_cache_size: 500         # Signal cache entries
+    covariance_cache_size: 100     # Covariance cache entries
+
+  # Engine-specific settings
+  engines:
+    fast_engine:
+      use_numba: true
+      use_gpu: false
+      warmup_jit: true
+    streaming_engine:
+      chunk_size: 100
+      buffer_size: 1000
+    ray_engine:
+      num_workers: 4
+      chunk_size: 1000
+
+# =============================================================================
+# Optimized Parameters (Bayesian Optimization Results - task_013_6)
+# =============================================================================
+# These parameters were discovered through Bayesian optimization
+# to maximize Sharpe ratio using walk-forward cross-validation.
+
+optimized_params:
+  # Signal parameters (cmd_012 optimized)
+  signals:
+    momentum_lookback: 90         # Optimal momentum lookback period (range: 20-120)
+    rsi_period: 5                 # Optimal RSI period
+    bollinger_period: 20          # Optimal Bollinger Bands period (range: 14-30)
+
+  # Layer weights for hierarchical ensemble
+  layer_weights:
+    trend: 0.311                  # Trend-following layer weight
+    reversion: 0.495              # Mean-reversion layer weight
+    macro: 0.379                  # Macro layer weight
+
+  # Meta learner parameters (cmd_012 optimized)
+  meta_learner:
+    beta: 2.5                     # Softmax temperature (range: 1.5-3.0)
+    top_n: 7                      # Number of top strategies to select (range: 5-15)
+
+  # Asset allocation constraints (cmd_012 optimized)
+  allocation:
+    w_asset_max: 0.20             # Maximum weight per asset (range: 0.15-0.25)
+
+  # Optimization metadata
+  optimization_metadata:
+    method: "bayesian_optimization"
+    n_calls: 100                  # Number of optimization iterations
+    best_sharpe: 0.835            # Best achieved Sharpe ratio
+    optimized_at: "2026-01-28"    # Optimization date
+    cv_folds: 5                   # Cross-validation folds
+    data_period: "2015-2024"      # Training data period
+
+# -----------------------------------------------------------------------------
+# Hierarchical Ensemble Configuration
+# -----------------------------------------------------------------------------
+# Three-layer ensemble: Trend, Reversion, Macro
+# Each layer uses stacking model to combine signals
+
+hierarchical_ensemble:
+  enabled: true                   # Enable hierarchical ensemble mode
+  cv_folds: 5                     # Cross-validation folds for stacking
+
+  layers:
+    # Trend-following layer (40% weight)
+    trend:
+      signals:
+        - momentum
+        - trend_following
+        - dual_momentum
+      weight: 0.4
+      stacking_model: "xgboost"   # ridge | xgboost | simple_avg
+      alpha: 1.0                  # Regularization strength (for ridge)
+
+    # Mean-reversion layer (30% weight)
+    reversion:
+      signals:
+        - mean_reversion
+        - rsi_reversal
+      weight: 0.3
+      stacking_model: "xgboost"
+      alpha: 1.0
+
+    # Macro/regime layer (30% weight)
+    macro:
+      signals:
+        - sector_rotation
+        - yield_curve
+        - vix_adaptive
+      weight: 0.3
+      stacking_model: "xgboost"
+      alpha: 1.0
+
+  # Ensemble combination method
+  combination_method: "stacking"      # weighted_avg | stacking
+  use_regime_switching: true          # Adjust weights based on regime
+
+# -----------------------------------------------------------------------------
+# Bayesian Optimization Settings
+# -----------------------------------------------------------------------------
+# Configuration for parameter optimization (disabled after initial tuning)
+
+bayesian_optimization:
+  enabled: false                  # Set to true to run optimization
+  n_calls: 100                    # Total optimization iterations
+  n_random_starts: 20             # Random exploration before Bayesian
+  acquisition_function: "EI"      # EI | PI | LCB
+  xi: 0.01                        # Exploration-exploitation tradeoff
+
+  # Parameter search space
+  search_space:
+    momentum_lookback: [20, 200]
+    rsi_period: [5, 20]
+    bollinger_period: [10, 30]
+    trend_weight: [0.1, 0.6]
+    reversion_weight: [0.1, 0.6]
+    macro_weight: [0.1, 0.6]
+    beta: [0.5, 5.0]
+    top_n: [3, 10]
+    w_asset_max: [0.1, 0.4]
+
+  # Objective function
+  objective: "sharpe"             # sharpe | sortino | calmar
+  cv_folds: 5
+  train_period_days: 756          # 3 years training
+
+# -----------------------------------------------------------------------------
+# Dynamic Parameters (Adaptive Configuration)
+# -----------------------------------------------------------------------------
+# Enable automatic parameter adjustment based on market conditions.
+# When enabled, static parameters are overridden with dynamically computed values.
+
+dynamic_params:
+  enabled: true                   # Master switch for dynamic parameters
+  lookback_days: 252              # Historical data for parameter calculation
+  update_frequency: "monthly"     # daily | weekly | monthly
+
+  # Component-level toggles
+  components:
+    scorer: true                  # Dynamic ScorerConfig parameters
+    weighter: true                # Dynamic WeighterConfig parameters
+    allocator: true               # Dynamic AllocatorConfig parameters
+    covariance: true              # Dynamic CovarianceConfig parameters
+    signals: true                 # Dynamic signal parameters
+
+  # Fallback behavior when data is insufficient
+  fallback:
+    use_defaults: true            # Use static defaults if dynamic calc fails
+    min_observations: 60          # Minimum observations for dynamic calc
+    log_fallback: true            # Log when fallback is used
+
+# -----------------------------------------------------------------------------
+# Return Maximization (Phase 4 Integration)
+# -----------------------------------------------------------------------------
+# Integrates all return-enhancing modules from cmd_015:
+# - Dynamic return estimation (task_015_1)
+# - Scorer return bonus (task_015_2)
+# - Kelly allocation (task_015_3)
+# - Regime adaptive params (task_015_4)
+# - Parameter consistency (task_015_5)
+# - Entry/exit optimization (task_015_6)
+# - Macro timing (task_015_7)
+
+return_maximization:
+  enabled: true                   # Master switch for return maximization features
+
+  # Return estimation settings (DynamicReturnEstimator)
+  return_estimation:
+    method: "dynamic"             # dynamic | simple | factor
+    regime_adaptive: true         # Adjust estimation method by regime
+    estimators:
+      cross_sectional:
+        enabled: true
+        lookback: 60
+      implied:
+        enabled: true
+        risk_aversion: 2.5
+      mean_reversion:
+        enabled: true
+        half_life: 21
+      factor:
+        enabled: false            # Requires factor data
+
+  # Scorer bonus settings (already in strategy_weighting)
+  scoring:
+    return_bonus_scale: 0.3       # Multiplied to Sharpe for high returns
+    alpha_bonus_scale: 0.5        # Added for benchmark outperformance
+    benchmark_ticker: "SPY"       # Benchmark for alpha calculation
+
+  # Kelly allocation settings (KellyAllocator)
+  kelly:
+    enabled: true                 # Enable Kelly-based sizing
+    fraction: 0.35                # Kelly fraction (35% of full Kelly - conservative)
+    max_weight: 0.30              # Maximum weight per asset from Kelly calc
+    min_trades: 20                # Minimum trades for Kelly calculation
+    weight_in_final: 0.7          # Weight of Kelly in final allocation (70%)
+                                  # final = (1-weight)*base + weight*kelly
+
+  # Entry/exit optimization (HysteresisFilter, GradualEntryExit)
+  entry_exit:
+    use_hysteresis: true          # Enable hysteresis filter
+    entry_threshold: 0.3          # Signal threshold to enter position
+    exit_threshold: 0.1           # Signal threshold to exit position
+    gradual_entry:
+      enabled: true               # Enable gradual position building
+      periods: 3                  # Build position over N periods
+    gradual_exit:
+      enabled: true               # Enable gradual position exit
+      periods: 2                  # Exit position over N periods
+    stop_loss:
+      enabled: true               # Enable stop loss
+      initial_stop_pct: 0.05      # Initial stop loss percentage
+      trailing_pct: 0.03          # Trailing stop percentage
+
+  # Macro timing (EconomicCycleAllocator)
+  macro_timing:
+    enabled: true                 # Enable economic cycle allocation
+    cycle_allocation_weight: 0.3  # Weight of cycle-based allocation
+    data_sources:
+      ism_pmi: "FRED"             # ISM PMI data source
+      unemployment: "FRED"        # Unemployment rate source
+      yield_curve: "FRED"         # Treasury yield curve source
+
+  # Parameter consistency (ParameterConsistencyChecker)
+  param_consistency:
+    auto_adjust: true             # Automatically adjust inconsistent params
+    log_adjustments: true         # Log parameter adjustments
+    strict_mode: false            # Fail on errors (false = warn only)
+
+  # Regime adaptive parameters (RegimeAdaptiveParams)
+  regime_adaptive:
+    enabled: true                 # Enable regime-based param adjustment
+    signals_to_adapt:
+      - momentum
+      - bollinger
+      - rsi
+
+# =============================================================================
+# CMD_016 Features - Advanced Strategy & Risk Management
+# =============================================================================
+# This section integrates all features from cmd_016 (Phase 5 integration).
+# Each feature can be individually enabled/disabled.
+
+cmd_016_features:
+  # ---------------------------------------------------------------------------
+  # Signal & Strategy Features
+  # ---------------------------------------------------------------------------
+
+  # Pairs Trading (task_016_1: pairs_trading.py)
+  # Cointegration-based statistical arbitrage
+  pairs_trading:
+    enabled: true
+    entry_zscore: 2.0             # Z-score threshold for entry
+    exit_zscore: 0.5              # Z-score threshold for exit
+    lookback: 60                  # Lookback period for spread calculation
+    max_pairs: 5                  # Maximum number of active pairs
+    max_holding_days: 20          # Maximum holding period
+    stop_loss_zscore: 4.0         # Stop loss Z-score
+
+  # Cross-Asset Momentum (task_016_2: cross_asset.py)
+  # Cross-asset momentum signals and adjustments
+  cross_asset_momentum:
+    enabled: true
+    lookback: 60                  # Momentum lookback period
+    adjustment_strength: 0.3      # Strength of cross-asset adjustment
+    use_correlation_filter: true  # Filter by correlation
+
+  # Sector Rotation (task_016_3: sector_rotation.py)
+  # Economic cycle based sector rotation
+  sector_rotation:
+    enabled: true
+    adjustment_pct: 0.20          # Maximum adjustment percentage
+    use_economic_cycle: true      # Use economic cycle detection
+    use_momentum: true            # Use momentum-based rotation
+
+  # Dual Momentum Enhanced (task_016_4: dual_momentum.py)
+  # Enhanced dual momentum strategy
+  dual_momentum:
+    enabled: true
+    abs_lookbacks: [60, 120, 252] # Absolute momentum lookback periods
+    rel_lookback: 60              # Relative momentum lookback
+    safe_asset: "BIL"             # Safe asset for cash allocation
+    threshold: 0.0                # Momentum threshold
+
+  # Low Volatility Premium (task_016_5: low_vol_premium.py)
+  # Low volatility premium capture strategy
+  low_vol_premium:
+    enabled: true
+    target_percentile: 0.3        # Target low volatility percentile
+    adjustment_strength: 0.3      # Adjustment strength
+    vol_lookback: 60              # Volatility calculation lookback
+
+  # ---------------------------------------------------------------------------
+  # Risk Management Features
+  # ---------------------------------------------------------------------------
+
+  # VIX Cash Allocation (task_016_6: vix_cash_allocation.py)
+  # VIX-based dynamic cash allocation
+  vix_cash_allocation:
+    enabled: true
+    use_dynamic_thresholds: true  # Use dynamic VIX thresholds
+    vix_low: 15                   # Low VIX threshold
+    vix_high: 25                  # High VIX threshold
+    vix_extreme: 35               # Extreme VIX threshold
+    max_cash_ratio: 0.5           # Maximum cash allocation
+
+  # Correlation Break Detection (task_016_7: correlation_break.py)
+  # Detect correlation regime changes
+  correlation_break:
+    enabled: true
+    warning_threshold: 0.3        # Warning level threshold
+    critical_threshold: 0.5       # Critical level threshold
+    lookback_short: 20            # Short lookback for correlation
+    lookback_long: 60             # Long lookback for baseline
+
+  # Drawdown Protection (task_016_8: drawdown_protection.py)
+  # Staged drawdown protection - Enhanced for Sharpe improvement (task_034_4)
+  # DD 5%: 10% risk reduction, DD 10%: 30%, DD 15%: 50%, DD 20%: 70%
+  drawdown_protection:
+    enabled: true
+    dd_levels: [0.05, 0.10, 0.15, 0.20]  # Drawdown thresholds
+    risk_reductions: [0.9, 0.7, 0.5, 0.3]  # Risk multipliers at each DD level
+    lookback_days: 20             # Lookback period for DD calculation
+    recovery_threshold: 0.02      # Recovery threshold (2% improvement to exit)
+    emergency_dd_level: 0.25      # Emergency mode threshold
+
+  # ---------------------------------------------------------------------------
+  # Dynamic Parameter Features
+  # ---------------------------------------------------------------------------
+
+  # Dynamic Thresholds (task_016_9: dynamic_thresholds.py)
+  # Market condition adaptive thresholds
+  dynamic_thresholds:
+    enabled: true
+    update_frequency: "monthly"   # Update frequency
+    lookback_days: 252            # Lookback for calculation
+    vol_regime_adaptive: true     # Adapt to volatility regime
+
+  # Regime Signal Parameters (task_016_10: regime_signal_params.py)
+  # Regime-adaptive signal parameters
+  regime_signal_params:
+    enabled: true
+    regimes:
+      - bull_trend
+      - bear_market
+      - range_bound
+      - high_vol
+      - low_vol
+
+  # Yield Curve Signal (task_016_11: yield_curve_signal.py)
+  # Yield curve based allocation adjustment
+  yield_curve:
+    enabled: true
+    inversion_threshold: 0.0      # Inversion threshold
+    steepness_threshold: 1.0      # Steepness threshold
+    adjustment_strength: 0.2      # Adjustment strength
+
+  # ---------------------------------------------------------------------------
+  # Signal Filter Features
+  # ---------------------------------------------------------------------------
+
+  # Hysteresis Filter (task_016_12: hysteresis_filter.py)
+  # Reduce whipsaw through hysteresis
+  hysteresis_filter:
+    enabled: true
+    entry_threshold: 0.3          # Entry threshold
+    exit_threshold: 0.1           # Exit threshold
+    use_gradual_entry: true       # Enable gradual entry
+
+  # Signal Decay (task_016_13: signal_decay.py)
+  # Apply exponential decay to signals
+  signal_decay:
+    enabled: true
+    halflife: 5                   # Signal half-life in days
+    min_signal: 0.01              # Minimum signal threshold
+    decay_method: "exponential"   # exponential | linear
+
+  # Minimum Holding Period (task_016_14: min_holding_period.py)
+  # Prevent overtrading with minimum holding period
+  min_holding_period:
+    enabled: true
+    min_periods: 5                # Minimum holding days
+    force_exit_on_reversal: true  # Allow force exit on signal reversal
+    reversal_threshold: -0.5      # Reversal detection threshold
+
+# =============================================================================
+# CMD_017 Features - Advanced Optimization & Validation
+# =============================================================================
+# This section integrates all features from cmd_017 (Phase 6 integration).
+# Includes allocation optimization, ML models, walk-forward, execution, risk, validation.
+
+cmd_017_features:
+  # ---------------------------------------------------------------------------
+  # Allocation Optimization
+  # ---------------------------------------------------------------------------
+  allocation:
+    method: "nco"                   # hrp | nco | black_litterman | cvar
+
+    # Nested Clustered Optimization (task_017_1: nco.py)
+    nco:
+      enabled: true
+      n_clusters: 5                 # Number of clusters
+      intra_method: "min_variance"  # min_variance | max_sharpe | equal
+      inter_method: "inv_variance"  # inv_variance | equal
+
+    # Black-Litterman (task_017_2: black_litterman.py)
+    black_litterman:
+      enabled: true
+      tau: 0.05                     # Scaling factor for prior uncertainty
+      risk_aversion: 2.5            # Risk aversion coefficient
+      use_market_implied: true      # Use market-implied equilibrium
+
+    # CVaR Optimization (task_017_3: cvar_optimizer.py)
+    cvar:
+      enabled: true
+      alpha: 0.05                   # CVaR confidence level (5%)
+      risk_aversion: 1.0            # Risk aversion for CVaR
+
+    # Transaction Cost Optimizer (task_017_4: transaction_cost_optimizer.py)
+    transaction_cost:
+      enabled: true
+      cost_aversion: 1.0            # Cost aversion coefficient
+      max_turnover: 0.20            # Maximum turnover constraint
+      rebalance_threshold: 0.02     # Minimum deviation to trigger rebalance
+
+  # ---------------------------------------------------------------------------
+  # Machine Learning Models
+  # ---------------------------------------------------------------------------
+  ml:
+    # Stacking model for ensemble (task_017_5: stacking_model.py)
+    stacking_model: "xgboost"       # xgboost | lightgbm | ridge
+
+    # XGBoost Return Predictor (task_017_5)
+    xgboost:
+      enabled: true
+      n_estimators: 100
+      max_depth: 5
+      learning_rate: 0.1
+      use_gpu: false
+
+    # LightGBM Return Predictor (task_017_6: lightgbm_predictor.py)
+    lightgbm:
+      enabled: true
+      n_estimators: 100
+      max_depth: 5
+      learning_rate: 0.1
+      num_leaves: 31
+
+    # PPO Reinforcement Learning (task_017_7: ppo_allocator.py)
+    ppo:
+      enabled: false                # Disabled by default (experimental)
+      total_timesteps: 100000
+      learning_rate: 0.0003
+      n_steps: 2048
+      batch_size: 64
+
+    # Dynamic Ensemble (task_017_8: dynamic_ensemble.py)
+    dynamic_ensemble:
+      enabled: true
+      decay_factor: 0.95            # Exponential decay for performance weighting
+      min_weight: 0.05              # Minimum model weight
+      performance_lookback: 60      # Days for performance evaluation
+
+  # ---------------------------------------------------------------------------
+  # Walk-Forward Enhancement
+  # ---------------------------------------------------------------------------
+  walkforward:
+    # Adaptive Window (task_017_9: adaptive_window.py)
+    adaptive_window:
+      enabled: true
+      min_window: 126               # Minimum window (6 months)
+      max_window: 756               # Maximum window (3 years)
+      default_window: 504           # Default window (2 years)
+      regime_multipliers:
+        crisis: 0.5
+        high_vol: 0.7
+        normal: 1.0
+        low_vol: 1.3
+
+    # Regime Trigger Rebalance (task_017_10: regime_trigger.py)
+    regime_trigger:
+      enabled: true
+      check_frequency: "daily"      # daily | weekly
+      trigger_threshold: 0.8        # Confidence threshold for regime change
+      cooldown_days: 5              # Minimum days between triggered rebalances
+
+    # Stability Filter (task_017_11: stability_filter.py)
+    stability_filter:
+      enabled: true
+      max_change_rate: 0.3          # Maximum weight change per period
+      smooth_factor: 0.3            # Smoothing factor (EMA)
+      min_confidence: 0.5           # Minimum confidence to apply change
+
+  # ---------------------------------------------------------------------------
+  # Execution Optimization
+  # ---------------------------------------------------------------------------
+  execution:
+    # Timing Optimizer (task_017_12: timing_optimizer.py)
+    timing_optimizer:
+      enabled: true
+      intraday_vol_adjustment: true  # Adjust for intraday volatility patterns
+      avoid_open_close: true         # Avoid trading at open/close
+      optimal_window_hours: [10, 15] # Optimal execution window
+
+    # Liquidity Scorer (task_017_13: liquidity_scorer.py)
+    liquidity_scorer:
+      enabled: true
+      volume_lookback: 20           # Days for volume average
+      spread_penalty: true          # Penalize wide spreads
+      impact_model: "sqrt"          # sqrt | linear
+
+  # ---------------------------------------------------------------------------
+  # Risk Management
+  # ---------------------------------------------------------------------------
+  risk:
+    # Risk Budgeting (task_017_14: risk_budgeting.py)
+    budgeting:
+      enabled: true
+      total_risk_budget: 0.15       # Total portfolio risk budget (annualized vol)
+      allocation_method: "equal_risk"  # equal_risk | proportional | custom
+      rebalance_trigger: 0.02       # Risk deviation to trigger rebalance
+
+    # Stress Testing (task_017_14)
+    stress_test:
+      enabled: true
+      scenarios:
+        - name: "2008_crisis"
+          equity_shock: -0.40
+          vol_multiplier: 3.0
+        - name: "covid_crash"
+          equity_shock: -0.35
+          vol_multiplier: 4.0
+        - name: "rate_shock"
+          bond_shock: -0.15
+          equity_shock: -0.10
+
+  # ---------------------------------------------------------------------------
+  # Validation & Testing
+  # ---------------------------------------------------------------------------
+  validation:
+    # Synthetic Data Generation (task_017_15: synthetic_data.py)
+    synthetic_data:
+      enabled: true
+      bootstrap_method: "block"     # simple | block
+      block_size: 20                # Block size for block bootstrap
+      n_simulations: 1000           # Number of Monte Carlo simulations
+
+    # Purged K-Fold CV (task_017_16: purged_kfold.py)
+    purged_kfold:
+      enabled: true
+      n_splits: 5                   # Number of CV folds
+      purge_gap: 5                  # Gap between train/test (days)
+      embargo_days: 5               # Embargo after test period
+      use_combinatorial: false      # Use combinatorial purged CV

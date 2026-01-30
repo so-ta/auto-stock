@@ -25,3 +25,41 @@ queue/reports/
 
 # Memory MCP data (local to each installation)
 memory/
+
+# multi-asset-portfolio runtime data
+multi-asset-portfolio/.cache/
+multi-asset-portfolio/.venv/
+multi-asset-portfolio/.pytest_cache/
+multi-asset-portfolio/cache/
+multi-asset-portfolio/logs/
+multi-asset-portfolio/results/
+multi-asset-portfolio/data/
+multi-asset-portfolio/uv.lock
+multi-asset-portfolio/.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.env.local
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

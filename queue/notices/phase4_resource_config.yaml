@@ -1,0 +1,52 @@
+# Phase 4 追加タスク通知
+# 発行者: 将軍
+# 発行日: 2026-01-30
+
+notice:
+  type: task_addition
+  target: cmd_045
+  phase: 4
+
+message: |
+  Phase 4 に新しいタスクを追加した。
+
+  【追加タスク】
+  task_045_12a: 既存ハードコード制限のResourceConfig置換
+
+  【概要】
+  将軍が src/config/resource_config.py を作成済み。
+  これは専用サーバー向けの動的リソース設定モジュールである。
+
+  システムリソース（CPU/メモリ/GPU）を自動検出し、
+  最適な設定値を計算する。
+
+  【Phase 4 タスク一覧（更新後）】
+  - task_045_10: Numba並列化 + ResourceConfig統合 → 足軽1号
+  - task_045_11: GPU計算 + ResourceConfig統合 → 足軽2号
+  - task_045_12: Ray分散 + ResourceConfig統合 → 足軽3号
+  - task_045_12a: ハードコード制限→ResourceConfig置換 → 足軽4号（新規）
+
+  【ResourceConfig の主要機能】
+  - CPU: 全コア数を自動検出
+  - メモリ: 利用可能メモリの70%をキャッシュに割当
+  - GPU: CuPy経由で自動検出
+  - 専用サーバーモード: 制限を緩和した設定
+
+  【使用方法】
+  ```python
+  from src.config.resource_config import get_current_resource_config
+
+  config = get_current_resource_config()
+  max_workers = config.max_workers       # 自動検出
+  cache_memory = config.cache_max_memory_mb  # 自動計算
+  ```
+
+  【置換対象】
+  1. src/signals/signal_generation.py: max_workers=8 → ResourceConfig
+  2. src/utils/unified_cache_manager.py: max_memory_mb=512 → ResourceConfig
+  3. src/backtest/fast_engine.py: batch_size, parallel_fetchers → ResourceConfig
+  4. src/utils/cache_manager.py: CachePolicy デフォルト値 → ResourceConfig
+
+acknowledged: true
+acknowledged_by: karo
+acknowledged_at: "2026-01-30T18:05:10"

@@ -1,0 +1,94 @@
+# Risk Parameters Configuration
+# VIX-based dynamic cash allocation settings
+#
+# Based on IMP-003: VIX-based dynamic cash allocation enhancement
+# Expected effect: Sharpe +0.15~0.25, MDD -5~8%
+
+vix_cash_allocation:
+  # Multi-tier VIX thresholds and cash allocations
+  tiers:
+    - vix_max: 15.0
+      cash_allocation: 0.00
+      description: "Low volatility - Full investment"
+    - vix_max: 20.0
+      cash_allocation: 0.10
+      description: "Normal volatility - 10% cash buffer"
+    - vix_max: 25.0
+      cash_allocation: 0.25
+      description: "Elevated volatility - 25% defensive"
+    - vix_max: 30.0
+      cash_allocation: 0.40
+      description: "High volatility - 40% risk reduction"
+    - vix_max: 999.0  # Effectively no upper limit
+      cash_allocation: 0.60
+      description: "Extreme volatility - 60% capital preservation"
+
+  # Emergency triggers for sudden VIX spikes
+  emergency_triggers:
+    # Daily VIX change threshold (percentage)
+    daily_change_threshold: 0.20  # +20% in one day
+    daily_change_cash: 0.30       # Minimum 30% cash on trigger
+
+    # Weekly VIX change threshold
+    weekly_change_threshold: 0.30  # +30% over 5 days
+    weekly_change_cash: 0.40       # Minimum 40% cash on trigger
+
+    # Absolute VIX spike threshold
+    absolute_spike_threshold: 35.0  # VIX > 35
+    absolute_spike_cash: 0.50       # Minimum 50% cash
+
+  # Recovery parameters
+  recovery:
+    # Days of consecutive positive returns before reducing cash
+    positive_days_required: 10
+    # Cash reduction rate per day during recovery
+    cash_reduction_rate: 0.05
+    # Minimum VIX level for recovery mode
+    min_vix_for_recovery: 25.0
+
+  # Data source settings
+  data:
+    vix_ticker: "^VIX"
+    fallback_ticker: "VIXY"  # VIX ETF as fallback
+    lookback_days: 5         # Days for change calculation
+
+# Drawdown control parameters
+drawdown_control:
+  # Trailing stop settings
+  trailing_stop:
+    enabled: true
+    threshold: -0.15        # -15% from high triggers
+    cash_increase: 0.50     # Increase cash to 50%
+
+  # Maximum drawdown limit
+  max_drawdown:
+    enabled: true
+    threshold: -0.20        # -20% absolute drawdown
+    cash_increase: 0.80     # Increase cash to 80%
+
+  # Recovery from drawdown
+  recovery:
+    enabled: true
+    consecutive_positive_days: 10
+    gradual_return_rate: 0.10  # Return 10% of cash per period
+
+# Position sizing limits
+position_limits:
+  # Maximum single asset weight
+  max_single_asset: 0.20
+  # Maximum sector concentration
+  max_sector: 0.30
+  # Maximum cash allocation (cap)
+  max_cash: 0.80
+  # Minimum invested (floor)
+  min_invested: 0.20
+
+# Regime detection integration
+regime_integration:
+  enabled: true
+  # Adjust cash based on detected regime
+  regime_cash_adjustments:
+    bull: 0.00      # No extra cash in bull regime
+    neutral: 0.05   # 5% buffer in neutral
+    bear: 0.15      # 15% extra in bear regime
+    crisis: 0.30    # 30% extra in crisis

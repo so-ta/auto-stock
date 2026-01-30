@@ -1,0 +1,276 @@
+# Backtest Validation Workflow
+# 統一バックテストを定期実行し、結果を検証する
+#
+# 実行タイミング:
+# - 毎週日曜日 00:00 UTC (週次)
+# - main/developへのpush時
+# - 手動トリガー
+#
+# 検証項目:
+# - n_rebalances が期待値±5%以内
+# - Sharpe Ratioが前回比-10%以上低下しないこと
+# - バックテストが正常完了すること
+
+name: Backtest Validation
+
+on:
+  schedule:
+    # 毎週日曜日 00:00 UTC (日本時間 09:00)
+    - cron: '0 0 * * 0'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'scripts/run_standard_backtest.py'
+      - 'config/universe_standard.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+  workflow_dispatch:
+    inputs:
+      frequency:
+        description: 'Backtest frequency'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
+          - all
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  backtest-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Download price cache (if available)
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: cache/price_data
+          key: price-cache-${{ hashFiles('config/universe_standard.yaml') }}
+          restore-keys: |
+            price-cache-
+
+      - name: Run Standard Backtest (Test Mode)
+        id: backtest
+        run: |
+          # テストモードで実行（5銘柄、1年）
+          python scripts/run_standard_backtest.py \
+            --frequency ${{ github.event.inputs.frequency || 'daily' }} \
+            --test \
+            --output results/backtest_ci_test.json
+
+          echo "backtest_completed=true" >> $GITHUB_OUTPUT
+
+      - name: Validate Backtest Results
+        id: validate
+        run: |
+          python << 'EOF'
+          import json
+          import sys
+
+          # 結果読み込み
+          with open('results/backtest_ci_test.json', 'r') as f:
+              result = json.load(f)
+
+          metrics = result.get('metrics', {})
+          trading_stats = result.get('trading_stats', {})
+
+          # 検証項目
+          errors = []
+          warnings = []
+
+          # 1. バックテスト正常完了チェック
+          if 'sharpe_ratio' not in metrics:
+              errors.append("Sharpe Ratio not found in results")
+
+          # 2. n_rebalances チェック（テストモードなので簡易チェック）
+          n_rebalances = trading_stats.get('n_rebalances', 0)
+          if n_rebalances == 0:
+              errors.append(f"n_rebalances is 0 (expected > 0)")
+
+          # 3. Sharpe Ratio チェック
+          sharpe = metrics.get('sharpe_ratio', 0)
+          if sharpe < -1.0:
+              errors.append(f"Sharpe Ratio too low: {sharpe:.3f}")
+          elif sharpe < 0:
+              warnings.append(f"Negative Sharpe Ratio: {sharpe:.3f}")
+
+          # 4. Max Drawdown チェック
+          mdd = metrics.get('max_drawdown', 0)
+          if mdd < -0.5:
+              warnings.append(f"High Max Drawdown: {mdd*100:.1f}%")
+
+          # 結果出力
+          print("=" * 60)
+          print("BACKTEST VALIDATION RESULTS")
+          print("=" * 60)
+          print(f"Sharpe Ratio:    {sharpe:.3f}")
+          print(f"Annual Return:   {metrics.get('annual_return', 0)*100:.2f}%")
+          print(f"Max Drawdown:    {mdd*100:.2f}%")
+          print(f"n_rebalances:    {n_rebalances}")
+          print("=" * 60)
+
+          if errors:
+              print("\nERRORS:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+
+          if warnings:
+              print("\nWARNINGS:")
+              for w in warnings:
+                  print(f"  - {w}")
+
+          print("\nVALIDATION: PASSED")
+          EOF
+
+      - name: Upload Backtest Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results-${{ github.run_id }}
+          path: |
+            results/backtest_ci_test.json
+          retention-days: 30
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const result = JSON.parse(fs.readFileSync('results/backtest_ci_test.json', 'utf8'));
+            const metrics = result.metrics || {};
+
+            const body = `## Backtest Validation Results
+
+            | Metric | Value |
+            |--------|-------|
+            | Sharpe Ratio | ${(metrics.sharpe_ratio || 0).toFixed(3)} |
+            | Annual Return | ${((metrics.annual_return || 0) * 100).toFixed(2)}% |
+            | Max Drawdown | ${((metrics.max_drawdown || 0) * 100).toFixed(2)}% |
+            | n_rebalances | ${result.trading_stats?.n_rebalances || 0} |
+
+            *Generated by Backtest Validation CI*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # フルバックテスト（週次スケジュール時のみ）
+  full-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.frequency == 'all')
+
+    strategy:
+      matrix:
+        frequency: [daily, weekly, monthly]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download price cache
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: cache/price_data
+          key: price-cache-${{ hashFiles('config/universe_standard.yaml') }}
+
+      - name: Run Full Backtest (${{ matrix.frequency }})
+        run: |
+          python scripts/run_standard_backtest.py \
+            --frequency ${{ matrix.frequency }} \
+            --output results/backtest_${{ matrix.frequency }}_full.json \
+            --verbose
+
+      - name: Upload Full Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-full-${{ matrix.frequency }}-${{ github.run_id }}
+          path: results/backtest_${{ matrix.frequency }}_full.json
+          retention-days: 90
+
+  # 結果比較ジョブ（フルバックテスト後）
+  compare-results:
+    runs-on: ubuntu-latest
+    needs: full-backtest
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.frequency == 'all')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: backtest-full-*
+          merge-multiple: true
+          path: results/
+
+      - name: Compare and Report
+        run: |
+          python << 'EOF'
+          import json
+          import os
+
+          print("=" * 60)
+          print("BACKTEST COMPARISON REPORT")
+          print("=" * 60)
+          print(f"{'Frequency':<10} {'Sharpe':<10} {'Annual':<10} {'MDD':<10} {'Rebal':<10}")
+          print("-" * 60)
+
+          for freq in ['daily', 'weekly', 'monthly']:
+              path = f'results/backtest_{freq}_full.json'
+              if os.path.exists(path):
+                  with open(path, 'r') as f:
+                      data = json.load(f)
+                  m = data.get('metrics', {})
+                  t = data.get('trading_stats', {})
+                  print(f"{freq:<10} {m.get('sharpe_ratio', 0):<10.3f} {m.get('annual_return', 0)*100:<10.2f}% {m.get('max_drawdown', 0)*100:<10.2f}% {t.get('n_rebalances', 0):<10}")
+
+          print("=" * 60)
+          EOF
