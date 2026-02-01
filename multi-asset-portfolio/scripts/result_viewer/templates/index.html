@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}ダッシュボード - バックテスト管理{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 1.5rem; color: var(--dark-color);">ダッシュボード</h2>
+
+<!-- 実行中のパイプライン -->
+{% if active_pipelines %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">実行中のパイプライン</h3>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Run ID</th>
+                <th>フェーズ</th>
+                <th>進捗</th>
+                <th>ETA</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pipeline in active_pipelines %}
+            {% set backtest_phase = pipeline.phases.get('backtest', {}) %}
+            {% set current = backtest_phase.current|default(pipeline.current_rebalance)|default(0) %}
+            {% set total = backtest_phase.total|default(pipeline.total_rebalances)|default(0) %}
+            {% set pct = (current / total * 100) if total > 0 else 0 %}
+            <tr class="pipeline-row" data-run-id="{{ pipeline.run_id }}">
+                <td>
+                    <a href="/backtest/{{ pipeline.run_id }}" style="font-family: monospace; font-size: 0.85rem; color: var(--primary-color); text-decoration: none;">
+                        {{ pipeline.run_id[-15:] }}
+                    </a>
+                </td>
+                <td>
+                    <span class="tag" style="background: var(--primary-color); color: white;">{{ pipeline.phase }}</span>
+                </td>
+                <td style="min-width: 150px;">
+                    <div class="progress-bar" style="height: 8px; background: #ddd; border-radius: 4px; margin-bottom: 2px;">
+                        <div class="progress-bar-fill" style="width: {{ pct }}%; height: 100%; background: var(--secondary-color); border-radius: 4px;"></div>
+                    </div>
+                    <span style="font-size: 0.75rem; color: #666;">{{ current }}/{{ total }}</span>
+                </td>
+                <td style="font-size: 0.85rem; color: #666;">
+                    {% if pipeline.estimated_completion %}
+                    {{ pipeline.estimated_completion[11:16] }}
+                    {% else %}
+                    --:--
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/backtest/{{ pipeline.run_id }}" class="btn btn-secondary btn-sm">詳細</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 2カラムレイアウト: 保有銘柄 + キャッシュ/最近の実行 -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <!-- 本日の保有銘柄 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">本日の保有銘柄</h3>
+            {% if latest_archive_id %}
+            <a href="/backtest/{{ latest_archive_id }}" class="btn btn-secondary btn-sm">詳細</a>
+            {% endif %}
+        </div>
+        {% if latest_holdings %}
+        <table>
+            <thead>
+                <tr>
+                    <th>銘柄</th>
+                    <th class="text-right">ウェイト</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for holding in latest_holdings %}
+                <tr>
+                    <td style="font-family: monospace; font-weight: 600;">{{ holding.ticker }}</td>
+                    <td class="text-right">{{ "%.1f"|format(holding.weight * 100) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state" style="padding: 2rem;">
+            <p>保有銘柄データがありません。</p>
+            <a href="/backtest/run" class="btn btn-primary btn-sm" style="margin-top: 1rem;">バックテストを実行</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 右カラム: キャッシュ状態 + 最近の実行 -->
+    <div>
+        <!-- キャッシュ状態 -->
+        <div class="card" style="margin-bottom: 1rem;">
+            <div class="card-header">
+                <h3 class="card-title">キャッシュ状態</h3>
+            </div>
+            <div id="cache-status-content" style="padding: 0.5rem;">
+                <div class="progress-bar-container" style="margin-bottom: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                        <span>価格データ</span>
+                        <span id="cache-price-text">読み込み中...</span>
+                    </div>
+                    <div class="progress-bar" style="height: 6px; background: #ddd; border-radius: 3px;">
+                        <div id="cache-price-bar" class="progress-bar-fill" style="width: 0%; height: 100%; background: var(--secondary-color); border-radius: 3px;"></div>
+                    </div>
+                </div>
+                <div style="font-size: 0.85rem; color: #666;">
+                    シグナル: <span id="cache-signal-count">--</span>種類キャッシュ済み
+                </div>
+            </div>
+        </div>
+
+        <!-- 最近の実行 -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">最近の実行</h3>
+            </div>
+            {% if recent_completed %}
+            <div style="max-height: 250px; overflow-y: auto;">
+                {% for item in recent_completed %}
+                <div style="padding: 0.5rem 0; border-bottom: 1px solid #eee;" data-run-id="{{ item.run_id }}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-family: monospace; font-size: 0.85rem;">{{ item.run_id[-15:] }}</span>
+                            {% if item.status == 'completed' %}
+                            <span class="tag" style="background: var(--secondary-color); color: white; margin-left: 0.5rem;">完了</span>
+                            {% elif item.status == 'failed' %}
+                            <span class="tag" style="background: var(--danger-color); color: white; margin-left: 0.5rem;">失敗</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.8rem; color: #666;">{{ item.last_update[:16] if item.last_update else '' }}</span>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProgress('{{ item.run_id }}', this)" title="削除" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;">✕</button>
+                        </div>
+                    </div>
+                    {% if item.status == 'failed' and item.errors %}
+                    <div style="margin-top: 0.25rem; padding: 0.5rem; background: #f8d7da; border-radius: 4px; font-size: 0.8rem; color: #721c24;">
+                        {{ item.errors[-1] if item.errors else '不明なエラー' }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding: 1rem; text-align: center; color: #666;">
+                最近の実行はありません
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 最近のバックテスト結果 -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">最近のバックテスト結果</h3>
+        <a href="/history" class="btn btn-secondary btn-sm">すべて見る</a>
+    </div>
+
+    {% if archives %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>名前</th>
+                <th class="text-right">トータルリターン</th>
+                <th class="text-right">シャープレシオ</th>
+                <th class="text-right">最大DD</th>
+                <th>作成日時</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for archive in archives %}
+            <tr>
+                <td>
+                    <a href="/backtest/{{ archive.archive_id }}" style="color: var(--primary-color); text-decoration: none; font-family: monospace; font-size: 0.85rem;">
+                        {{ archive.archive_id[-15:] }}
+                    </a>
+                </td>
+                <td>{{ archive.name or '-' }}</td>
+                <td class="text-right {% if archive.total_return > 0 %}positive{% else %}negative{% endif %}">
+                    {{ "%.2f"|format((archive.total_return or 0) * 100) }}%
+                </td>
+                <td class="text-right">
+                    {{ "%.3f"|format(archive.sharpe_ratio or 0) }}
+                </td>
+                <td class="text-right negative">
+                    {{ "%.2f"|format((archive.max_drawdown or 0) * 100) }}%
+                </td>
+                <td style="font-size: 0.85rem; color: #666;">
+                    {{ archive.created_at[:16] if archive.created_at else '-' }}
+                </td>
+                <td style="white-space: nowrap;">
+                    <a href="/backtest/{{ archive.archive_id }}" class="btn btn-secondary btn-sm">詳細</a>
+                    <button class="btn btn-danger btn-sm" onclick="deleteArchive('{{ archive.archive_id }}', this)" title="削除">✕</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>バックテスト結果がありません</h3>
+        <p>バックテストを実行して結果を保存してください。</p>
+        <a href="/backtest/run" class="btn btn-primary" style="margin-top: 1rem;">バックテストを実行</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .progress-bar-container {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // キャッシュ状態を取得
+    async function loadCacheStatus() {
+        try {
+            const response = await fetch('/config/api/cache-summary');
+            const data = await response.json();
+
+            document.getElementById('cache-price-text').textContent =
+                `${data.price_cache_coverage}% (${data.price_cache_count}/${data.total_symbols})`;
+            document.getElementById('cache-price-bar').style.width = `${data.price_cache_coverage}%`;
+            document.getElementById('cache-signal-count').textContent = data.total_signal_types || 0;
+        } catch (err) {
+            console.error('Failed to load cache status:', err);
+            document.getElementById('cache-price-text').textContent = '取得失敗';
+        }
+    }
+
+    // 実行中パイプラインの自動更新（完了チェックのみ）
+    function setupProgressPolling() {
+        const pipelines = document.querySelectorAll('.pipeline-row');
+        if (pipelines.length === 0) return;
+
+        setInterval(async () => {
+            for (const pipeline of pipelines) {
+                const runId = pipeline.dataset.runId;
+                try {
+                    const response = await fetch(`/backtest/api/progress/${runId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        // 完了または失敗時はページリロード
+                        if (data.status === 'completed' || data.status === 'failed') {
+                            location.reload();
+                            return;
+                        }
+
+                        // 簡易的な進捗更新
+                        const backtest = data.phases?.backtest || {};
+                        const current = backtest.current || data.current_rebalance || 0;
+                        const total = backtest.total || data.total_rebalances || 0;
+                        const pct = total > 0 ? (current / total * 100) : 0;
+
+                        const progressBar = pipeline.querySelector('.progress-bar-fill');
+                        const progressText = pipeline.querySelector('td:nth-child(3) span');
+                        const phaseTag = pipeline.querySelector('.tag');
+                        const etaCell = pipeline.querySelector('td:nth-child(4)');
+
+                        if (progressBar) progressBar.style.width = `${pct}%`;
+                        if (progressText) progressText.textContent = `${current}/${total}`;
+                        if (phaseTag) phaseTag.textContent = data.phase || '--';
+                        if (etaCell && data.estimated_completion) {
+                            etaCell.textContent = data.estimated_completion.slice(11, 16);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch progress:', err);
+                }
+            }
+        }, 3000);
+    }
+
+    // アーカイブ削除
+    async function deleteArchive(archiveId, button) {
+        if (!confirm('このバックテスト結果を削除しますか？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/archive/${archiveId}`, { method: 'DELETE' });
+            if (response.ok) {
+                const row = button.closest('tr');
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            } else {
+                const data = await response.json();
+                alert('削除に失敗しました: ' + (data.detail || '不明なエラー'));
+            }
+        } catch (err) {
+            console.error('Failed to delete archive:', err);
+            alert('削除に失敗しました');
+        }
+    }
+
+    // 進捗ファイル削除
+    async function deleteProgress(runId, button) {
+        if (!confirm('この実行記録を削除しますか？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/backtest/api/progress/${runId}`, { method: 'DELETE' });
+            if (response.ok) {
+                const item = button.closest('[data-run-id]');
+                item.style.transition = 'opacity 0.3s';
+                item.style.opacity = '0';
+                setTimeout(() => item.remove(), 300);
+            } else {
+                const data = await response.json();
+                alert('削除に失敗しました: ' + (data.detail || '不明なエラー'));
+            }
+        } catch (err) {
+            console.error('Failed to delete progress:', err);
+            alert('削除に失敗しました');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCacheStatus();
+        setupProgressPolling();
+    });
+</script>
+{% endblock %}

@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from .base import ParameterSpec, Signal, SignalResult
+from .base import ParameterSpec, Signal, SignalResult, TimeframeAffinity, TimeframeConfig
 from .registry import SignalRegistry
 
 
@@ -256,6 +256,18 @@ class BollingerReversionSignal(RollingCacheMixin, Signal):
     """
 
     @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Bollinger Bands: medium-term indicator (10-50 day periods)."""
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=10,
+            max_period=50,
+            # short(5) too short for meaningful bands
+            # Only medium(20) is within spec range [10, 50]
+            supported_variants=["medium"],
+        )
+
+    @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
         return [
             ParameterSpec(
@@ -385,6 +397,21 @@ class RSISignal(Signal):
         signal = RSISignal(period=14)
         result = signal.compute(price_data)
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """RSI: short-term oscillator (Wilder's original: 14 days, effective 7-21).
+
+        Academic reference: Wilder, J.W. (1978) New Concepts in Technical Trading Systems.
+        RSI loses sensitivity with periods > 21 days as it converges to 50.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.SHORT_TERM,
+            min_period=7,
+            max_period=21,
+            # Only medium(20) is within spec range [7, 21]
+            supported_variants=["medium"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
@@ -521,6 +548,18 @@ class ZScoreReversionSignal(RollingCacheMixin, Signal):
     """
 
     @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Z-Score: medium-term mean reversion (10-60 days effective)."""
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=10,
+            max_period=60,
+            # short(5) too short for stable z-score
+            # half_year(126)/yearly(252) too slow for mean reversion
+            supported_variants=["medium", "long"],
+        )
+
+    @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
         return [
             ParameterSpec(
@@ -627,6 +666,20 @@ class StochasticReversionSignal(RollingCacheMixin, Signal):
         signal = StochasticReversionSignal(k_period=14)
         result = signal.compute(price_data)
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Stochastic: short-term oscillator (5-21 days effective).
+
+        Like RSI, Stochastic is designed for short-term overbought/oversold detection.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.SHORT_TERM,
+            min_period=5,
+            max_period=21,
+            # short(5) and medium(20) are within spec range [5, 21]
+            supported_variants=["short", "medium"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:

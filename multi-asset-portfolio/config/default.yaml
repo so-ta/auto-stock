@@ -18,20 +18,20 @@ system:
   log_level: "INFO"
 
 # -----------------------------------------------------------------------------
-# Storage Backend Settings (S3/ローカルストレージ設定)
+# Storage Backend Settings (S3必須)
 # -----------------------------------------------------------------------------
+# S3は必須。ローカルのみモードは廃止。
+# 常にhybridモード: ローカルをプライマリ、S3をセカンダリ（write-through）として使用。
+#
 # AWS認証情報は環境変数から取得:
 #   - AWS_ACCESS_KEY_ID
 #   - AWS_SECRET_ACCESS_KEY
-#   - AWS_DEFAULT_REGION (optional)
+#   - S3_BUCKET (s3_bucket の代替)
 storage:
-  backend: "local"                      # "local" or "s3" - ストレージバックエンドタイプ
-  base_path: ".cache"                   # ローカルモード時のベースパス
-  s3_bucket: "stock-local-dev-014498665038"  # S3バケット名（s3モード時使用）
+  s3_bucket: "stock-local-dev-014498665038"  # S3バケット名（必須）
   s3_prefix: ".cache"                   # S3オブジェクトプレフィックス
   s3_region: "ap-northeast-1"           # AWSリージョン
-  local_cache_enabled: true             # S3モード時のローカルキャッシュ有効化
-  local_cache_path: "/tmp/.backtest_cache"   # ローカルキャッシュパス
+  base_path: ".cache"                   # ローカルキャッシュパス
   local_cache_ttl_hours: 24             # ローカルキャッシュTTL（時間）
 
 # -----------------------------------------------------------------------------
@@ -181,6 +181,45 @@ signals:
         lookbacks: [60, 120, 252] # Long-term trend
         weight: 0.35              # 35% weight
     consensus_threshold: 0.6      # 60% agreement required for strong signal
+
+# -----------------------------------------------------------------------------
+# Signal Precompute Settings
+# -----------------------------------------------------------------------------
+# Controls period variants for signal precomputation.
+# Each signal with a period/lookback parameter will be computed with all
+# enabled variants, generating signal names like:
+#   - momentum_return_short (lookback=5)
+#   - momentum_return_medium (lookback=20)
+#   - rsi_long (period=60)
+#
+# Research-backed optimal periods:
+#   - 126 days (6 months): Highest return (702% over 10 years)
+#   - 252 days (yearly): Highest Sharpe ratio
+#
+signal_precompute:
+  # Period variant definitions (research-backed values)
+  period_variants:
+    short: 5            # Ultra-short-term (1 week) - mean reversion
+    medium: 20          # Standard (1 month)
+    long: 60            # Medium-term (3 months)
+    half_year: 126      # 6 months (highest return in research)
+    yearly: 252         # Annual (highest Sharpe ratio)
+
+  # Which variants to compute (subset of: short, medium, long, half_year, yearly)
+  # All 5 variants generate ~230 signals from 60 base signals
+  enabled_variants:
+    - short
+    - medium
+    - long
+    - half_year
+    - yearly
+
+  # Custom periods for specific signals (overrides default variants)
+  # Use industry-standard periods where applicable
+  custom_periods:
+    rsi: [7, 14, 21]              # RSI: industry standard periods
+    bollinger_reversion: [10, 20] # Bollinger: standard windows
+    atr: [14, 21]                 # ATR: industry standard
 
 # -----------------------------------------------------------------------------
 # Walk-Forward Validation
@@ -531,27 +570,20 @@ parallel:
   chunk_size: 50                  # Symbols per chunk for parallel processing
 
 # -----------------------------------------------------------------------------
-# Universe (Asset List)
+# Universe (Asset List) - v3.0 Unified Configuration
 # -----------------------------------------------------------------------------
 universe:
-  # Define your asset universe here
-  assets: []
+  # Master file containing all symbols and subset definitions
+  master_file: "config/asset_master.yaml"
 
-  # Or load from file
-  config_file: "config/universe.yaml"
-
-  # Asset class toggles
-  enable_us_stocks: true          # US equities (NYSE, NASDAQ)
-  enable_japan_stocks: true       # Japanese equities (TSE)
-  enable_etfs: true               # Exchange Traded Funds
-  enable_commodities: true        # Commodities (Gold, Oil, etc.)
-  enable_forex: true              # Foreign Exchange pairs
-  enable_crypto: false            # Cryptocurrency (disabled by default)
+  # Default subset to use when not specified
+  # Available subsets: standard, sbi, japan, us_equity, etf_only
+  default_subset: "standard"
 
   # Resource limits
   max_assets: 500                 # Maximum assets to process (memory limit)
 
-  # Filtering rules
+  # Filtering rules (applied in addition to subset filters)
   filters:
     min_history_days: 252
     min_avg_volume: 1000000
@@ -721,6 +753,31 @@ dynamic_params:
     use_defaults: true            # Use static defaults if dynamic calc fails
     min_observations: 60          # Minimum observations for dynamic calc
     log_fallback: true            # Log when fallback is used
+
+# -----------------------------------------------------------------------------
+# Alpha Ranking (Return Maximization via Alpha-based Selection)
+# -----------------------------------------------------------------------------
+# Alpha score based asset selection and weighting.
+# Combines momentum, signal quality, and expected returns for alpha calculation.
+# Filters universe to top-performing assets before allocation.
+
+alpha_ranking:
+  enabled: true                     # Master switch for alpha ranking
+
+  # Alpha scoring parameters
+  scoring:
+    lookback_days: 60               # Lookback for momentum calculation
+    momentum_weight: 0.3            # Weight for momentum score (w₁)
+    quality_weight: 0.3             # Weight for signal quality (w₂)
+    expected_return_weight: 0.4     # Weight for expected return (w₃)
+    annual_scale: 0.15              # Annual return scale for normalization
+
+  # Filtering parameters
+  filtering:
+    method: "percentile"            # "percentile" or "threshold"
+    alpha_percentile: 0.5           # Top 50% by alpha (for percentile method)
+    alpha_threshold: 0.0            # Min alpha threshold (for threshold method)
+    min_assets: 5                   # Minimum assets after filtering
 
 # -----------------------------------------------------------------------------
 # Return Maximization (Phase 4 Integration)

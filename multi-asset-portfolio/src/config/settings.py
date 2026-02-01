@@ -492,22 +492,57 @@ class DataQualityConfig(BaseModel):
 # =============================================================================
 # Storage Backend Settings
 # =============================================================================
-class StorageSettings(BaseModel):
-    """Storage backend configuration for S3/local storage."""
+class NotificationConfig(BaseModel):
+    """Notification settings for alerts and scheduled updates."""
 
     model_config = ConfigDict(frozen=True)
 
-    backend: Literal["local", "s3"] = Field(
-        default="local",
-        description="Storage backend type: 'local' or 's3'",
+    discord_webhook_url: str | None = Field(
+        default=None,
+        description="Discord webhook URL for notifications",
     )
-    base_path: str = Field(
-        default=".cache",
-        description="Base path for local storage",
+    notify_us_hour: int = Field(
+        default=7,
+        ge=0,
+        le=23,
+        description="Hour (JST) to send US market notifications",
     )
+    notify_us_minute: int = Field(
+        default=30,
+        ge=0,
+        le=59,
+        description="Minute to send US market notifications",
+    )
+    notify_jp_hour: int = Field(
+        default=16,
+        ge=0,
+        le=23,
+        description="Hour (JST) to send JP market notifications",
+    )
+    notify_jp_minute: int = Field(
+        default=30,
+        ge=0,
+        le=59,
+        description="Minute to send JP market notifications",
+    )
+    enabled_markets: list[str] = Field(
+        default_factory=lambda: ["US", "JP"],
+        description="List of enabled markets for notifications",
+    )
+
+
+class StorageSettings(BaseModel):
+    """Storage backend configuration (S3 required).
+
+    S3は必須。ローカルのみモードは廃止済み。
+    常にhybridモードで動作: ローカルをプライマリ、S3をセカンダリとして使用。
+    """
+
+    model_config = ConfigDict(frozen=True)
+
     s3_bucket: str = Field(
         default="",
-        description="S3 bucket name (required for s3 backend)",
+        description="S3 bucket name (required for production, can be empty for testing)",
     )
     s3_prefix: str = Field(
         default=".cache",
@@ -517,13 +552,9 @@ class StorageSettings(BaseModel):
         default="ap-northeast-1",
         description="AWS region for S3",
     )
-    local_cache_enabled: bool = Field(
-        default=True,
-        description="Enable local cache for S3 backend",
-    )
-    local_cache_path: str = Field(
-        default="/tmp/.backtest_cache",
-        description="Local cache path for S3 backend",
+    base_path: str = Field(
+        default=".cache",
+        description="Local cache base path",
     )
     local_cache_ttl_hours: Annotated[int, Field(ge=1)] = Field(
         default=24,
@@ -535,15 +566,24 @@ class StorageSettings(BaseModel):
         from src.utils.storage_backend import StorageConfig
 
         return StorageConfig(
-            backend=self.backend,
-            base_path=self.base_path,
             s3_bucket=self.s3_bucket,
             s3_prefix=self.s3_prefix,
             s3_region=self.s3_region,
-            local_cache_enabled=self.local_cache_enabled,
-            local_cache_path=self.local_cache_path,
+            base_path=self.base_path,
             local_cache_ttl_hours=self.local_cache_ttl_hours,
         )
+
+    def get_cache_path(self, subdir: str) -> str:
+        """Get cache path for a specific subdirectory.
+
+        Args:
+            subdir: Subdirectory name (e.g., 'signals', 'covariance', 'benchmarks')
+
+        Returns:
+            Full cache path (e.g., '.cache/signals')
+        """
+        from pathlib import Path
+        return str(Path(self.base_path) / subdir)
 
 
 # =============================================================================
@@ -591,6 +631,76 @@ class DataConfig(BaseModel):
 # =============================================================================
 # Logging Settings
 # =============================================================================
+# =============================================================================
+# Signal Precompute Settings
+# =============================================================================
+class PeriodVariantSettings(BaseModel):
+    """Period variant settings for signal precomputation.
+
+    These represent research-backed optimal lookback periods:
+    - short: 5 days (ultra-short-term, mean reversion)
+    - medium: 20 days (standard, 1 month)
+    - long: 60 days (medium-term, 3 months)
+    - half_year: 126 days (6 months, highest return in research)
+    - yearly: 252 days (annual, highest Sharpe ratio)
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    short: int = Field(default=5, ge=1, le=20, description="Ultra-short-term period (1 week)")
+    medium: int = Field(default=20, ge=10, le=40, description="Standard period (1 month)")
+    long: int = Field(default=60, ge=40, le=100, description="Medium-term period (3 months)")
+    half_year: int = Field(default=126, ge=100, le=150, description="Half-year period (highest return)")
+    yearly: int = Field(default=252, ge=200, le=300, description="Annual period (highest Sharpe)")
+
+    def to_dict(self) -> dict[str, int]:
+        """Convert to variant name -> period mapping."""
+        return {
+            "short": self.short,
+            "medium": self.medium,
+            "long": self.long,
+            "half_year": self.half_year,
+            "yearly": self.yearly,
+        }
+
+
+class SignalPrecomputeSettings(BaseModel):
+    """Signal precompute configuration.
+
+    Controls how signals are pre-computed with period variants.
+    Each signal that has a period/lookback parameter will be computed
+    with all enabled variants, generating signal names like:
+    - momentum_return_short (lookback=5)
+    - momentum_return_medium (lookback=20)
+    - rsi_long (period=60)
+    etc.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    period_variants: PeriodVariantSettings = Field(
+        default_factory=PeriodVariantSettings,
+        description="Period variant definitions",
+    )
+    enabled_variants: list[str] = Field(
+        default=["short", "medium", "long", "half_year", "yearly"],
+        description="Which variants to compute (subset of: short, medium, long, half_year, yearly)",
+    )
+    custom_periods: dict[str, list[int]] = Field(
+        default_factory=dict,
+        description="Custom periods for specific signals (e.g., {'rsi': [7, 14, 21]})",
+    )
+
+    @field_validator("enabled_variants")
+    @classmethod
+    def validate_enabled_variants(cls, v: list[str]) -> list[str]:
+        valid_variants = {"short", "medium", "long", "half_year", "yearly"}
+        for variant in v:
+            if variant not in valid_variants:
+                raise ValueError(f"Invalid variant: {variant}. Must be one of {valid_variants}")
+        return v
+
+
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
@@ -694,6 +804,53 @@ class DynamicParamsConfig(BaseModel):
 
 
 # =============================================================================
+# Alpha Ranking Settings
+# =============================================================================
+class AlphaScoringSettings(BaseModel):
+    """Alpha scoring parameters."""
+
+    model_config = ConfigDict(frozen=True)
+
+    lookback_days: int = Field(default=60, ge=5, description="Lookback for momentum calculation")
+    momentum_weight: float = Field(default=0.3, ge=0.0, le=1.0, description="Weight for momentum score")
+    quality_weight: float = Field(default=0.3, ge=0.0, le=1.0, description="Weight for signal quality")
+    expected_return_weight: float = Field(default=0.4, ge=0.0, le=1.0, description="Weight for expected return")
+    annual_scale: float = Field(default=0.15, gt=0.0, description="Annual return scale for normalization")
+
+
+class AlphaFilteringSettings(BaseModel):
+    """Alpha filtering parameters."""
+
+    model_config = ConfigDict(frozen=True)
+
+    method: Literal["percentile", "threshold"] = Field(
+        default="percentile",
+        description="Filter method: percentile or threshold",
+    )
+    alpha_percentile: float = Field(
+        default=0.5,
+        gt=0.0,
+        le=1.0,
+        description="Top percentile by alpha (for percentile method)",
+    )
+    alpha_threshold: float = Field(
+        default=0.0,
+        description="Min alpha threshold (for threshold method)",
+    )
+    min_assets: int = Field(default=5, ge=1, description="Minimum assets after filtering")
+
+
+class AlphaRankingConfig(BaseModel):
+    """Alpha ranking configuration for return-focused asset selection."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = Field(default=True, description="Enable alpha ranking")
+    scoring: AlphaScoringSettings = Field(default_factory=AlphaScoringSettings)
+    filtering: AlphaFilteringSettings = Field(default_factory=AlphaFilteringSettings)
+
+
+# =============================================================================
 # System Settings (Root)
 # =============================================================================
 class SystemConfig(BaseModel):
@@ -764,6 +921,18 @@ class Settings(BaseSettings):
     storage: StorageSettings = Field(
         default_factory=StorageSettings,
         description="Storage backend configuration for S3/local",
+    )
+    alpha_ranking: AlphaRankingConfig = Field(
+        default_factory=AlphaRankingConfig,
+        description="Alpha ranking configuration for return-focused selection",
+    )
+    notification: NotificationConfig = Field(
+        default_factory=NotificationConfig,
+        description="Notification settings for alerts and scheduled updates",
+    )
+    signal_precompute: SignalPrecomputeSettings = Field(
+        default_factory=SignalPrecomputeSettings,
+        description="Signal precomputation settings for period variants",
     )
 
     @classmethod
@@ -929,3 +1098,26 @@ def validate_yaml_pydantic_sync(yaml_path: str | Path | None = None) -> list[str
                     )
 
     return warnings
+
+
+def get_cache_path(subdir: str) -> str:
+    """Get cache path for a specific subdirectory using global settings.
+
+    This is a convenience function that avoids hardcoding cache paths.
+    Use this instead of hardcoding paths like ".cache/signals".
+
+    Args:
+        subdir: Subdirectory name (e.g., 'signals', 'covariance', 'benchmarks')
+
+    Returns:
+        Full cache path (e.g., '.cache/signals')
+
+    Example:
+        # Instead of:
+        cache_dir = ".cache/signals"  # Hardcoded
+
+        # Use:
+        from src.config.settings import get_cache_path
+        cache_dir = get_cache_path("signals")  # Configurable
+    """
+    return get_settings().storage.get_cache_path(subdir)

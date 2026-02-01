@@ -331,16 +331,16 @@ class CMD016Integrator:
                 self._correlation_detector = CorrelationBreakDetector(CorrelationBreakConfig(
                     warning_threshold=corr_config.get("warning_threshold", 0.3),
                     critical_threshold=corr_config.get("critical_threshold", 0.5),
-                    lookback_short=corr_config.get("lookback_short", 20),
-                    lookback_long=corr_config.get("lookback_long", 60),
+                    short_window=corr_config.get("lookback_short", 20),
+                    long_window=corr_config.get("lookback_long", 60),
                 ))
 
-            result = self._correlation_detector.detect(returns)
+            result = self._correlation_detector.detect_correlation_break(returns)
 
             return {
                 "enabled": True,
                 "warning_level": result.warning_level.value if hasattr(result, "warning_level") else "none",
-                "max_change": result.max_change if hasattr(result, "max_change") else 0.0,
+                "change_magnitude": result.change_magnitude if hasattr(result, "change_magnitude") else 0.0,
                 "affected_pairs": result.affected_pairs if hasattr(result, "affected_pairs") else [],
             }
 
@@ -448,8 +448,8 @@ class CMD016Integrator:
                 for asset in filtered.index:
                     current = current_weights.get(asset, 0.0)
                     original = filtered[asset]
-                    result = self._hysteresis_filter.filter_signal(asset, original)
-                    filtered[asset] = result.filtered_score
+                    # filter_signal() returns float directly (not FilterResult object)
+                    filtered[asset] = self._hysteresis_filter.filter_signal(asset, original)
 
                 info["hysteresis"] = {"enabled": True}
 
@@ -481,11 +481,14 @@ class CMD016Integrator:
             try:
                 if self._min_holding_filter is None:
                     mhp_config = self._config.raw_config.get("min_holding_period", {})
-                    self._min_holding_filter = MinHoldingPeriodFilter(MinHoldingPeriodConfig(
-                        min_periods=mhp_config.get("min_periods", 5),
-                        force_exit_on_reversal=mhp_config.get("force_exit_on_reversal", True),
-                        reversal_threshold=mhp_config.get("reversal_threshold", -0.5),
-                    ))
+                    # Use config= keyword argument to avoid positional argument confusion
+                    self._min_holding_filter = MinHoldingPeriodFilter(
+                        config=MinHoldingPeriodConfig(
+                            min_periods=mhp_config.get("min_periods", 5),
+                            force_exit_on_reversal=mhp_config.get("force_exit_on_reversal", True),
+                            reversal_threshold=mhp_config.get("reversal_threshold", -0.5),
+                        )
+                    )
 
                 decisions = apply_min_holding(
                     filtered.to_dict(),
@@ -534,11 +537,10 @@ class CMD016Integrator:
 
         try:
             if self._sector_rotator is None:
-                from src.strategy.sector_rotation import create_economic_cycle_rotator
+                from src.strategy.sector_rotation import EconomicCycleSectorRotator
                 sr_config = self._config.raw_config.get("sector_rotation", {})
-                self._sector_rotator = create_economic_cycle_rotator(
-                    adjustment_pct=sr_config.get("adjustment_pct", 0.20),
-                )
+                # create_economic_cycle_rotator() は引数を取らないため、直接クラスを使用
+                self._sector_rotator = EconomicCycleSectorRotator()
 
             # Detect phase and get adjustments
             if macro_indicators:

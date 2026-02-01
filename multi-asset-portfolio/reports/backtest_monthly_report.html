@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パフォーマンスレポート - Multi-Asset Portfolio (monthly)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .meta-info {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .meta-info .item {
+            text-align: center;
+        }
+
+        .meta-info .label {
+            font-size: 0.85em;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .meta-info .value {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 1.5em;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: right;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #1a1a2e;
+            font-weight: 600;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        th:first-child, td:first-child {
+            text-align: left;
+            font-weight: 500;
+        }
+
+        td {
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        .positive {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        }
+
+        .highlight td:first-child {
+            font-weight: 600;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .card .label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card .value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-top: 8px;
+            color: #1a1a2e;
+        }
+
+        .card.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .card.primary .label,
+        .card.primary .value {
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .meta-info {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            table {
+                font-size: 0.85em;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+    
+        .assumptions-section, .rebalance-section, .yearly-section {
+            margin: 20px 0;
+        }
+        .assumptions-table {
+            width: auto;
+            min-width: 400px;
+        }
+        .assumptions-table td.label {
+            font-weight: 600;
+            color: #555;
+            padding-right: 30px;
+        }
+        .assumptions-table td.value {
+            color: #333;
+        }
+        .rebalance-table {
+            font-size: 0.9em;
+        }
+        .yearly-table {
+            width: auto;
+            min-width: 300px;
+        }
+        .no-data {
+            color: #999;
+            font-style: italic;
+        }
+        /* Chart.jsグラフ */
+        .chart-container {
+            position: relative;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .chart-container h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .yearly-chart-container {
+            margin: 20px 0;
+        }
+        /* 年別折りたたみUI */
+        .rebalance-controls {
+            margin-bottom: 15px;
+        }
+        .rebalance-controls button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .rebalance-controls button:hover {
+            background: #5a67d8;
+        }
+        .year-section {
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .year-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f7fafc;
+            cursor: pointer;
+            user-select: none;
+        }
+        .year-header:hover {
+            background: #edf2f7;
+        }
+        .year-toggle {
+            width: 20px;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+        .year-label {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-right: 20px;
+        }
+        .year-stats {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .year-content {
+            padding: 15px;
+            background: white;
+        }
+        .year-content table {
+            margin: 0;
+        }
+        /* 保有銘柄推移 */
+        .holdings-controls {
+            margin-bottom: 15px;
+        }
+        .holdings-controls button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .holdings-controls button:hover {
+            background: #059669;
+        }
+        .holdings-section {
+            margin-bottom: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .holdings-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: #f0fdf4;
+            cursor: pointer;
+            user-select: none;
+            gap: 12px;
+        }
+        .holdings-header:hover {
+            background: #dcfce7;
+        }
+        .holdings-toggle {
+            width: 20px;
+            color: #10b981;
+            font-size: 0.9em;
+        }
+        .holdings-date {
+            font-weight: 600;
+            min-width: 100px;
+        }
+        .holdings-summary {
+            flex: 1;
+            font-size: 0.85em;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .holdings-count {
+            font-size: 0.85em;
+            color: #10b981;
+            font-weight: 500;
+        }
+        .holdings-content {
+            padding: 15px;
+            background: white;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .holdings-table {
+            width: 100%;
+            font-size: 0.85em;
+        }
+        .holdings-table .new-holding {
+            background-color: #dcfce7;
+        }
+        .holdings-table .removed-holding {
+            background-color: #fef2f2;
+            color: #999;
+        }
+        /* 寄与度分析 */
+        .contribution-section {
+            margin: 20px 0;
+        }
+        .contribution-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .contribution-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .contribution-table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .contribution-table-container h3 {
+            margin: 0 0 15px 0;
+            font-size: 1em;
+            color: #333;
+        }
+        .contribution-table {
+            width: 100%;
+            font-size: 0.9em;
+        }
+    
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Multi-Asset Portfolio (monthly)</h1>
+            <p class="subtitle">パフォーマンスレポート</p>
+            <div class="meta-info">
+                <div class="item">
+                    <div class="label">開始日</div>
+                    <div class="value">2023-01-01</div>
+                </div>
+                <div class="item">
+                    <div class="label">終了日</div>
+                    <div class="value">2023-12-29</div>
+                </div>
+                <div class="item">
+                    <div class="label">生成日時</div>
+                    <div class="value">2026-02-01 06:28:59</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- サマリーカード -->
+            <section class="section">
+                <h2>パフォーマンスサマリー</h2>
+                <div class="summary-cards">
+                    <div class="card primary">
+                        <div class="label">年率リターン</div>
+                        <div class="value">93.57%</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">シャープレシオ</div>
+                        <div class="value">2.77</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">最大ドローダウン</div>
+                        <div class="value">-10.61%</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">ボラティリティ</div>
+                        <div class="value">24.19%</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- リターン比較 -->
+            <section class="section">
+                <h2>リターン比較</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>メトリクス</th>
+                            <th>ポートフォリオ</th>
+                            
+                            <th>SPY</th>
+                            
+                            <th>QQQ</th>
+                            
+                            <th>^N225</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr class="highlight">
+                            <td>年率リターン</td>
+                            <td class="positive">
+                                93.57%
+                            </td>
+                            
+                            <td>27.57%</td>
+                            
+                            <td>57.72%</td>
+                            
+                            <td>31.56%</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            <td>トータルリターン</td>
+                            <td class="positive">
+                                92.56%
+                            </td>
+                            
+                            <td>27.08%</td>
+                            
+                            <td>56.59%</td>
+                            
+                            <td>30.42%</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            <td>月次リターン</td>
+                            <td class="">
+                                0.00%
+                            </td>
+                            
+                            <td>0.00%</td>
+                            
+                            <td>0.00%</td>
+                            
+                            <td>0.00%</td>
+                            
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- リスク指標 -->
+            <section class="section">
+                <h2>リスク指標</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>メトリクス</th>
+                            <th>ポートフォリオ</th>
+                            
+                            <th>SPY</th>
+                            
+                            <th>QQQ</th>
+                            
+                            <th>^N225</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td>ボラティリティ</td>
+                            <td>24.19%</td>
+                            
+                            <td>13.11%</td>
+                            
+                            <td>17.91%</td>
+                            
+                            <td>16.05%</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            <td>最大ドローダウン</td>
+                            <td>-10.61%</td>
+                            
+                            <td>-9.97%</td>
+                            
+                            <td>-10.78%</td>
+                            
+                            <td>-9.56%</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            <td>VaR (95%)</td>
+                            <td>0.00%</td>
+                            
+                            <td>0.00%</td>
+                            
+                            <td>0.00%</td>
+                            
+                            <td>0.00%</td>
+                            
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- リスク調整リターン -->
+            <section class="section">
+                <h2>リスク調整リターン</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>レシオ</th>
+                            <th>ポートフォリオ</th>
+                            
+                            <th>SPY</th>
+                            
+                            <th>QQQ</th>
+                            
+                            <th>^N225</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr class="highlight">
+                            <td>シャープレシオ</td>
+                            <td>2.77</td>
+                            
+                            <td>1.95</td>
+                            
+                            <td>3.11</td>
+                            
+                            <td>1.84</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            <td>ソルティノレシオ</td>
+                            <td>5.02</td>
+                            
+                            <td>3.21</td>
+                            
+                            <td>5.39</td>
+                            
+                            <td>3.00</td>
+                            
+                        </tr>
+                        
+                        <tr>
+                            <td>カルマーレシオ</td>
+                            <td>8.82</td>
+                            
+                            <td>2.76</td>
+                            
+                            <td>5.35</td>
+                            
+                            <td>3.30</td>
+                            
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </section>
+
+            
+
+            
+
+            
+        </div>
+
+        
+        <h2>年別パフォーマンス詳細</h2>
+        <div class="yearly-section">
+            <table class="yearly-table">
+                <thead>
+                    <tr>
+                        <th>年</th>
+                        <th>Portfolio</th>
+                        <th>SPY</th><th>QQQ</th><th>^N225</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+            <tr>
+                <td>2023</td>
+                <td class="positive">+92.56%</td>
+                <td class="positive">+27.08%</td><td class="positive">+56.59%</td><td class="positive">+30.42%</td>
+            </tr>
+        
+                </tbody>
+            </table>
+        </div>
+    
+
+        <h2>保有銘柄推移（全11回のリバランス）</h2>
+        <div class="holdings-controls">
+            <button onclick="expandAllHoldings()">すべて展開</button>
+            <button onclick="collapseAllHoldings()">すべて折りたたむ</button>
+        </div>
+        <div class="holdings-container">
+            
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(0)">
+                <span class="holdings-toggle" id="htoggle-0">▶</span>
+                <span class="holdings-date">2023-02-02</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-0" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="new-holding">
+                    <td>AAPL 🆕</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                <tr class="new-holding">
+                    <td>MSFT 🆕</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                <tr class="new-holding">
+                    <td>GOOGL 🆕</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                <tr class="new-holding">
+                    <td>NVDA 🆕</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                <tr class="new-holding">
+                    <td>AMZN 🆕</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(1)">
+                <span class="holdings-toggle" id="htoggle-1">▶</span>
+                <span class="holdings-date">2023-03-02</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-1" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(2)">
+                <span class="holdings-toggle" id="htoggle-2">▶</span>
+                <span class="holdings-date">2023-04-04</span>
+                <span class="holdings-summary">AAPL 20.0%, GOOGL 20.0%, NVDA 20.0%, MSFT 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-2" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(3)">
+                <span class="holdings-toggle" id="htoggle-3">▶</span>
+                <span class="holdings-date">2023-05-02</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-3" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(4)">
+                <span class="holdings-toggle" id="htoggle-4">▶</span>
+                <span class="holdings-date">2023-06-02</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-4" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(5)">
+                <span class="holdings-toggle" id="htoggle-5">▶</span>
+                <span class="holdings-date">2023-07-05</span>
+                <span class="holdings-summary">MSFT 20.0%, GOOGL 20.0%, AMZN 20.0%, NVDA 20.0%, AAPL 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-5" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(6)">
+                <span class="holdings-toggle" id="htoggle-6">▶</span>
+                <span class="holdings-date">2023-08-02</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-6" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(7)">
+                <span class="holdings-toggle" id="htoggle-7">▶</span>
+                <span class="holdings-date">2023-09-05</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-7" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(8)">
+                <span class="holdings-toggle" id="htoggle-8">▶</span>
+                <span class="holdings-date">2023-10-03</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, GOOGL 20.0%, NVDA 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-8" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(9)">
+                <span class="holdings-toggle" id="htoggle-9">▶</span>
+                <span class="holdings-date">2023-11-02</span>
+                <span class="holdings-summary">AAPL 20.0%, MSFT 20.0%, NVDA 20.0%, GOOGL 20.0%, AMZN 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-9" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        <div class="holdings-section">
+            <div class="holdings-header" onclick="toggleHoldings(10)">
+                <span class="holdings-toggle" id="htoggle-10">▶</span>
+                <span class="holdings-date">2023-12-04</span>
+                <span class="holdings-summary">AAPL 20.0%, GOOGL 20.0%, MSFT 20.0%, AMZN 20.0%, NVDA 20.0%</span>
+                <span class="holdings-count">5銘柄</span>
+            </div>
+            <div class="holdings-content" id="hcontent-10" style="display: none;">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>ウェイト</th>
+                            <th>前回比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="">
+                    <td>AAPL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>GOOGL </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>MSFT </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>AMZN </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                <tr class="">
+                    <td>NVDA </td>
+                    <td>20.00%</td>
+                    <td class="">-</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        </div>
+        
+    <script>
+        function toggleHoldings(idx) {
+            const content = document.getElementById('hcontent-' + idx);
+            const toggle = document.getElementById('htoggle-' + idx);
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        function expandAllHoldings() {
+            document.querySelectorAll('.holdings-content').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.holdings-toggle').forEach(el => el.textContent = '▼');
+        }
+        function collapseAllHoldings() {
+            document.querySelectorAll('.holdings-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.holdings-toggle').forEach(el => el.textContent = '▶');
+        }
+    </script>
+    
+    
+
+        <h2>銘柄寄与度分析</h2>
+        <div class="contribution-section">
+            <div class="contribution-grid">
+                
+        <div class="contribution-table-container">
+            <h3>Top 10 プラス寄与銘柄</h3>
+            <table class="contribution-table">
+                <thead>
+                    <tr>
+                        <th>銘柄</th>
+                        <th>寄与度</th>
+                        <th>平均ウェイト</th>
+                        <th>銘柄リターン</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>NVDA</td>
+                    <td class="positive">+16.69%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+109.7%</td>
+                </tr>
+                <tr>
+                    <td>MSFT</td>
+                    <td class="positive">+7.39%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+40.7%</td>
+                </tr>
+                <tr>
+                    <td>AMZN</td>
+                    <td class="positive">+6.16%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+28.3%</td>
+                </tr>
+                <tr>
+                    <td>AAPL</td>
+                    <td class="positive">+5.08%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+26.3%</td>
+                </tr>
+                <tr>
+                    <td>GOOGL</td>
+                    <td class="positive">+4.45%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        
+                
+        <div class="contribution-table-container">
+            <h3>Bottom 10 マイナス寄与銘柄</h3>
+            <table class="contribution-table">
+                <thead>
+                    <tr>
+                        <th>銘柄</th>
+                        <th>寄与度</th>
+                        <th>平均ウェイト</th>
+                        <th>銘柄リターン</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>GOOGL</td>
+                    <td class="positive">+4.45%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+20.0%</td>
+                </tr>
+                <tr>
+                    <td>AAPL</td>
+                    <td class="positive">+5.08%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+26.3%</td>
+                </tr>
+                <tr>
+                    <td>AMZN</td>
+                    <td class="positive">+6.16%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+28.3%</td>
+                </tr>
+                <tr>
+                    <td>MSFT</td>
+                    <td class="positive">+7.39%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+40.7%</td>
+                </tr>
+                <tr>
+                    <td>NVDA</td>
+                    <td class="positive">+16.69%</td>
+                    <td>20.00%</td>
+                    <td class="positive">+109.7%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        
+            </div>
+        </div>
+    
+
+        <h2>リバランス履歴（全11回）</h2>
+        <div class="rebalance-controls">
+            <button onclick="expandAllYears()">すべて展開</button>
+            <button onclick="collapseAllYears()">すべて折りたたむ</button>
+        </div>
+        <div class="rebalance-years-container">
+            
+        <div class="year-section">
+            <div class="year-header" onclick="toggleYear(2023)">
+                <span class="year-toggle" id="toggle-2023">▶</span>
+                <span class="year-label">2023年</span>
+                <span class="year-stats">
+                    リバランス 11回 |
+                    リターン <span class="positive">+44.7%</span> |
+                    平均TO 0.0% |
+                    コスト $0
+                </span>
+            </div>
+            <div class="year-content" id="content-2023" style="display: none;">
+                <table class="rebalance-table">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>ポートフォリオ</th>
+                            <th>TO</th>
+                            <th>コスト</th>
+                            <th>銘柄数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr>
+                    <td>2023-02-02</td>
+                    <td>$1,266,106</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-03-02</td>
+                    <td>$1,179,655</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-04-04</td>
+                    <td>$1,351,458</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-05-02</td>
+                    <td>$1,383,814</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-06-02</td>
+                    <td>$1,648,886</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-07-05</td>
+                    <td>$1,704,975</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-08-02</td>
+                    <td>$1,726,620</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-09-05</td>
+                    <td>$1,809,913</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-10-03</td>
+                    <td>$1,676,453</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-11-02</td>
+                    <td>$1,747,849</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>2023-12-04</td>
+                    <td>$1,832,449</td>
+                    <td>0.0%</td>
+                    <td>$0</td>
+                    <td>5</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        </div>
+        
+    <script>
+        function toggleYear(year) {
+            const content = document.getElementById('content-' + year);
+            const toggle = document.getElementById('toggle-' + year);
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        function expandAllYears() {
+            document.querySelectorAll('.year-content').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.year-toggle').forEach(el => el.textContent = '▼');
+        }
+        function collapseAllYears() {
+            document.querySelectorAll('.year-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.year-toggle').forEach(el => el.textContent = '▶');
+        }
+    </script>
+    
+    
+        <div class="footer">
+            <p>Generated by <strong>ReportGenerator</strong> | multi-asset-portfolio</p>
+        </div>
+    </div>
+</body>
+</html>

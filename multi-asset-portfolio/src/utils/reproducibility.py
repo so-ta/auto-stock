@@ -13,7 +13,6 @@ Requirement (from §10):
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import platform
@@ -27,6 +26,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator
 
 import structlog
+
+from src.utils.hash_utils import compute_config_hash as _compute_config_hash
 
 if TYPE_CHECKING:
     pass
@@ -318,10 +319,9 @@ def compute_config_hash(config: dict[str, Any]) -> str:
         config: Configuration dictionary
 
     Returns:
-        SHA256 hash of the configuration
+        SHA256 hash of the configuration (16 characters)
     """
-    config_json = json.dumps(config, sort_keys=True, default=str)
-    return hashlib.sha256(config_json.encode()).hexdigest()[:16]
+    return _compute_config_hash(config)
 
 
 def get_run_info(

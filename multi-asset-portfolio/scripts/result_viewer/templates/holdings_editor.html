@@ -1,0 +1,706 @@
+{% extends "base.html" %}
+
+{% block title %}保有資産編集 - {{ portfolio.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--dark-color);
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-input.small {
+        width: 120px;
+    }
+
+    .form-help {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    .positions-table {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .positions-table th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        background-color: #f8f9fa;
+    }
+
+    .positions-table td {
+        vertical-align: middle;
+    }
+
+    .positions-table input {
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .positions-table input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .btn-add-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fa;
+        border: 2px dashed var(--border-color);
+        border-radius: 4px;
+        width: 100%;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-add-row:hover {
+        background-color: #e9ecef;
+        border-color: var(--primary-color);
+    }
+
+    .btn-remove {
+        background: none;
+        border: none;
+        color: var(--danger-color);
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        font-size: 1.2rem;
+    }
+
+    .btn-remove:hover {
+        background-color: rgba(231, 76, 60, 0.1);
+        border-radius: 4px;
+    }
+
+    .summary-panel {
+        background: linear-gradient(135deg, var(--dark-color) 0%, #34495e 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+
+    .summary-label {
+        opacity: 0.8;
+    }
+
+    .summary-value {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .import-section {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .import-section h4 {
+        margin-bottom: 1rem;
+    }
+
+    .import-buttons {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .file-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .file-label:hover {
+        background-color: #e9ecef;
+    }
+
+    .btn-success {
+        background-color: var(--secondary-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #27ae60;
+    }
+
+    .btn-info {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .btn-info:hover {
+        background-color: #2980b9;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .market-value {
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .symbol-input-wrapper {
+        position: relative;
+    }
+
+    .symbol-input-wrapper input {
+        width: 100%;
+    }
+
+    .symbol-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .symbol-suggestions.show {
+        display: block;
+    }
+
+    .symbol-suggestion {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .symbol-suggestion:hover {
+        background-color: #f0f0f0;
+    }
+
+    .symbol-suggestion .ticker {
+        font-weight: 600;
+    }
+
+    .symbol-suggestion .name {
+        color: #666;
+        font-size: 0.8rem;
+    }
+
+    .price-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .price-status {
+        font-size: 0.85rem;
+        color: #666;
+        margin-left: 0.5rem;
+    }
+
+    .price-updated {
+        color: var(--secondary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">保有資産編集</h2>
+        <p style="color: #666; margin-top: 0.25rem;">{{ portfolio.name }} ({{ portfolio.id }})</p>
+    </div>
+    <a href="/portfolios/{{ portfolio.id }}" class="btn btn-secondary">戻る</a>
+</div>
+
+<!-- サマリパネル -->
+<div class="summary-panel" id="summaryPanel">
+    <div class="summary-row">
+        <span class="summary-label">総資産</span>
+        <span class="summary-value" id="totalValue">{% if portfolio.currency == 'JPY' %}¥{% else %}${% endif %}{{ "{:,.0f}".format(holdings.total_value) if portfolio.currency == 'JPY' else "{:,.2f}".format(holdings.total_value) }}</span>
+    </div>
+    <div class="summary-row">
+        <span class="summary-label">保有銘柄時価</span>
+        <span class="summary-value" id="positionsValue">-</span>
+    </div>
+    <div class="summary-row">
+        <span class="summary-label">現金</span>
+        <span class="summary-value" id="cashValue">{% if portfolio.currency == 'JPY' %}¥{% else %}${% endif %}{{ "{:,.0f}".format(holdings.cash) if portfolio.currency == 'JPY' else "{:,.2f}".format(holdings.cash) }}</span>
+    </div>
+    <div class="summary-row">
+        <span class="summary-label">銘柄数</span>
+        <span class="summary-value" id="positionCount">{{ holdings.positions | length }}</span>
+    </div>
+</div>
+
+<form id="holdingsForm">
+    <!-- 現金 -->
+    <div class="card">
+        <div class="form-group">
+            <label class="form-label">現金残高</label>
+            <input type="number" class="form-input small" id="cashInput" name="cash"
+                   value="{{ holdings.cash }}" step="0.01" min="0">
+            <p class="form-help">投資に使用可能な現金残高</p>
+        </div>
+    </div>
+
+    <!-- CSVインポート/エクスポート -->
+    <div class="import-section">
+        <h4>CSV操作</h4>
+        <p class="form-help" style="margin-bottom: 1rem;">
+            CSVファイルから保有銘柄を一括インポートできます。<br>
+            形式: symbol,shares,avg_cost (ヘッダー行必須、current_priceは自動取得)
+        </p>
+        <div class="import-buttons">
+            <input type="file" id="csvFile" class="file-input" accept=".csv">
+            <label for="csvFile" class="file-label">
+                <span>📄</span> CSVファイルを選択
+            </label>
+            <span id="fileName" style="color: #666;"></span>
+
+            <a href="/portfolios/api/csv-template" class="btn btn-secondary" download>
+                📥 テンプレートDL
+            </a>
+            <a href="/portfolios/api/{{ portfolio.id }}/holdings/download" class="btn btn-secondary" download>
+                📥 現在の保有をDL
+            </a>
+        </div>
+    </div>
+
+    <!-- 価格更新 -->
+    <div class="card">
+        <div class="price-actions">
+            <button type="button" class="btn btn-info" id="updatePricesBtn" onclick="updatePrices()">
+                🔄 価格を更新
+            </button>
+            <span class="price-status" id="priceStatus"></span>
+        </div>
+        <p class="form-help">yfinanceから最新価格を自動取得して反映します</p>
+    </div>
+
+    <!-- 保有銘柄 -->
+    <div class="card">
+        <h3 class="card-title" style="margin-bottom: 1rem;">保有銘柄</h3>
+        <table class="positions-table" id="positionsTable">
+            <thead>
+                <tr>
+                    <th style="width: 150px;">銘柄</th>
+                    <th style="width: 100px;">株数</th>
+                    <th style="width: 120px;">取得単価</th>
+                    <th style="width: 120px;">現在価格</th>
+                    <th style="width: 120px;">時価</th>
+                    <th style="width: 50px;"></th>
+                </tr>
+            </thead>
+            <tbody id="positionsBody">
+                {% for symbol, pos in holdings.positions.items() %}
+                <tr class="position-row">
+                    <td>
+                        <div class="symbol-input-wrapper">
+                            <input type="text" name="symbol" value="{{ symbol }}" placeholder="7203.T" required autocomplete="off">
+                            <div class="symbol-suggestions"></div>
+                        </div>
+                    </td>
+                    <td><input type="number" name="shares" value="{{ pos.shares }}" step="0.01" min="0" required></td>
+                    <td><input type="number" name="avg_cost" value="{{ pos.avg_cost }}" step="0.01" min="0" required></td>
+                    <td><input type="number" name="current_price" value="{{ pos.current_price }}" step="0.01" min="0" placeholder="自動取得"></td>
+                    <td class="market-value">-</td>
+                    <td><button type="button" class="btn-remove" onclick="removeRow(this)">&times;</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="button" class="btn-add-row" onclick="addRow()">
+            <span>+</span> 銘柄を追加
+        </button>
+    </div>
+
+    <div class="action-buttons">
+        <a href="/portfolios/{{ portfolio.id }}" class="btn btn-secondary">キャンセル</a>
+        <button type="submit" class="btn btn-success">保存</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const currency = '{{ portfolio.currency }}';
+    const portfolioId = '{{ portfolio.id }}';
+    let symbolsCache = [];
+    let lotSizesCache = {};
+
+    function formatCurrency(value) {
+        if (currency === 'JPY') {
+            return '¥' + Math.round(value).toLocaleString();
+        }
+        return '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // Fetch symbols for autocomplete
+    async function loadSymbols() {
+        try {
+            const response = await fetch('/portfolios/api/symbols?limit=500');
+            if (response.ok) {
+                symbolsCache = await response.json();
+            }
+        } catch (error) {
+            console.error('Failed to load symbols:', error);
+        }
+    }
+
+    // Get lot size for symbol
+    async function getLotSize(symbol) {
+        if (lotSizesCache[symbol]) {
+            return lotSizesCache[symbol];
+        }
+        try {
+            const response = await fetch(`/portfolios/api/lot-sizes?symbols=${encodeURIComponent(symbol)}`);
+            if (response.ok) {
+                const data = await response.json();
+                lotSizesCache = {...lotSizesCache, ...data};
+                return data[symbol] || 1;
+            }
+        } catch (error) {
+            console.error('Failed to get lot size:', error);
+        }
+        return 1;
+    }
+
+    function setupSymbolAutocomplete(input) {
+        const wrapper = input.closest('.symbol-input-wrapper');
+        const suggestions = wrapper.querySelector('.symbol-suggestions');
+
+        input.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query.length < 1) {
+                suggestions.classList.remove('show');
+                return;
+            }
+
+            const matches = symbolsCache.filter(s =>
+                s.ticker.toLowerCase().includes(query) ||
+                (s.name && s.name.toLowerCase().includes(query))
+            ).slice(0, 10);
+
+            if (matches.length === 0) {
+                suggestions.classList.remove('show');
+                return;
+            }
+
+            suggestions.innerHTML = matches.map(s => `
+                <div class="symbol-suggestion" data-ticker="${s.ticker}" data-lot-size="${s.lot_size || 1}">
+                    <span class="ticker">${s.ticker}</span>
+                    ${s.name ? `<span class="name">${s.name}</span>` : ''}
+                </div>
+            `).join('');
+
+            suggestions.classList.add('show');
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(() => suggestions.classList.remove('show'), 200);
+        });
+
+        suggestions.addEventListener('click', async function(e) {
+            const suggestion = e.target.closest('.symbol-suggestion');
+            if (suggestion) {
+                const ticker = suggestion.dataset.ticker;
+                input.value = ticker;
+                suggestions.classList.remove('show');
+
+                // Store lot size
+                lotSizesCache[ticker] = parseInt(suggestion.dataset.lotSize) || 1;
+
+                updateSummary();
+            }
+        });
+    }
+
+    function addRow(data = {}) {
+        const tbody = document.getElementById('positionsBody');
+        const row = document.createElement('tr');
+        row.className = 'position-row';
+        row.innerHTML = `
+            <td>
+                <div class="symbol-input-wrapper">
+                    <input type="text" name="symbol" value="${data.symbol || ''}" placeholder="7203.T" required autocomplete="off">
+                    <div class="symbol-suggestions"></div>
+                </div>
+            </td>
+            <td><input type="number" name="shares" value="${data.shares || ''}" step="0.01" min="0" required></td>
+            <td><input type="number" name="avg_cost" value="${data.avg_cost || ''}" step="0.01" min="0" required></td>
+            <td><input type="number" name="current_price" value="${data.current_price || ''}" step="0.01" min="0" placeholder="自動取得"></td>
+            <td class="market-value">-</td>
+            <td><button type="button" class="btn-remove" onclick="removeRow(this)">&times;</button></td>
+        `;
+        tbody.appendChild(row);
+
+        // Setup autocomplete for new row
+        const symbolInput = row.querySelector('input[name="symbol"]');
+        setupSymbolAutocomplete(symbolInput);
+
+        // Add event listeners for the new row
+        row.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', updateSummary);
+        });
+
+        updateSummary();
+    }
+
+    function removeRow(button) {
+        const row = button.closest('tr');
+        row.remove();
+        updateSummary();
+    }
+
+    function updateSummary() {
+        const rows = document.querySelectorAll('.position-row');
+        let positionsTotal = 0;
+        let positionCount = 0;
+
+        rows.forEach(row => {
+            const shares = parseFloat(row.querySelector('input[name="shares"]').value) || 0;
+            const avgCost = parseFloat(row.querySelector('input[name="avg_cost"]').value) || 0;
+            const currentPrice = parseFloat(row.querySelector('input[name="current_price"]').value) || avgCost;
+            const marketValue = shares * currentPrice;
+
+            row.querySelector('.market-value').textContent = formatCurrency(marketValue);
+
+            if (shares > 0) {
+                positionsTotal += marketValue;
+                positionCount++;
+            }
+        });
+
+        const cash = parseFloat(document.getElementById('cashInput').value) || 0;
+        const total = positionsTotal + cash;
+
+        document.getElementById('positionsValue').textContent = formatCurrency(positionsTotal);
+        document.getElementById('cashValue').textContent = formatCurrency(cash);
+        document.getElementById('totalValue').textContent = formatCurrency(total);
+        document.getElementById('positionCount').textContent = positionCount;
+    }
+
+    // Update prices from yfinance
+    async function updatePrices() {
+        const btn = document.getElementById('updatePricesBtn');
+        const status = document.getElementById('priceStatus');
+
+        const rows = document.querySelectorAll('.position-row');
+        const symbols = [];
+        rows.forEach(row => {
+            const symbol = row.querySelector('input[name="symbol"]').value.trim();
+            if (symbol) symbols.push(symbol);
+        });
+
+        if (symbols.length === 0) {
+            status.textContent = '銘柄がありません';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> 取得中...';
+        status.textContent = '';
+        status.className = 'price-status';
+
+        try {
+            const response = await fetch(`/portfolios/api/prices?symbols=${symbols.join(',')}`);
+            if (!response.ok) throw new Error('Failed to fetch prices');
+
+            const prices = await response.json();
+            let updated = 0;
+
+            rows.forEach(row => {
+                const symbol = row.querySelector('input[name="symbol"]').value.trim();
+                if (prices[symbol] !== null && prices[symbol] !== undefined) {
+                    row.querySelector('input[name="current_price"]').value = prices[symbol].toFixed(2);
+                    updated++;
+                }
+            });
+
+            updateSummary();
+            status.textContent = `${updated}/${symbols.length} 銘柄の価格を更新しました`;
+            status.className = 'price-status price-updated';
+
+        } catch (error) {
+            console.error('Failed to update prices:', error);
+            status.textContent = '価格の取得に失敗しました';
+            status.className = 'price-status';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 価格を更新';
+        }
+    }
+
+    // CSV import
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        document.getElementById('fileName').textContent = file.name;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split('\n');
+            const tbody = document.getElementById('positionsBody');
+            tbody.innerHTML = '';  // Clear existing rows
+
+            // Skip header
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const parts = line.split(',');
+                const symbol = parts[0]?.trim();
+                const shares = parseFloat(parts[1]) || 0;
+                const avg_cost = parseFloat(parts[2]) || 0;
+                const current_price = parts[3] ? parseFloat(parts[3]) : null;
+
+                if (symbol && shares > 0) {
+                    addRow({
+                        symbol: symbol,
+                        shares: shares,
+                        avg_cost: avg_cost,
+                        current_price: current_price,
+                    });
+                }
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Form submission
+    document.getElementById('holdingsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const cash = parseFloat(document.getElementById('cashInput').value) || 0;
+        const positions = [];
+
+        document.querySelectorAll('.position-row').forEach(async row => {
+            const symbol = row.querySelector('input[name="symbol"]').value.trim();
+            const shares = parseFloat(row.querySelector('input[name="shares"]').value) || 0;
+            const avg_cost = parseFloat(row.querySelector('input[name="avg_cost"]').value) || 0;
+            const current_price = parseFloat(row.querySelector('input[name="current_price"]').value) || null;
+            const lot_size = lotSizesCache[symbol] || 1;
+
+            if (symbol && shares > 0) {
+                positions.push({symbol, shares, avg_cost, current_price, lot_size});
+            }
+        });
+
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/holdings`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({cash, positions})
+            });
+
+            if (response.ok) {
+                window.location.href = `/portfolios/${portfolioId}`;
+            } else {
+                const error = await response.json();
+                alert('保存に失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('保存に失敗しました: ' + error.message);
+        }
+    });
+
+    // Initialize
+    loadSymbols();
+
+    document.querySelectorAll('.position-row').forEach(row => {
+        const symbolInput = row.querySelector('input[name="symbol"]');
+        setupSymbolAutocomplete(symbolInput);
+    });
+
+    document.querySelectorAll('.position-row input').forEach(input => {
+        input.addEventListener('input', updateSummary);
+    });
+    document.getElementById('cashInput').addEventListener('input', updateSummary);
+    updateSummary();
+</script>
+{% endblock %}

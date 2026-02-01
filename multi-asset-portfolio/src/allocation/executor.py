@@ -29,20 +29,43 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Protocol, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import yaml
 
-from src.signals.vix_signal import (
-    EnhancedVIXSignal,
-    VIXSignalConfig,
-    VIXSignalResult,
-    calculate_vix_adjusted_weights,
-)
+if TYPE_CHECKING:
+    from src.signals.vix_signal import VIXSignalResult
 
 logger = logging.getLogger(__name__)
+
+
+class VIXAdjustmentProtocol(Protocol):
+    """Protocol for VIX-based weight adjustment.
+
+    This protocol allows the allocation layer to use VIX adjustments
+    without directly depending on the signals layer.
+    """
+
+    def process_with_config(
+        self,
+        vix_data: pd.DataFrame,
+        config_path: str | Path | None = None,
+    ) -> "VIXSignalResult":
+        """Process VIX data and return signal result."""
+        ...
+
+
+def _lazy_import_vix_signal():
+    """Lazy import VIX signal module to avoid import-time dependency."""
+    from src.signals.vix_signal import (
+        EnhancedVIXSignal,
+        VIXSignalConfig,
+        VIXSignalResult,
+        calculate_vix_adjusted_weights,
+    )
+    return EnhancedVIXSignal, VIXSignalConfig, VIXSignalResult, calculate_vix_adjusted_weights
 
 
 @dataclass
@@ -176,17 +199,33 @@ class AllocationExecutor:
         )
     """
 
-    def __init__(self, config: Optional[ExecutorConfig] = None):
+    def __init__(
+        self,
+        config: Optional[ExecutorConfig] = None,
+        vix_adjuster: Optional[VIXAdjustmentProtocol] = None,
+    ):
         """Initialize executor.
 
         Args:
             config: Executor configuration
+            vix_adjuster: Optional VIX adjustment instance (dependency injection).
+                          If not provided, will create EnhancedVIXSignal lazily.
         """
         self.config = config or ExecutorConfig()
-        self._vix_signal = EnhancedVIXSignal.from_config(self.config.config_path)
+        self._vix_adjuster = vix_adjuster
+        self._vix_signal = None  # Lazy init
         self._previous_weights: dict[str, float] = {}
         self._high_water_mark: float = 0.0
         self._logger = logger
+
+    def _get_vix_signal(self):
+        """Lazy initialization of VIX signal."""
+        if self._vix_adjuster is not None:
+            return self._vix_adjuster
+        if self._vix_signal is None:
+            EnhancedVIXSignal, _, _, _ = _lazy_import_vix_signal()
+            self._vix_signal = EnhancedVIXSignal.from_config(self.config.config_path)
+        return self._vix_signal
 
     @classmethod
     def from_config(cls, config_path: str | Path) -> "AllocationExecutor":
@@ -239,7 +278,8 @@ class AllocationExecutor:
         # Step 1: VIX-based cash allocation
         vix_result = None
         if self.config.vix_adjustment_enabled:
-            vix_result = self._vix_signal.get_cash_allocation(
+            vix_signal = self._get_vix_signal()
+            vix_result = vix_signal.get_cash_allocation(
                 vix=vix,
                 vix_change=vix_change,
                 vix_change_weekly=vix_change_weekly,

@@ -160,9 +160,9 @@ Examples:
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        default=Path(".cache/backtest"),
+        default=None,
         metavar="DIR",
-        help="Cache directory for precomputed signals (default: .cache/backtest)",
+        help="Cache directory for precomputed signals (default: from settings)",
     )
     parser.add_argument(
         "--parallel",
@@ -551,7 +551,15 @@ def run_backtest_engine(args: argparse.Namespace, logger: Any) -> int:
     use_fast_mode = args.fast_mode
     precompute_signals = args.precompute or use_fast_mode
     use_cache = not args.no_cache
-    cache_dir = args.cache_dir if use_cache else None
+    # Get cache_dir from args or settings
+    if use_cache:
+        if args.cache_dir is not None:
+            cache_dir = args.cache_dir
+        else:
+            from src.config.settings import get_cache_path
+            cache_dir = Path(get_cache_path("backtest"))
+    else:
+        cache_dir = None
     n_jobs = args.parallel
     use_numba = args.use_numba
     use_gpu = args.use_gpu

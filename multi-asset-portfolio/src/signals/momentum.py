@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
-from .base import ParameterSpec, Signal, SignalResult
+from .base import ParameterSpec, Signal, SignalResult, TimeframeAffinity, TimeframeConfig
 from .registry import SignalRegistry
 
 
@@ -33,17 +33,31 @@ class MomentumReturnSignal(Signal):
     Negative returns generate negative scores (bearish).
 
     Parameters:
-        lookback: Number of days for return calculation (searchable, 5-100)
+        lookback: Number of days for return calculation (searchable, 5-252)
         scale: Tanh scaling factor (fixed, default 5.0)
 
     Formula:
         raw_return = (close[t] - close[t-lookback]) / close[t-lookback]
         score = tanh(raw_return * scale)
 
+    Academic reference:
+        Jegadeesh & Titman (1993): Momentum effective from 1 to 12 months.
+        12-month momentum (~252 days) shows strongest persistence.
+
     Example:
         signal = MomentumReturnSignal(lookback=20)
         result = signal.compute(price_data)
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Momentum: multi-timeframe (1-12 months per Jegadeesh & Titman 1993)."""
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MULTI_TIMEFRAME,
+            min_period=5,
+            max_period=252,  # Extended to support yearly variant
+            supported_variants=["short", "medium", "long", "half_year", "yearly"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
@@ -53,7 +67,7 @@ class MomentumReturnSignal(Signal):
                 default=20,
                 searchable=True,
                 min_value=5,
-                max_value=120,
+                max_value=252,  # Extended from 120 to 252 for yearly momentum
                 step=5,
                 description="Lookback period for return calculation (days)",
             ),
@@ -121,7 +135,7 @@ class ROCSignal(Signal):
     Similar to momentum return but expressed as a percentage.
 
     Parameters:
-        period: Number of periods for ROC calculation (searchable, 5-50)
+        period: Number of periods for ROC calculation (searchable, 5-60)
         smooth_period: Optional smoothing MA period (fixed, default 1 = no smoothing)
         scale: Tanh scaling factor (fixed, default 0.5)
 
@@ -136,6 +150,21 @@ class ROCSignal(Signal):
     """
 
     @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """ROC: short-to-medium term momentum (5-60 days).
+
+        ROC is typically used as a short-term momentum oscillator.
+        Unlike longer-term momentum, very long periods reduce sensitivity.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=5,
+            max_period=60,
+            # half_year(126) and yearly(252) too long for ROC
+            supported_variants=["short", "medium", "long"],
+        )
+
+    @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
         return [
             ParameterSpec(
@@ -143,7 +172,7 @@ class ROCSignal(Signal):
                 default=12,
                 searchable=True,
                 min_value=5,
-                max_value=50,
+                max_value=60,  # Extended from 50 to 60 for long variant
                 step=1,
                 description="ROC calculation period",
             ),
@@ -220,12 +249,32 @@ class MomentumCompositeSignal(Signal):
     Formula:
         score = w_short * mom_short + w_medium * mom_medium + w_long * mom_long
 
+    Note:
+        This signal has multiple period parameters (short_period, medium_period,
+        long_period) and is NOT subject to period variant generation. It is
+        computed once with its default/configured parameters.
+
     Example:
         signal = MomentumCompositeSignal(
             short_period=10, medium_period=30, long_period=60
         )
         result = signal.compute(price_data)
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Composite: internally handles multiple timeframes.
+
+        This signal has its own short/medium/long period parameters and
+        doesn't use standard period variants. The long_period spec is [60, 120].
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MULTI_TIMEFRAME,
+            min_period=5,
+            max_period=120,
+            # short(5), medium(20), long(60) are within respective spec ranges
+            supported_variants=["short", "medium", "long"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
@@ -358,12 +407,28 @@ class MomentumAccelerationSignal(Signal):
         acceleration = momentum[t] - momentum[t-acceleration_period]
         score = tanh(acceleration * scale)
 
+    Note:
+        This signal has momentum_period and acceleration_period parameters.
+        Since neither matches standard period param names (period, lookback),
+        it is computed once without period variant generation.
+
     Example:
         signal = MomentumAccelerationSignal(
             momentum_period=10, acceleration_period=5
         )
         result = signal.compute(price_data)
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Acceleration: short-term signal (5-30 day momentum base)."""
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.SHORT_TERM,
+            min_period=5,
+            max_period=30,
+            # Acceleration needs fast response, long periods lose sensitivity
+            supported_variants=["short", "medium"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:

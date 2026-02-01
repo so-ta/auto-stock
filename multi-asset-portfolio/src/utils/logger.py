@@ -20,21 +20,28 @@ Required log items (from §10):
 from __future__ import annotations
 
 import json
+import logging
 import sys
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import structlog
 
 if TYPE_CHECKING:
     from src.config.settings import LoggingConfig, Settings
+    from src.utils.pipeline_log_collector import PipelineLogCollector
 
 # Context variables for request tracing
 _run_id: ContextVar[str] = ContextVar("run_id", default="")
 _correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
+
+# Context variable for pipeline log collector
+_log_collector: ContextVar[Optional["PipelineLogCollector"]] = ContextVar(
+    "log_collector", default=None
+)
 
 
 def get_run_id() -> str:
@@ -45,6 +52,16 @@ def get_run_id() -> str:
 def set_run_id(run_id: str) -> None:
     """Set current run ID."""
     _run_id.set(run_id)
+
+
+def get_log_collector() -> Optional["PipelineLogCollector"]:
+    """Get current pipeline log collector."""
+    return _log_collector.get()
+
+
+def set_log_collector(collector: Optional["PipelineLogCollector"]) -> None:
+    """Set current pipeline log collector."""
+    _log_collector.set(collector)
 
 
 def generate_run_id() -> str:
@@ -445,6 +462,7 @@ def setup_logging(
     log_file: Path | str | None = None,
     json_format: bool = True,
     level: str = "INFO",
+    enable_log_collector: bool = True,
 ) -> None:
     """
     Configure structured logging for the application.
@@ -454,6 +472,7 @@ def setup_logging(
         log_file: Optional path to log file
         json_format: Whether to use JSON format
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        enable_log_collector: Whether to enable PipelineLogCollector integration
     """
     # Get config from settings if provided
     if settings is not None:
@@ -473,6 +492,10 @@ def setup_logging(
         structlog.processors.UnicodeDecoder(),
     ]
 
+    # Add log collector processor for PipelineLogCollector integration
+    if enable_log_collector:
+        shared_processors.insert(0, log_collector_processor)
+
     if json_format:
         # JSON output for production
         processors = shared_processors + [
@@ -486,7 +509,6 @@ def setup_logging(
             structlog.dev.ConsoleRenderer(colors=True)
         ]
 
-    import logging
     log_level_map = {
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
@@ -508,6 +530,9 @@ def setup_logging(
     if log_file is not None:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Set up standard logging bridge
+    setup_standard_logging_bridge(level=level)
 
 
 def get_logger(name: str | None = None, **initial_values: Any) -> structlog.BoundLogger:
@@ -656,3 +681,103 @@ def read_logs(
                 continue
 
     return logs
+
+
+# =============================================================================
+# Standard logging → structlog bridge (for 60+ files using logging.getLogger)
+# =============================================================================
+
+
+class StructlogHandler(logging.Handler):
+    """
+    Standard logging handler that forwards logs to structlog.
+
+    This enables automatic integration of logs from modules using
+    logging.getLogger(__name__) into the structlog/PipelineLogCollector system.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Forward a log record to structlog."""
+        try:
+            # Get structlog logger
+            logger = structlog.get_logger(record.name)
+
+            # Map log level to structlog method
+            level_method_map = {
+                logging.DEBUG: logger.debug,
+                logging.INFO: logger.info,
+                logging.WARNING: logger.warning,
+                logging.ERROR: logger.error,
+                logging.CRITICAL: logger.critical,
+            }
+
+            log_method = level_method_map.get(record.levelno, logger.info)
+
+            # Forward to structlog with component info
+            log_method(
+                record.getMessage(),
+                component=record.name,
+                exc_info=record.exc_info if record.exc_info else None,
+            )
+        except Exception:
+            # Avoid infinite recursion if structlog itself fails
+            pass
+
+
+def log_collector_processor(
+    logger: structlog.BoundLogger,
+    method_name: str,
+    event_dict: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Structlog processor that forwards logs to PipelineLogCollector.
+
+    This processor is added to the structlog chain and automatically
+    sends all log entries to the current PipelineLogCollector (if set).
+    """
+    collector = _log_collector.get()
+    if collector is not None:
+        collector.log(
+            level=method_name.upper(),
+            event=event_dict.get("event", ""),
+            component=event_dict.get("component", ""),
+            **{k: v for k, v in event_dict.items() if k not in ("event", "component")}
+        )
+    return event_dict
+
+
+def setup_standard_logging_bridge(level: str = "INFO") -> None:
+    """
+    Configure standard logging to forward to structlog.
+
+    This should be called after setup_logging() to bridge logs from
+    modules that use logging.getLogger() instead of structlog.
+
+    Args:
+        level: Minimum log level to capture (DEBUG, INFO, WARNING, ERROR)
+    """
+    log_level_map = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+    log_level = log_level_map.get(level.upper(), logging.INFO)
+
+    # Get root logger and add our handler
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+
+    # Remove existing handlers to avoid duplicate logs
+    # (Keep only our StructlogHandler)
+    structlog_handler = None
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, StructlogHandler):
+            structlog_handler = handler
+        else:
+            root_logger.removeHandler(handler)
+
+    # Add our handler if not already present
+    if structlog_handler is None:
+        root_logger.addHandler(StructlogHandler())

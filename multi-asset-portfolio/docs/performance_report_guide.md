@@ -40,31 +40,6 @@ uv add dash
 
 ## クイックスタート
 
-### CLIでレポート生成
-
-```bash
-# 基本使用
-uv run python scripts/generate_performance_report.py \
-    --start 2010-01-01 \
-    --end 2025-01-01 \
-    --output reports/
-
-# ベンチマーク指定
-uv run python scripts/generate_performance_report.py \
-    --benchmarks SPY,QQQ,DIA \
-    --format html
-
-# 既存バックテスト結果から
-uv run python scripts/generate_performance_report.py \
-    --backtest-result results/backtest_monthly.json \
-    --format both
-
-# グラフ付き
-uv run python scripts/generate_performance_report.py \
-    --charts \
-    --output reports/
-```
-
 ### Pythonコードでレポート生成
 
 ```python
@@ -280,8 +255,8 @@ class StaticChartGenerator:
 - サマリーカード表示
 - 比較テーブル
 
-```bash
-python scripts/generate_performance_report.py --format html
+```python
+generator.generate_html_report(comparison, "My Portfolio", "2010-01-01", "2025-01-01", "reports/performance.html")
 ```
 
 ### PDF（印刷用）
@@ -289,10 +264,6 @@ python scripts/generate_performance_report.py --format html
 - weasyprint使用
 - 高解像度出力
 - 印刷最適化レイアウト
-
-```bash
-python scripts/generate_performance_report.py --format pdf
-```
 
 **注意**: PDF生成には `weasyprint` が必要です。
 
@@ -325,21 +296,6 @@ uv add weasyprint
 | monthly_heatmap.png | 月次リターンヒートマップ |
 | rolling_sharpe.png | ローリングシャープレシオ |
 | returns_distribution.png | リターン分布 |
-
-## CLIオプション一覧
-
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `--backtest-result` | 既存結果JSONファイル | なし |
-| `--start` | 開始日 | 2010-01-01 |
-| `--end` | 終了日 | 今日 |
-| `--frequency` | リバランス頻度 | monthly |
-| `--benchmarks` | 比較ベンチマーク | SPY,QQQ,DIA,IWM,VT,EWJ |
-| `--output` | 出力ディレクトリ | reports/ |
-| `--format` | 出力形式 | html |
-| `--portfolio-name` | ポートフォリオ名 | Multi-Asset Portfolio |
-| `--charts` | グラフ生成 | False |
-| `--verbose` | 詳細ログ | False |
 
 ## トラブルシューティング
 
@@ -401,6 +357,9 @@ uv add kaleido
 
 ## 関連ドキュメント
 
-- [バックテスト高速化オプション](backtest_acceleration_options.md)
-- [S3キャッシュガイド](s3_cache_guide.md)
-- [システム概要](system_overview_for_management.md)
+| ドキュメント | 概要 |
+|-------------|------|
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | レポート生成の問題解決 |
+| [backtest_acceleration_options.md](backtest_acceleration_options.md) | バックテスト高速化オプション |
+| [s3_cache_guide.md](s3_cache_guide.md) | S3キャッシュガイド |
+| [system_overview_for_management.md](system_overview_for_management.md) | システム概要（非技術者向け） |

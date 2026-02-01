@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_new %}新規ポートフォリオ{% else %}{{ portfolio.name }} - 設定編集{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .form-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--dark-color);
+    }
+
+    .form-label.required::after {
+        content: '*';
+        color: var(--danger-color);
+        margin-left: 0.25rem;
+    }
+
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .form-help {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    .form-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-checkbox input {
+        width: 18px;
+        height: 18px;
+    }
+
+    .inline-group {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    .inline-group .form-group {
+        margin-bottom: 0;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-success {
+        background-color: var(--secondary-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #27ae60;
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+
+    .delete-section {
+        background-color: #fff5f5;
+        border: 1px solid #fed7d7;
+    }
+
+    /* Time picker styles */
+    .time-picker {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .time-picker input {
+        width: 70px;
+        text-align: center;
+    }
+
+    .time-picker .separator {
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+
+    /* Subset dropdown styles */
+    .subset-dropdown {
+        position: relative;
+    }
+
+    .subset-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .subset-list.show {
+        display: block;
+    }
+
+    .subset-item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+    }
+
+    .subset-item:hover {
+        background-color: #f0f0f0;
+    }
+
+    .subset-category {
+        font-size: 0.75rem;
+        color: #999;
+        text-transform: uppercase;
+        padding: 0.5rem 0.75rem 0.25rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title">{% if is_new %}新規ポートフォリオ作成{% else %}{{ portfolio.name }} - 設定編集{% endif %}</h2>
+    <a href="{% if is_new %}/portfolios{% else %}/portfolios/{{ portfolio.id }}{% endif %}" class="btn btn-secondary">キャンセル</a>
+</div>
+
+<form id="portfolioForm">
+    <!-- 基本情報 -->
+    <div class="form-section">
+        <h3 class="section-title">基本情報</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label required">ポートフォリオID</label>
+                <input type="text" class="form-input" name="id" id="idInput"
+                       value="{{ portfolio.id if portfolio else '' }}"
+                       pattern="[a-z0-9_]+" title="英小文字、数字、アンダースコアのみ"
+                       {% if not is_new %}readonly{% endif %}
+                       required>
+                <p class="form-help">英小文字、数字、アンダースコアのみ（例: japan_stocks）</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">表示名</label>
+                <input type="text" class="form-input" name="name" id="nameInput"
+                       value="{{ portfolio.name if portfolio else '' }}" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">説明</label>
+            <textarea class="form-textarea" name="description" id="descriptionInput">{{ portfolio.description if portfolio else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- 資本設定 -->
+    <div class="form-section">
+        <h3 class="section-title">資本設定</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label required">初期資本</label>
+                <input type="number" class="form-input" name="initial_capital" id="initialCapitalInput"
+                       value="{{ portfolio.initial_capital if portfolio else 1000000 }}"
+                       min="0" step="1" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">通貨</label>
+                <select class="form-select" name="currency" id="currencyInput">
+                    <option value="JPY" {{ 'selected' if not portfolio or portfolio.currency == 'JPY' else '' }}>JPY (日本円)</option>
+                    <option value="USD" {{ 'selected' if portfolio and portfolio.currency == 'USD' else '' }}>USD (米ドル)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユニバース設定 -->
+    <div class="form-section">
+        <h3 class="section-title">ユニバース設定</h3>
+        <div class="form-group">
+            <label class="form-label">ソース</label>
+            <select class="form-select" name="universe_source" id="universeSourceInput">
+                <option value="asset_master" {{ 'selected' if not portfolio or portfolio.universe.source == 'asset_master' else '' }}>アセットマスタ</option>
+                <option value="custom" {{ 'selected' if portfolio and portfolio.universe.source == 'custom' else '' }}>カスタム</option>
+            </select>
+        </div>
+        <div class="form-group" id="subsetGroup">
+            <label class="form-label">サブセット</label>
+            <div class="subset-dropdown">
+                <input type="text" class="form-input" name="universe_subset" id="universeSubsetInput"
+                       value="{{ portfolio.universe.subset if portfolio and portfolio.universe.subset else '' }}"
+                       placeholder="クリックして選択..."
+                       autocomplete="off">
+                <div class="subset-list" id="subsetList"></div>
+            </div>
+            <p class="form-help">asset_master の market または asset_class でフィルタ</p>
+        </div>
+        <div class="form-group" id="symbolsGroup" style="display: none;">
+            <label class="form-label">シンボルリスト</label>
+            <textarea class="form-textarea" name="universe_symbols" id="universeSymbolsInput"
+                      placeholder="7203.T&#10;9984.T&#10;6758.T">{{ '\n'.join(portfolio.universe.symbols) if portfolio and portfolio.universe.symbols else '' }}</textarea>
+            <p class="form-help">1行に1シンボル</p>
+        </div>
+    </div>
+
+    <!-- ロットサイズ設定 -->
+    <div class="form-section">
+        <h3 class="section-title">ロットサイズ設定</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">デフォルトロットサイズ</label>
+                <input type="number" class="form-input" name="lot_size_default" id="lotSizeDefaultInput"
+                       value="{{ portfolio.lot_size.default if portfolio else 1 }}"
+                       min="1" step="1">
+                <p class="form-help">日本株は通常100</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">&nbsp;</label>
+                <div class="form-checkbox">
+                    <input type="checkbox" name="fractional_allowed" id="fractionalAllowedInput"
+                           {{ 'checked' if portfolio and portfolio.lot_size.fractional_allowed else '' }}>
+                    <label for="fractionalAllowedInput">端数株の購入を許可</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- スケジュール設定 -->
+    <div class="form-section">
+        <h3 class="section-title">スケジュール設定</h3>
+        <div class="form-group">
+            <div class="form-checkbox">
+                <input type="checkbox" name="schedule_enabled" id="scheduleEnabledInput"
+                       {{ 'checked' if portfolio and portfolio.schedule.enabled else '' }}>
+                <label for="scheduleEnabledInput">スケジュール実行を有効にする</label>
+            </div>
+        </div>
+        <div class="form-grid" id="scheduleOptions">
+            <div class="form-group">
+                <label class="form-label">実行時間</label>
+                <div class="time-picker">
+                    <input type="number" class="form-input" name="schedule_hour" id="scheduleHourInput"
+                           value="{{ portfolio.schedule.hour if portfolio else 3 }}"
+                           min="0" max="23" step="1" placeholder="時">
+                    <span class="separator">:</span>
+                    <input type="number" class="form-input" name="schedule_minute" id="scheduleMinuteInput"
+                           value="{{ portfolio.schedule.minute if portfolio else 0 }}"
+                           min="0" max="59" step="1" placeholder="分">
+                </div>
+                <p class="form-help">24時間表記で指定</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">タイムゾーン</label>
+                <select class="form-select" name="schedule_timezone" id="scheduleTimezoneInput">
+                    <option value="Asia/Tokyo" {{ 'selected' if not portfolio or portfolio.schedule.timezone == 'Asia/Tokyo' else '' }}>Asia/Tokyo (日本)</option>
+                    <option value="America/New_York" {{ 'selected' if portfolio and portfolio.schedule.timezone == 'America/New_York' else '' }}>America/New_York (東海岸)</option>
+                    <option value="America/Los_Angeles" {{ 'selected' if portfolio and portfolio.schedule.timezone == 'America/Los_Angeles' else '' }}>America/Los_Angeles (西海岸)</option>
+                    <option value="Europe/London" {{ 'selected' if portfolio and portfolio.schedule.timezone == 'Europe/London' else '' }}>Europe/London (ロンドン)</option>
+                    <option value="UTC" {{ 'selected' if portfolio and portfolio.schedule.timezone == 'UTC' else '' }}>UTC</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知設定 -->
+    <div class="form-section">
+        <h3 class="section-title">通知設定</h3>
+        <div class="form-group">
+            <div class="form-checkbox">
+                <input type="checkbox" name="notification_on_rebalance" id="notificationOnRebalanceInput"
+                       {{ 'checked' if not portfolio or portfolio.notification.on_rebalance else '' }}>
+                <label for="notificationOnRebalanceInput">リバランス時に通知を送信</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="form-checkbox">
+                <input type="checkbox" name="notification_on_no_rebalance" id="notificationOnNoRebalanceInput"
+                       {{ 'checked' if portfolio and portfolio.notification.on_no_rebalance else '' }}>
+                <label for="notificationOnNoRebalanceInput">リバランス不要時も通知を送信</label>
+            </div>
+        </div>
+    </div>
+
+    {% if not is_new %}
+    <!-- 削除セクション -->
+    <div class="form-section delete-section">
+        <h3 class="section-title" style="color: var(--danger-color);">危険ゾーン</h3>
+        <p style="margin-bottom: 1rem;">ポートフォリオを削除すると、設定と保有資産データがすべて失われます。この操作は取り消せません。</p>
+        <button type="button" class="btn btn-danger" onclick="confirmDelete()">ポートフォリオを削除</button>
+    </div>
+    {% endif %}
+
+    <div class="action-buttons">
+        <a href="{% if is_new %}/portfolios{% else %}/portfolios/{{ portfolio.id }}{% endif %}" class="btn btn-secondary">キャンセル</a>
+        <button type="submit" class="btn btn-success">{% if is_new %}作成{% else %}保存{% endif %}</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const isNew = {{ 'true' if is_new else 'false' }};
+    const portfolioId = '{{ portfolio.id if portfolio else '' }}';
+    let subsets = [];
+
+    // Load subsets from API
+    async function loadSubsets() {
+        try {
+            const response = await fetch('/portfolios/api/subsets');
+            if (response.ok) {
+                subsets = await response.json();
+                renderSubsetList();
+            }
+        } catch (error) {
+            console.error('Failed to load subsets:', error);
+        }
+    }
+
+    function renderSubsetList() {
+        const list = document.getElementById('subsetList');
+        let html = '';
+
+        // Group by category
+        const markets = subsets.filter(s => s.id.startsWith('market:'));
+        const assetClasses = subsets.filter(s => s.id.startsWith('asset_class:'));
+
+        if (markets.length > 0) {
+            html += '<div class="subset-category">Market</div>';
+            markets.forEach(s => {
+                html += `<div class="subset-item" data-value="${s.id}">${s.name}</div>`;
+            });
+        }
+
+        if (assetClasses.length > 0) {
+            html += '<div class="subset-category">Asset Class</div>';
+            assetClasses.forEach(s => {
+                html += `<div class="subset-item" data-value="${s.id}">${s.name}</div>`;
+            });
+        }
+
+        // Add "Clear" option
+        html += '<div class="subset-category">Other</div>';
+        html += '<div class="subset-item" data-value="" style="font-style: italic;">クリア（全銘柄）</div>';
+
+        list.innerHTML = html;
+    }
+
+    // Subset dropdown behavior
+    const subsetInput = document.getElementById('universeSubsetInput');
+    const subsetList = document.getElementById('subsetList');
+
+    subsetInput.addEventListener('focus', () => {
+        subsetList.classList.add('show');
+    });
+
+    subsetInput.addEventListener('blur', () => {
+        setTimeout(() => subsetList.classList.remove('show'), 200);
+    });
+
+    subsetList.addEventListener('click', (e) => {
+        const item = e.target.closest('.subset-item');
+        if (item) {
+            const value = item.dataset.value;
+            subsetInput.value = value;
+            subsetList.classList.remove('show');
+        }
+    });
+
+    // Toggle universe options
+    document.getElementById('universeSourceInput').addEventListener('change', function() {
+        const isCustom = this.value === 'custom';
+        document.getElementById('subsetGroup').style.display = isCustom ? 'none' : 'block';
+        document.getElementById('symbolsGroup').style.display = isCustom ? 'block' : 'none';
+    });
+
+    // Initialize universe toggle
+    const universeSource = document.getElementById('universeSourceInput').value;
+    document.getElementById('subsetGroup').style.display = universeSource === 'custom' ? 'none' : 'block';
+    document.getElementById('symbolsGroup').style.display = universeSource === 'custom' ? 'block' : 'none';
+
+    // Toggle schedule options
+    document.getElementById('scheduleEnabledInput').addEventListener('change', function() {
+        document.getElementById('scheduleOptions').style.opacity = this.checked ? '1' : '0.5';
+    });
+
+    // Initialize schedule toggle
+    const scheduleEnabled = document.getElementById('scheduleEnabledInput').checked;
+    document.getElementById('scheduleOptions').style.opacity = scheduleEnabled ? '1' : '0.5';
+
+    // Validate time inputs
+    document.getElementById('scheduleHourInput').addEventListener('change', function() {
+        let val = parseInt(this.value) || 0;
+        if (val < 0) val = 0;
+        if (val > 23) val = 23;
+        this.value = val;
+    });
+
+    document.getElementById('scheduleMinuteInput').addEventListener('change', function() {
+        let val = parseInt(this.value) || 0;
+        if (val < 0) val = 0;
+        if (val > 59) val = 59;
+        this.value = val;
+    });
+
+    // Form submission
+    document.getElementById('portfolioForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const data = {
+            id: document.getElementById('idInput').value.trim(),
+            name: document.getElementById('nameInput').value.trim(),
+            description: document.getElementById('descriptionInput').value.trim(),
+            initial_capital: parseFloat(document.getElementById('initialCapitalInput').value) || 0,
+            currency: document.getElementById('currencyInput').value,
+            universe_source: document.getElementById('universeSourceInput').value,
+            universe_subset: document.getElementById('universeSubsetInput').value.trim() || null,
+            universe_symbols: document.getElementById('universeSymbolsInput').value.trim()
+                ? document.getElementById('universeSymbolsInput').value.trim().split('\n').map(s => s.trim()).filter(s => s)
+                : null,
+            lot_size_default: parseInt(document.getElementById('lotSizeDefaultInput').value) || 1,
+            fractional_allowed: document.getElementById('fractionalAllowedInput').checked,
+            schedule_enabled: document.getElementById('scheduleEnabledInput').checked,
+            schedule_hour: parseInt(document.getElementById('scheduleHourInput').value) || 0,
+            schedule_minute: parseInt(document.getElementById('scheduleMinuteInput').value) || 0,
+            schedule_timezone: document.getElementById('scheduleTimezoneInput').value,
+            notification_on_rebalance: document.getElementById('notificationOnRebalanceInput').checked,
+            notification_on_no_rebalance: document.getElementById('notificationOnNoRebalanceInput').checked,
+        };
+
+        const url = isNew ? '/portfolios/api/create' : `/portfolios/api/${portfolioId}`;
+        const method = isNew ? 'POST' : 'PUT';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.href = `/portfolios/${data.id}`;
+            } else {
+                const error = await response.json();
+                alert('保存に失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('保存に失敗しました: ' + error.message);
+        }
+    });
+
+    // Delete confirmation
+    function confirmDelete() {
+        if (confirm('本当にこのポートフォリオを削除しますか？\nこの操作は取り消せません。')) {
+            fetch(`/portfolios/api/${portfolioId}`, {method: 'DELETE'})
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/portfolios';
+                    } else {
+                        return response.json().then(error => {
+                            alert('削除に失敗しました: ' + (error.detail || 'Unknown error'));
+                        });
+                    }
+                })
+                .catch(error => {
+                    alert('削除に失敗しました: ' + error.message);
+                });
+        }
+    }
+
+    // Initialize
+    loadSubsets();
+</script>
+{% endblock %}

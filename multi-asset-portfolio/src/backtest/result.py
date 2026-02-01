@@ -17,13 +17,8 @@ from typing import Any, Optional
 import numpy as np
 import pandas as pd
 
-# Numba acceleration is optional
-try:
-    from .numba_accelerate import calculate_max_drawdown_numba
-    USE_NUMBA = True
-except ImportError:
-    calculate_max_drawdown_numba = None
-    USE_NUMBA = False
+# Use unified metrics module
+from src.utils.metrics import calculate_max_drawdown
 
 
 @dataclass
@@ -190,8 +185,6 @@ class BacktestResult:
         """
         Calculate maximum drawdown from portfolio values.
 
-        Uses Numba JIT compiled function for faster computation when USE_NUMBA=True.
-
         Args:
             portfolio_values: Array of portfolio values
 
@@ -201,14 +194,9 @@ class BacktestResult:
         if len(portfolio_values) == 0:
             return 0.0
 
-        # Use Numba accelerated version if enabled
-        if USE_NUMBA:
-            return float(calculate_max_drawdown_numba(portfolio_values.astype(np.float64)))
-
-        # Fallback to pure NumPy
-        running_max = np.maximum.accumulate(portfolio_values)
-        drawdowns = (portfolio_values - running_max) / running_max
-        return float(np.min(drawdowns))
+        # Use unified metrics module (returns positive value, negate for this interface)
+        max_dd = calculate_max_drawdown(portfolio_values=portfolio_values)
+        return -max_dd  # Return negative as per original interface
 
     def to_dataframe(self) -> pd.DataFrame:
         """

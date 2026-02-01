@@ -1,0 +1,23 @@
+name: 日本株ポートフォリオ
+description: 日本株式のみを対象とした長期投資ポートフォリオ
+universe:
+  source: asset_master
+  subset: japan_only
+  symbols: null
+initial_capital: 10000000.0
+currency: JPY
+lot_size:
+  default: 100
+  fractional_allowed: false
+  overrides: {}
+schedule:
+  enabled: true
+  hour: 15
+  minute: 25
+  timezone: Asia/Tokyo
+  trading_days_only: true
+notification:
+  on_rebalance: true
+  on_no_rebalance: true
+  include_order_details: true
+  webhook_url: null

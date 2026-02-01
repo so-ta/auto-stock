@@ -352,6 +352,192 @@
                     </tbody>
                 </table>
             </section>
+
+            {% if monthly_performance %}
+            <!-- 月次パフォーマンス -->
+            <section class="section">
+                <h2>月次パフォーマンス</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>月</th>
+                            <th>リターン</th>
+                            <th>累積リターン</th>
+                            <th>リバランス回数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in monthly_performance %}
+                        <tr>
+                            <td>{{ row.month }}</td>
+                            <td class="{% if row.return > 0 %}positive{% elif row.return < 0 %}negative{% endif %}">
+                                {{ '%+.2f' | format(row.return * 100) }}%
+                            </td>
+                            <td class="{% if row.cumulative > 0 %}positive{% elif row.cumulative < 0 %}negative{% endif %}">
+                                {{ '%+.2f' | format(row.cumulative * 100) }}%
+                            </td>
+                            <td>{{ row.rebalance_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+            {% endif %}
+
+            {% if forecast_data and forecast_metrics %}
+            <!-- 予測 vs 実績リターン -->
+            <section class="section">
+                <h2>リバランス履歴</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>リバランス日</th>
+                            <th>予測リターン</th>
+                            <th>実績リターン</th>
+                            <th>予測誤差</th>
+                            <th>取引コスト</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in forecast_data %}
+                        <tr>
+                            <td>{{ row.date[:10] if row.date else 'N/A' }}</td>
+                            <td>{{ (row.expected_return * 100) | round(2) }}%</td>
+                            <td class="{% if row.actual_return is not none and row.actual_return > 0 %}positive{% elif row.actual_return is not none and row.actual_return < 0 %}negative{% endif %}">
+                                {% if row.actual_return is not none %}{{ '%+.2f' | format(row.actual_return * 100) }}%{% else %}N/A{% endif %}
+                            </td>
+                            <td class="{% if row.forecast_error and row.forecast_error > 0 %}positive{% elif row.forecast_error and row.forecast_error < 0 %}negative{% endif %}">
+                                {% if row.forecast_error is not none %}{{ '%+.2f' | format(row.forecast_error * 100) }}%{% else %}N/A{% endif %}
+                            </td>
+                            <td>{{ (row.total_cost * 100) | round(2) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- 予測精度サマリー -->
+                <div class="summary-cards" style="margin-top: 20px;">
+                    <div class="card">
+                        <div class="label">平均予測リターン</div>
+                        <div class="value">{{ (forecast_metrics.mean_expected * 100) | round(2) }}%</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">平均実績リターン</div>
+                        <div class="value">{{ (forecast_metrics.mean_actual * 100) | round(2) }}%</div>
+                    </div>
+                    <div class="card primary">
+                        <div class="label">予測相関係数</div>
+                        <div class="value">{{ forecast_metrics.correlation | round(3) }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">総取引コスト</div>
+                        <div class="value">{{ (forecast_metrics.total_cost * 100) | round(2) }}%</div>
+                    </div>
+                </div>
+
+                <table style="margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th colspan="2">予測精度詳細</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>平均予測誤差</td>
+                            <td class="{% if forecast_metrics.mean_error > 0 %}positive{% elif forecast_metrics.mean_error < 0 %}negative{% endif %}">
+                                {{ '%+.2f' | format(forecast_metrics.mean_error * 100) }}%
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>予測誤差の標準偏差</td>
+                            <td>{{ (forecast_metrics.std_error * 100) | round(2) }}%</td>
+                        </tr>
+                        <tr>
+                            <td>累計ターンオーバー</td>
+                            <td>{{ (forecast_metrics.total_turnover * 100) | round(2) }}%</td>
+                        </tr>
+                        <tr>
+                            <td>リバランス回数</td>
+                            <td>{{ forecast_metrics.n_rebalances }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            {% endif %}
+
+            {% if final_weights %}
+            <!-- 保有銘柄一覧 -->
+            <section class="section">
+                <h2>保有銘柄一覧</h2>
+                {% set sorted_holdings = final_weights | dictsort(by='value', reverse=true) %}
+                {% set non_cash_holdings = [] %}
+                {% set cash_weight = 0 %}
+                {% for symbol, weight in sorted_holdings %}
+                    {% if symbol == 'CASH' %}
+                        {% set cash_weight = weight %}
+                    {% elif weight > 0 %}
+                        {% set _ = non_cash_holdings.append((symbol, weight)) %}
+                    {% endif %}
+                {% endfor %}
+
+                <p>保有銘柄数: <strong>{{ non_cash_holdings | length }}</strong> |
+                   投資比率: <strong>{{ ((1 - cash_weight) * 100) | round(1) }}%</strong> |
+                   現金比率: <strong>{{ (cash_weight * 100) | round(1) }}%</strong></p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>シンボル</th>
+                            <th>銘柄名</th>
+                            <th>区分</th>
+                            <th>ウェイト</th>
+                            <th>リターン</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for symbol, weight in sorted_holdings %}
+                        {% if symbol != 'CASH' and weight > 0 %}
+                        <tr>
+                            <td><strong>{{ symbol }}</strong></td>
+                            <td>
+                                {% if asset_master %}
+                                    {{ asset_master.get(symbol).display_name }}
+                                {% else %}
+                                    {{ symbol }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if asset_master %}
+                                    {% set info = asset_master.get(symbol) %}
+                                    {{ info.category_display }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ (weight * 100) | round(2) }}%</td>
+                            <td class="{% if stock_returns and stock_returns.get(symbol, 0) > 0 %}positive{% elif stock_returns and stock_returns.get(symbol, 0) < 0 %}negative{% endif %}">
+                                {% if stock_returns and symbol in stock_returns %}
+                                    {{ '%+.1f' | format(stock_returns[symbol] * 100) }}%
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if cash_weight > 0 %}
+                        <tr class="highlight">
+                            <td><strong>CASH</strong></td>
+                            <td>現金</td>
+                            <td>-</td>
+                            <td>{{ (cash_weight * 100) | round(2) }}%</td>
+                            <td>-</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </section>
+            {% endif %}
         </div>
 
         <div class="footer">

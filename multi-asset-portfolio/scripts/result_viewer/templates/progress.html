@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}実行中: {{ progress.run_id }} - バックテスト管理{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div>
+        <a href="/" style="color: var(--primary-color); text-decoration: none;">&larr; ダッシュボードに戻る</a>
+        <h2 style="margin-top: 0.5rem; color: var(--dark-color);">
+            {% if progress.status == 'failed' %}
+            バックテスト失敗
+            <span class="tag" style="margin-left: 0.5rem; background: var(--danger-color); color: white;">
+                {{ progress.status }}
+            </span>
+            {% elif progress.status == 'completed' %}
+            バックテスト完了
+            <span class="tag" style="margin-left: 0.5rem; background: var(--secondary-color); color: white;">
+                {{ progress.status }}
+            </span>
+            {% else %}
+            バックテスト実行中
+            <span class="tag" style="margin-left: 0.5rem; background: var(--primary-color); color: white;">
+                {{ progress.status }}
+            </span>
+            {% endif %}
+        </h2>
+        <p style="color: #666; font-size: 0.9rem;">
+            <code>{{ progress.run_id }}</code>
+        </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <button class="btn btn-secondary" onclick="deleteProgress()">削除</button>
+        {% if progress.status != 'failed' and progress.status != 'completed' %}
+        <button class="btn btn-danger" onclick="stopBacktest()">停止</button>
+        {% endif %}
+    </div>
+</div>
+
+{% if progress.status == 'failed' and progress.errors %}
+<!-- 失敗時のエラーサマリー -->
+<div class="card" style="margin-bottom: 1.5rem; border: 2px solid var(--danger-color);">
+    <div class="card-header" style="background: #f8d7da;">
+        <h3 class="card-title" style="color: var(--danger-color);">エラー詳細</h3>
+    </div>
+    <div style="padding: 1rem;">
+        <p style="margin-bottom: 0.5rem; font-weight: 600;">バックテストは以下のエラーで停止しました：</p>
+        {% for error in progress.errors %}
+        <div class="error-detail" style="padding: 1rem; background: #fff; border: 1px solid #f5c6cb; border-radius: 4px; margin-bottom: 0.5rem;">
+            <code style="font-size: 0.9rem; color: #721c24; word-break: break-all;">{{ error }}</code>
+        </div>
+        {% endfor %}
+        <p style="margin-top: 1rem; font-size: 0.85rem; color: #666;">
+            ヒント: シグナル評価エラーの場合、エラーメッセージに表示されている銘柄/シグナル名を確認してください。
+            データ品質の問題や、特定の銘柄で計算が失敗している可能性があります。
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- 概要 -->
+<div class="stats-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card">
+        <div class="stat-value" id="stat-phase">{{ progress.phase }}</div>
+        <div class="stat-label">現在のフェーズ</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="stat-rebalance">
+            {{ progress.current_rebalance }}/{{ progress.total_rebalances }}
+        </div>
+        <div class="stat-label">リバランス</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="stat-eta">
+            {% if progress.estimated_completion %}
+            {{ progress.estimated_completion[11:16] }}
+            {% else %}
+            --:--
+            {% endif %}
+        </div>
+        <div class="stat-label">推定完了時刻</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="stat-universe">{{ progress.universe_size }}</div>
+        <div class="stat-label">ユニバースサイズ</div>
+    </div>
+</div>
+
+<!-- 2カラムレイアウト -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <!-- 工程別進捗 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">工程別進捗</h3>
+        </div>
+        <table id="phases-table">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">工程</th>
+                    <th style="width: 45%;">進捗</th>
+                    <th style="width: 25%;">ステータス</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set phases_list = [
+                    ('initializing', '初期化'),
+                    ('data_loading', 'データ読み込み'),
+                    ('signal_precompute', 'シグナル計算'),
+                    ('backtest', 'バックテスト'),
+                    ('report', 'レポート生成'),
+                    ('saving', '結果保存')
+                ] %}
+                {% for phase_key, phase_name in phases_list %}
+                {% set phase_data = progress.phases.get(phase_key, {}) %}
+                <tr data-phase="{{ phase_key }}">
+                    <td>{{ phase_name }}</td>
+                    <td>
+                        <div class="progress-bar" style="height: 8px; background: #ddd; border-radius: 4px; margin-bottom: 4px;">
+                            <div class="progress-bar-fill" style="width: {{ phase_data.percentage|default(0) }}%; height: 100%; background: var(--secondary-color); border-radius: 4px; transition: width 0.3s;"></div>
+                        </div>
+                        <span style="font-size: 0.8rem; color: #666;">
+                            {{ phase_data.current|default(0) }}/{{ phase_data.total|default(0) }}
+                            {% if phase_data.total|default(0) > 0 %}
+                            ({{ phase_data.percentage|default(0)|round(1) }}%)
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if phase_data.status == 'completed' %}
+                        <span style="color: var(--secondary-color);">&#10003; 完了</span>
+                        {% elif phase_data.status == 'running' %}
+                        <span style="color: var(--primary-color);">&#9673; 実行中</span>
+                        {% else %}
+                        <span style="color: #999;">&#9675; 待機中</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- キャッシュ統計 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">キャッシュ統計</h3>
+        </div>
+        <div id="cache-stats">
+            {% if progress.cache_stats %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>キャッシュ</th>
+                        <th class="text-right">ヒット</th>
+                        <th class="text-right">ミス</th>
+                        <th class="text-right">ヒット率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cache_name, stats in progress.cache_stats.items() %}
+                    <tr>
+                        <td>{{ cache_name }}</td>
+                        <td class="text-right">{{ stats.hits }}</td>
+                        <td class="text-right">{{ stats.misses }}</td>
+                        <td class="text-right">
+                            {% set total = stats.hits + stats.misses %}
+                            {% if total > 0 %}
+                            {{ "%.1f"|format(stats.hits / total * 100) }}%
+                            {% else %}
+                            --
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="padding: 2rem; text-align: center; color: #666;">
+                キャッシュ統計はまだありません
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- エラー・警告 -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">ログ</h3>
+    </div>
+    <div id="log-container" style="max-height: 300px; overflow-y: auto;">
+        {% if progress.errors %}
+        <div style="margin-bottom: 1rem;">
+            <h4 style="color: var(--danger-color); font-size: 0.9rem; margin-bottom: 0.5rem;">エラー</h4>
+            {% for error in progress.errors %}
+            <div style="padding: 0.5rem; background: #f8d7da; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem; color: #721c24;">
+                {{ error }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if progress.warnings %}
+        <div style="margin-bottom: 1rem;">
+            <h4 style="color: var(--warning-color); font-size: 0.9rem; margin-bottom: 0.5rem;">警告</h4>
+            {% for warning in progress.warnings %}
+            <div style="padding: 0.5rem; background: #fff3cd; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem; color: #856404;">
+                {{ warning }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if not progress.errors and not progress.warnings %}
+        <div style="padding: 2rem; text-align: center; color: #666;">
+            エラー・警告はありません
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 実行情報 -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">実行情報</h3>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div class="metric-item">
+            <div class="metric-label">開始時刻</div>
+            <div>{{ progress.start_time[:19] if progress.start_time else '-' }}</div>
+        </div>
+        <div class="metric-item">
+            <div class="metric-label">最終更新</div>
+            <div id="last-update">{{ progress.last_update[:19] if progress.last_update else '-' }}</div>
+        </div>
+        <div class="metric-item">
+            <div class="metric-label">リバランス頻度</div>
+            <div>{{ progress.frequency or '-' }}</div>
+        </div>
+        <div class="metric-item">
+            <div class="metric-label">現在の日付</div>
+            <div id="current-date">{{ progress.current_date or '-' }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    .metric-item {
+        padding: 0.5rem 0;
+    }
+    .metric-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const runId = "{{ progress.run_id }}";
+    let eventSource = null;
+
+    function setupSSE() {
+        eventSource = new EventSource(`/backtest/api/progress/${runId}/stream`);
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.error) {
+                console.error('Progress error:', data.error);
+                eventSource.close();
+                return;
+            }
+
+            if (data.status === 'done') {
+                // Redirect to result page or dashboard
+                if (data.final && data.final.status === 'completed') {
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    window.location.reload();
+                }
+                eventSource.close();
+                return;
+            }
+
+            updateUI(data);
+        };
+
+        eventSource.onerror = function(event) {
+            console.error('SSE error:', event);
+            eventSource.close();
+            // Fallback to polling
+            setTimeout(pollProgress, 3000);
+        };
+    }
+
+    async function pollProgress() {
+        try {
+            const response = await fetch(`/backtest/api/progress/${runId}`);
+            if (!response.ok) {
+                window.location.href = '/';
+                return;
+            }
+            const data = await response.json();
+            updateUI(data);
+
+            if (data.status === 'completed' || data.status === 'failed') {
+                window.location.href = '/';
+                return;
+            }
+
+            setTimeout(pollProgress, 2000);
+        } catch (err) {
+            console.error('Poll error:', err);
+            setTimeout(pollProgress, 5000);
+        }
+    }
+
+    function updateUI(data) {
+        // Update stats
+        document.getElementById('stat-phase').textContent = data.phase || '--';
+        document.getElementById('stat-rebalance').textContent =
+            `${data.current_rebalance || 0}/${data.total_rebalances || 0}`;
+        document.getElementById('stat-eta').textContent =
+            data.estimated_completion ? data.estimated_completion.slice(11, 16) : '--:--';
+        document.getElementById('last-update').textContent =
+            data.last_update ? data.last_update.slice(0, 19) : '-';
+        document.getElementById('current-date').textContent =
+            data.current_date || '-';
+
+        // Update phases table
+        if (data.phases) {
+            const phasesMap = {
+                'initializing': '初期化',
+                'data_loading': 'データ読み込み',
+                'signal_precompute': 'シグナル計算',
+                'backtest': 'バックテスト',
+                'report': 'レポート生成',
+                'saving': '結果保存'
+            };
+
+            for (const [phaseKey, phaseData] of Object.entries(data.phases)) {
+                const row = document.querySelector(`tr[data-phase="${phaseKey}"]`);
+                if (!row) continue;
+
+                const progressBar = row.querySelector('.progress-bar-fill');
+                const progressText = row.querySelector('span');
+                const statusCell = row.querySelector('td:last-child');
+
+                if (progressBar) {
+                    progressBar.style.width = `${phaseData.percentage || 0}%`;
+                }
+                if (progressText) {
+                    const pct = phaseData.total > 0 ? ` (${(phaseData.percentage || 0).toFixed(1)}%)` : '';
+                    progressText.textContent = `${phaseData.current || 0}/${phaseData.total || 0}${pct}`;
+                }
+                if (statusCell) {
+                    if (phaseData.status === 'completed') {
+                        statusCell.innerHTML = '<span style="color: var(--secondary-color);">&#10003; 完了</span>';
+                    } else if (phaseData.status === 'running') {
+                        statusCell.innerHTML = '<span style="color: var(--primary-color);">&#9673; 実行中</span>';
+                    } else {
+                        statusCell.innerHTML = '<span style="color: #999;">&#9675; 待機中</span>';
+                    }
+                }
+            }
+        }
+
+        // Update cache stats
+        if (data.cache_stats && Object.keys(data.cache_stats).length > 0) {
+            let html = '<table><thead><tr><th>キャッシュ</th><th class="text-right">ヒット</th><th class="text-right">ミス</th><th class="text-right">ヒット率</th></tr></thead><tbody>';
+            for (const [cacheName, stats] of Object.entries(data.cache_stats)) {
+                const total = stats.hits + stats.misses;
+                const hitRate = total > 0 ? (stats.hits / total * 100).toFixed(1) + '%' : '--';
+                html += `<tr><td>${cacheName}</td><td class="text-right">${stats.hits}</td><td class="text-right">${stats.misses}</td><td class="text-right">${hitRate}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            document.getElementById('cache-stats').innerHTML = html;
+        }
+
+        // Update logs
+        let logHtml = '';
+        if (data.errors && data.errors.length > 0) {
+            logHtml += '<div style="margin-bottom: 1rem;"><h4 style="color: var(--danger-color); font-size: 0.9rem; margin-bottom: 0.5rem;">エラー</h4>';
+            for (const error of data.errors) {
+                // Parse error to extract symbol/signal if present
+                const signalMatch = error.match(/for (\w+)\/(\w+):/);
+                if (signalMatch) {
+                    const [, symbol, signal] = signalMatch;
+                    logHtml += `<div style="padding: 0.75rem; background: #f8d7da; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem; color: #721c24;">`;
+                    logHtml += `<div style="margin-bottom: 0.25rem;"><strong>銘柄:</strong> ${symbol} | <strong>シグナル:</strong> ${signal}</div>`;
+                    logHtml += `<div>${error}</div>`;
+                    logHtml += `</div>`;
+                } else {
+                    logHtml += `<div style="padding: 0.5rem; background: #f8d7da; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem; color: #721c24;">${error}</div>`;
+                }
+            }
+            logHtml += '</div>';
+        }
+        if (data.warnings && data.warnings.length > 0) {
+            logHtml += '<div style="margin-bottom: 1rem;"><h4 style="color: var(--warning-color); font-size: 0.9rem; margin-bottom: 0.5rem;">警告</h4>';
+            for (const warning of data.warnings) {
+                logHtml += `<div style="padding: 0.5rem; background: #fff3cd; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem; color: #856404;">${warning}</div>`;
+            }
+            logHtml += '</div>';
+        }
+        if (!logHtml) {
+            logHtml = '<div style="padding: 2rem; text-align: center; color: #666;">エラー・警告はありません</div>';
+        }
+        document.getElementById('log-container').innerHTML = logHtml;
+
+        // Update header for failed status
+        if (data.status === 'failed') {
+            document.querySelector('h2').innerHTML = `バックテスト失敗 <span class="tag" style="margin-left: 0.5rem; background: var(--danger-color); color: white;">${data.status}</span>`;
+            const stopBtn = document.querySelector('button.btn-danger');
+            if (stopBtn && stopBtn.textContent === '停止') {
+                stopBtn.style.display = 'none';
+            }
+        }
+    }
+
+    async function stopBacktest() {
+        if (!confirm('このバックテストを停止しますか？')) {
+            return;
+        }
+
+        try {
+            const jobsResponse = await fetch('/backtest/api/jobs?status=running');
+            const jobs = await jobsResponse.json();
+            const job = jobs.find(j => j.run_id === runId);
+
+            if (job) {
+                await fetch(`/backtest/api/job/${job.job_id}/stop`, { method: 'POST' });
+                window.location.href = '/';
+            }
+        } catch (err) {
+            console.error('Failed to stop backtest:', err);
+            alert('停止に失敗しました');
+        }
+    }
+
+    async function deleteProgress() {
+        if (!confirm('この実行記録を削除しますか？\n\n実行中のバックテストがある場合は、先に停止してください。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/backtest/api/progress/${runId}`, { method: 'DELETE' });
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                const data = await response.json();
+                alert('削除に失敗しました: ' + (data.detail || '不明なエラー'));
+            }
+        } catch (err) {
+            console.error('Failed to delete progress:', err);
+            alert('削除に失敗しました');
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSSE();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (eventSource) {
+            eventSource.close();
+        }
+    });
+</script>
+{% endblock %}

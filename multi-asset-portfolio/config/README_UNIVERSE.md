@@ -1,166 +1,180 @@
-# Universe Configuration Guide
+# Universe Configuration Guide (v3.0)
 
 ## Overview
 
-This directory contains universe configuration files that define the investable asset universe for the multi-asset portfolio system.
+The multi-asset portfolio system uses a **single unified configuration file** (`asset_master.yaml`) for all asset universe definitions.
 
 ## File Structure
 
 ```
 config/
-├── universe.yaml           # System default configuration
-├── universe_standard.yaml  # Standard backtest universe (cmd_029)
-└── universe_full.yaml      # Complete ticker list for data fetching
+├── asset_master.yaml      # Single source of truth for all assets
+├── default.yaml           # System configuration (references asset_master.yaml)
+└── README_UNIVERSE.md     # This file
 ```
 
-> **Note**: `universe_optimized.yaml` was removed in cmd_029 cleanup (task_029_10).
-> Use `universe_standard.yaml` for all standardized backtests.
-
-## File Descriptions
-
-### 1. universe.yaml (Default Configuration)
-
-**Purpose**: System-wide default universe configuration
-
-**Used by**:
-- `config/default.yaml` - Main configuration file
-- `src/config/settings.py` - Default universe path
-- `src/orchestrator/pipeline.py` - Pipeline execution
-
-**Format**: Structured configuration with enabled/disabled flags per category
+## asset_master.yaml Structure
 
 ```yaml
-universe:
-  us_stocks:
-    enabled: true
-    source: "sp500"
-    default_tickers: [...]
-  japan_stocks:
-    enabled: true
+version: '3.0'
+name: "Asset Master"
+description: "Single source of truth for all tradeable assets"
+
+# Taxonomy definitions (extensible via YAML only)
+taxonomy:
+  market:
+    us: "US Markets"
+    japan: "Japanese Markets"
     ...
+  asset_class:
+    equity: "Individual Stocks"
+    etf: "Exchange Traded Funds"
+    ...
+  sector:
+    technology: "Technology"
+    healthcare: "Healthcare"
+    ...
+
+# Symbol list with taxonomy and tags
+symbols:
+  - ticker: AAPL
+    taxonomy:
+      market: us
+      asset_class: equity
+      sector: technology
+    tags: [sp500, sbi, quality]
+
+  - ticker: 7203.T
+    taxonomy:
+      market: japan
+      asset_class: equity
+    tags: [nikkei225, sbi, quality]
+
+# Named subsets for filtering
+subsets:
+  standard:
+    name: "Standard Universe"
+    description: "Quality-filtered subset for backtesting"
+    filters:
+      tags: [quality]
+
+  japan:
+    name: "Japan Universe"
+    filters:
+      taxonomy:
+        market: [japan]
 ```
 
-**When to use**: Default system runs, development, testing
+## Available Subsets
 
----
+| Subset | Description | Filters |
+|--------|-------------|---------|
+| `standard` | Quality-filtered backtesting universe | `tags: [quality]` |
+| `sbi` | SBI Securities tradeable | `tags: [sbi]` |
+| `japan` | Japanese market stocks | `taxonomy.market: [japan]` |
+| `us_equity` | US individual stocks | `taxonomy: {market: [us], asset_class: [equity]}` |
+| `etf_only` | All ETFs | `taxonomy.asset_class: [etf]` |
 
-### 2. universe_standard.yaml (Standard Backtest Universe)
+## Usage in Code
 
-**Purpose**: Quality-filtered universe for standardized backtests (cmd_029 specification)
+### Basic Usage
 
-**Used by**:
-- `scripts/run_standard_backtest.py` - Standard backtest runner
-- `scripts/build_standard_cache.py` - Cache builder
+```python
+from src.data.universe_loader import UniverseLoader
 
-**Statistics**:
-- Total symbols: 828
-- US stocks: 471
-- Japan stocks: 219
-- ETFs: 103
-- Forex: 35
+loader = UniverseLoader()
 
-**Format**: Flat symbol list organized by category
+# Get all symbols
+all_symbols = loader.get_all_symbols()
 
-```yaml
-version: '1.0'
-name: Standard Universe
-total_symbols: 828
-us_stocks:
-  symbols: [AAL, AAPL, ...]
+# Get a named subset
+standard = loader.get_subset("standard")
+japan = loader.get_subset("japan")
+
+# Get tickers only
+tickers = loader.get_subset_tickers("standard")
 ```
 
-**When to use**: Standardized performance comparison, production backtests
+### Filtering by Criteria
 
----
+```python
+# Filter by taxonomy
+us_tech = loader.filter_symbols(
+    taxonomy={"market": ["us"], "sector": ["technology"]}
+)
 
-### 3. universe_full.yaml (Complete Ticker List)
+# Filter by tags
+sbi_tradeable = loader.filter_symbols(tags=["sbi"])
 
-**Purpose**: Complete universe including all available tickers before filtering
+# Exclude certain tags
+active = loader.filter_symbols(exclude_tags=["delisted", "illiquid"])
+```
 
-**Used by**:
-- `scripts/fetch_universe_lists.py` - Generates this file
-- `scripts/fetch_full_universe.py` - Data fetcher
-- `scripts/run_daily_backtest_15y.py` - 15-year daily backtest
+### Report Generation
 
-**Statistics**:
-- US stocks: 501 (S&P 500)
-- Japan stocks: 233 (Nikkei 225)
-- ETFs: 119
-- Forex: 37
-- Crypto: 15
+```python
+# Group symbols by taxonomy key
+by_sector = loader.group_by_taxonomy(symbols, "sector")
+for sector, syms in by_sector.items():
+    label = loader.get_taxonomy_label("sector", sector)
+    print(f"{label}: {len(syms)} symbols")
+```
 
-**Format**: Structured with metadata
+### Backward Compatibility
+
+```python
+# Legacy format (still supported)
+legacy = loader.load_standard_universe()
+# Returns: {"us_stocks": [...], "japan_stocks": [...], "etfs": [...]}
+```
+
+## Configuration in default.yaml
 
 ```yaml
 universe:
-  us_stocks:
-    enabled: true
-    count: 501
-    tickers: [...]
+  master_file: "config/asset_master.yaml"
+  default_subset: "standard"
+  max_assets: 500
 ```
 
-**When to use**: Data fetching, cache building, full universe analysis
+## Extending Taxonomy
 
----
+To add a new taxonomy key (e.g., dividend yield):
 
-### 4. universe_optimized.yaml (Optimization Template)
-
-**Purpose**: Configuration template for optimized universe selection
-
-**Used by**:
-- `src/data/universe_loader.py` - Universe loading
-
-**Features**:
-- Configurable filters (volume, market cap, price range)
-- Sector diversification constraints
-- Regional allocation targets
-- Correlation-based exclusion
-
-**Format**: Configuration parameters
-
+1. Add to `taxonomy` section:
 ```yaml
-universe:
-  max_tickers: 150
-  filters:
-    min_daily_volume: 10000000
-    min_market_cap: 1000000000
-    max_sector_weight: 0.15
+taxonomy:
+  dividend_yield:
+    high: "High Yield (>4%)"
+    medium: "Medium Yield (2-4%)"
+    low: "Low Yield (<2%)"
 ```
 
-**When to use**: Experimental backtests, parameter optimization
+2. Add to symbols:
+```yaml
+symbols:
+  - ticker: AAPL
+    taxonomy:
+      dividend_yield: low
+```
+
+3. Use in code (no code changes needed):
+```python
+by_yield = loader.group_by_taxonomy(symbols, "dividend_yield")
+```
+
+## Migration from v1.0/v2.0
+
+The old universe files have been consolidated:
+
+| Old File | New Location |
+|----------|--------------|
+| `universe.yaml` | `asset_master.yaml` |
+| `universe_standard.yaml` | `asset_master.yaml` (subset: `standard`) |
+| `universe_sbi.yaml` | `asset_master.yaml` (subset: `sbi`) |
+| `universe_japan_all.yaml` | `asset_master.yaml` (subset: `japan`) |
 
 ---
 
-## Selection Guide
-
-| Use Case | Recommended File |
-|----------|------------------|
-| Standard backtest | `universe_standard.yaml` |
-| Development/Testing | `universe.yaml` |
-| Data fetching | `universe_full.yaml` |
-| Optimization experiments | `universe_optimized.yaml` |
-
-## Quality Filters Applied to Standard Universe
-
-The standard universe (universe_standard.yaml) has been filtered with:
-
-- Maximum missing data rate: 5%
-- Maximum OHLC error rate: 1%
-- Minimum average volume: 100,000
-- Minimum trading days: 500
-
-## Maintenance Notes
-
-1. **universe_full.yaml**: Regenerate periodically with `scripts/fetch_universe_lists.py`
-2. **universe_standard.yaml**: Update when index constituents change
-3. **universe.yaml**: Edit for system-wide default changes
-4. **universe_optimized.yaml**: Modify for experimental settings
-
-## Deprecated Files (Removed)
-
-- `universe_filtered.yaml` - Intermediate output, replaced by `universe_standard.yaml`
-
----
-
-*Last updated: 2026-01-30*
-*Task: task_032_15 (cmd_032)*
+*Last updated: 2026-02-01*
+*Version: 3.0*

@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.signals.base import ParameterSpec, Signal, SignalResult
+from src.signals.base import ParameterSpec, Signal, SignalResult, TimeframeAffinity, TimeframeConfig
 from src.signals.registry import SignalRegistry
 
 logger = logging.getLogger(__name__)
@@ -449,6 +449,21 @@ class LowVolPremiumSignal(Signal):
     - 0: 平均的なボラティリティ
     - -1: 最も高いボラティリティ（アンダーウェイト推奨）
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Low Vol Premium: factor signal (20-120 days).
+
+        Volatility calculation needs 20+ days for stability.
+        Based on low volatility anomaly research showing optimal
+        20-120 day windows for volatility ranking.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=20,
+            max_period=120,
+            supported_variants=["medium", "long"],  # 20, 60
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:

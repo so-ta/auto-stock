@@ -1,0 +1,1680 @@
+{% extends "base.html" %}
+
+{% block title %}{{ portfolio.name }} - ポートフォリオ詳細{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+
+    .summary-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--dark-color);
+    }
+
+    .summary-value.positive {
+        color: var(--secondary-color);
+    }
+
+    .summary-value.negative {
+        color: var(--danger-color);
+    }
+
+    .summary-label {
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+        margin-top: 0.25rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .holdings-table {
+        font-size: 0.9rem;
+    }
+
+    .holdings-table th {
+        font-size: 0.75rem;
+    }
+
+    .symbol-cell {
+        font-weight: 600;
+    }
+
+    .weight-bar {
+        width: 100%;
+        height: 8px;
+        background-color: #eee;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .weight-bar-fill {
+        height: 100%;
+        background-color: var(--primary-color);
+        border-radius: 4px;
+    }
+
+    .chart-container {
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+    }
+
+    .metric-card {
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .metric-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .metric-label {
+        font-size: 0.7rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    /* メインタブ */
+    .main-tabs {
+        display: flex;
+        border-bottom: 2px solid #eee;
+        margin-bottom: 1.5rem;
+        gap: 0;
+    }
+
+    .main-tab {
+        padding: 1rem 2rem;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        color: #666;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .main-tab:hover {
+        color: var(--dark-color);
+        background-color: #f8f9fa;
+    }
+
+    .main-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .main-tab-content {
+        display: none;
+    }
+
+    .main-tab-content.active {
+        display: block;
+    }
+
+    /* 期間フィルタ */
+    .period-filter {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .period-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .period-btn:hover {
+        background-color: #f8f9fa;
+    }
+
+    .period-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    /* チャートセクション */
+    .chart-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .chart-container.tall {
+        height: 400px;
+    }
+
+    /* パフォーマンスメトリクスグリッド */
+    .perf-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .perf-metric-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+
+    .perf-metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--dark-color);
+    }
+
+    .perf-metric-label {
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+        margin-top: 0.25rem;
+    }
+
+    /* エクスポートセクション */
+    .export-section {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .info-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .info-value {
+        font-weight: 600;
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+
+    /* Daily snapshot table styles */
+    .snapshot-table {
+        font-size: 0.85rem;
+        width: 100%;
+    }
+
+    .snapshot-table th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        background-color: #f8f9fa;
+        position: sticky;
+        top: 0;
+    }
+
+    .snapshot-table td {
+        padding: 0.5rem;
+    }
+
+    .snapshot-table .rebalance-marker {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: var(--primary-color);
+        border-radius: 50%;
+        margin-left: 0.25rem;
+    }
+
+    .snapshot-wrapper {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .tabs {
+        display: flex;
+        border-bottom: 2px solid #eee;
+        margin-bottom: 1rem;
+    }
+
+    .tab {
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        color: #666;
+        font-weight: 500;
+    }
+
+    .tab:hover {
+        color: var(--dark-color);
+    }
+
+    .tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .position-change {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.375rem;
+        border-radius: 3px;
+        margin-left: 0.25rem;
+    }
+
+    .position-change.increase {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .position-change.decrease {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .update-prices-btn {
+        float: right;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Dynamic snapshot styles */
+    .dynamic-row {
+        background-color: #f9f9f9;
+        font-style: italic;
+    }
+
+    .dynamic-badge {
+        font-size: 0.65rem;
+        background-color: #e0e0e0;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        margin-left: 0.25rem;
+        font-style: normal;
+    }
+
+    /* Snapshot action buttons */
+    .snapshot-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        transition: background-color 0.2s;
+    }
+
+    .btn-icon:hover {
+        background-color: #e9ecef;
+    }
+
+    .btn-icon.edit:hover {
+        background-color: #d4edda;
+    }
+
+    .btn-icon.delete:hover {
+        background-color: #f8d7da;
+    }
+
+    .btn-icon.save {
+        color: var(--primary-color);
+    }
+
+    .btn-icon.save:hover {
+        background-color: #d4edda;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 700px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+    }
+
+    .modal-close:hover {
+        color: var(--dark-color);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--dark-color);
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .positions-edit-table {
+        width: 100%;
+        font-size: 0.9rem;
+    }
+
+    .positions-edit-table th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+    }
+
+    .positions-edit-table td {
+        padding: 0.5rem;
+    }
+
+    .positions-edit-table input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+    }
+
+    .btn-add-position {
+        width: 100%;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        background-color: #f8f9fa;
+        border: 2px dashed var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-add-position:hover {
+        background-color: #e9ecef;
+        border-color: var(--primary-color);
+    }
+
+    .btn-remove-position {
+        background: none;
+        border: none;
+        color: var(--danger-color);
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        font-size: 1.2rem;
+    }
+
+    .apply-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background-color: #e8f4fd;
+        border-radius: 4px;
+    }
+
+    .apply-checkbox input {
+        width: 18px;
+        height: 18px;
+    }
+
+    .btn-success {
+        background-color: var(--secondary-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #27ae60;
+    }
+
+    .btn-success:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">{{ portfolio.name }}</h2>
+        <p style="color: #666; margin-top: 0.25rem;">{{ portfolio.description or 'ID: ' + portfolio.id }}</p>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-success" onclick="runRebalanceNow()" id="runRebalanceBtn">
+            ▶ リバランス実行
+        </button>
+        <a href="/portfolios/{{ portfolio.id }}/holdings" class="btn btn-secondary">保有資産編集</a>
+        <a href="/portfolios/{{ portfolio.id }}/edit" class="btn btn-primary">設定編集</a>
+    </div>
+</div>
+
+<!-- サマリ -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="summary-value">
+            {% if holdings %}
+                {% if portfolio.currency == 'JPY' %}
+                ¥{{ "{:,.0f}".format(holdings.total_value) }}
+                {% else %}
+                ${{ "{:,.2f}".format(holdings.total_value) }}
+                {% endif %}
+            {% else %}
+            -
+            {% endif %}
+        </div>
+        <div class="summary-label">総資産</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">
+            {% if holdings %}
+                {% if portfolio.currency == 'JPY' %}
+                ¥{{ "{:,.0f}".format(holdings.cash) }}
+                {% else %}
+                ${{ "{:,.2f}".format(holdings.cash) }}
+                {% endif %}
+            {% else %}
+            -
+            {% endif %}
+        </div>
+        <div class="summary-label">現金</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">
+            {% if holdings %}
+            {{ holdings.positions | length }}
+            {% else %}
+            0
+            {% endif %}
+        </div>
+        <div class="summary-label">保有銘柄数</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value {{ 'positive' if metrics.total_return > 0 else 'negative' if metrics.total_return < 0 else '' }}">
+            {{ "{:+.2f}".format(metrics.total_return * 100) }}%
+        </div>
+        <div class="summary-label">累積リターン</div>
+    </div>
+</div>
+
+<!-- メインタブ -->
+<div class="main-tabs">
+    <div class="main-tab active" onclick="showMainTab('holdings')">保有銘柄</div>
+    <div class="main-tab" onclick="showMainTab('performance')">パフォーマンス</div>
+    <div class="main-tab" onclick="showMainTab('history')">履歴</div>
+</div>
+
+<!-- 保有銘柄タブ -->
+<div id="holdings-tab" class="main-tab-content active">
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+        <!-- 保有銘柄 -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">保有銘柄</h3>
+                <button class="btn btn-secondary" onclick="updatePrices()" id="updatePricesBtn" style="font-size: 0.85rem;">
+                    🔄 価格更新
+                </button>
+            </div>
+            {% if holdings and holdings.positions %}
+            <table class="holdings-table" style="margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>銘柄</th>
+                        <th class="text-right">株数</th>
+                        <th class="text-right">現在価格</th>
+                        <th class="text-right">時価</th>
+                        <th class="text-right">損益</th>
+                        <th style="width: 80px;">比率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for symbol, pos in holdings.positions.items() %}
+                    <tr>
+                        <td class="symbol-cell">{{ symbol }}</td>
+                        <td class="text-right">{{ "{:,.0f}".format(pos.shares) if pos.shares == pos.shares|int else "{:,.2f}".format(pos.shares) }}</td>
+                        <td class="text-right">
+                            {% if portfolio.currency == 'JPY' %}
+                            ¥{{ "{:,.0f}".format(pos.current_price) }}
+                            {% else %}
+                            ${{ "{:,.2f}".format(pos.current_price) }}
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if portfolio.currency == 'JPY' %}
+                            ¥{{ "{:,.0f}".format(pos.market_value) }}
+                            {% else %}
+                            ${{ "{:,.2f}".format(pos.market_value) }}
+                            {% endif %}
+                        </td>
+                        <td class="text-right {{ 'positive' if (pos.current_price - pos.avg_cost) > 0 else 'negative' if (pos.current_price - pos.avg_cost) < 0 else '' }}">
+                            {% set pnl_pct = ((pos.current_price / pos.avg_cost) - 1) * 100 if pos.avg_cost > 0 else 0 %}
+                            {{ "{:+.1f}".format(pnl_pct) }}%
+                        </td>
+                        <td>
+                            <div class="weight-bar">
+                                <div class="weight-bar-fill" style="width: {{ (pos.weight * 100)|round(1) }}%;"></div>
+                            </div>
+                            <small>{{ "{:.1f}".format(pos.weight * 100) }}%</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="text-align: center; color: #666; padding: 2rem;">保有銘柄がありません</p>
+            {% endif %}
+        </div>
+
+        <!-- パフォーマンス指標 -->
+        <div>
+        <div class="card">
+            <h3 class="section-title">パフォーマンス指標</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value {{ 'positive' if metrics.annualized_return > 0 else 'negative' if metrics.annualized_return < 0 else '' }}">
+                        {{ "{:+.2f}".format(metrics.annualized_return * 100) }}%
+                    </div>
+                    <div class="metric-label">年率リターン</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ "{:.2f}".format(metrics.volatility * 100) }}%</div>
+                    <div class="metric-label">ボラティリティ</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ "{:.2f}".format(metrics.sharpe_ratio) }}</div>
+                    <div class="metric-label">シャープレシオ</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value negative">{{ "{:.2f}".format(metrics.max_drawdown * 100) }}%</div>
+                    <div class="metric-label">最大DD</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ "{:.1f}".format(metrics.win_rate * 100) }}%</div>
+                    <div class="metric-label">勝率</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ metrics.rebalance_count }}</div>
+                    <div class="metric-label">リバランス回数</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <h3 class="section-title">ポートフォリオ設定</h3>
+            <div class="info-item">
+                <span class="info-label">初期資本</span>
+                <span class="info-value">
+                    {% if portfolio.currency == 'JPY' %}
+                    ¥{{ "{:,.0f}".format(portfolio.initial_capital) }}
+                    {% else %}
+                    ${{ "{:,.2f}".format(portfolio.initial_capital) }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">通貨</span>
+                <span class="info-value">{{ portfolio.currency }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">ロットサイズ</span>
+                <span class="info-value">{{ portfolio.lot_size.default }}株</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">スケジュール</span>
+                <span class="info-value">
+                    {% if portfolio.schedule.enabled %}
+                    {{ "%02d:%02d"|format(portfolio.schedule.hour, portfolio.schedule.minute) }} ({{ portfolio.schedule.timezone }})
+                    {% else %}
+                    無効
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">通知</span>
+                <span class="info-value">
+                    {% if portfolio.notification.on_rebalance %}
+                    有効
+                    {% else %}
+                    無効
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 資産推移チャート（保有銘柄タブ内） -->
+    <div class="card" style="margin-top: 1.5rem;">
+        <h3 class="section-title">資産推移</h3>
+        <div class="chart-container">
+            <canvas id="valueChart"></canvas>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- パフォーマンスタブ -->
+<div id="performance-tab" class="main-tab-content">
+    <!-- 期間フィルタ -->
+    <div class="period-filter">
+        <button class="period-btn active" data-period="all">全期間</button>
+        <button class="period-btn" data-period="1y">1年</button>
+        <button class="period-btn" data-period="6m">6ヶ月</button>
+        <button class="period-btn" data-period="3m">3ヶ月</button>
+        <button class="period-btn" data-period="1m">1ヶ月</button>
+    </div>
+
+    <!-- パフォーマンス指標（8種類） -->
+    <div class="perf-metrics-grid">
+        <div class="perf-metric-card">
+            <div class="perf-metric-value {{ 'positive' if metrics.total_return > 0 else 'negative' if metrics.total_return < 0 else '' }}">
+                {{ "{:+.2f}".format(metrics.total_return * 100) }}%
+            </div>
+            <div class="perf-metric-label">累積リターン</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value {{ 'positive' if metrics.annualized_return > 0 else 'negative' if metrics.annualized_return < 0 else '' }}">
+                {{ "{:+.2f}".format(metrics.annualized_return * 100) }}%
+            </div>
+            <div class="perf-metric-label">年率リターン</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value">{{ "{:.2f}".format(metrics.volatility * 100) }}%</div>
+            <div class="perf-metric-label">ボラティリティ (年率)</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value">{{ "{:.2f}".format(metrics.sharpe_ratio) }}</div>
+            <div class="perf-metric-label">シャープレシオ</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value negative">{{ "{:.2f}".format(metrics.max_drawdown * 100) }}%</div>
+            <div class="perf-metric-label">最大ドローダウン</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value">{{ "{:.1f}".format(metrics.win_rate * 100) }}%</div>
+            <div class="perf-metric-label">勝率 (日次)</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value">{{ metrics.rebalance_count }}</div>
+            <div class="perf-metric-label">リバランス回数</div>
+        </div>
+        <div class="perf-metric-card">
+            <div class="perf-metric-value">{{ snapshot_count }}</div>
+            <div class="perf-metric-label">記録日数</div>
+        </div>
+    </div>
+
+    <!-- 資産推移チャート -->
+    <div class="chart-section">
+        <h3 class="section-title">資産推移</h3>
+        <div class="chart-container tall">
+            <canvas id="perfValueChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 累積リターンチャート -->
+    <div class="chart-section">
+        <h3 class="section-title">累積リターン</h3>
+        <div class="chart-container">
+            <canvas id="perfReturnChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 日次リターン分布 -->
+    <div class="chart-section">
+        <h3 class="section-title">日次リターン分布</h3>
+        <div class="chart-container">
+            <canvas id="perfDailyReturnChart"></canvas>
+        </div>
+    </div>
+
+    <!-- CSVエクスポート -->
+    <div class="card">
+        <div class="export-section">
+            <button class="btn btn-secondary" onclick="exportCSV()">📥 CSVエクスポート</button>
+        </div>
+    </div>
+</div>
+
+<!-- 履歴タブ -->
+<div id="history-tab" class="main-tab-content">
+    <!-- 日次スナップショット -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">日次スナップショット（直近30日）</h3>
+        <button class="btn btn-secondary" onclick="openAddSnapshotModal()" style="font-size: 0.85rem;">
+            ➕ スナップショット追加
+        </button>
+    </div>
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('summary')">サマリ</div>
+        <div class="tab" onclick="showTab('positions')">銘柄別推移</div>
+    </div>
+
+    <!-- サマリタブ -->
+    <div id="summary-tab" class="tab-content active">
+        <div class="snapshot-wrapper">
+            <table class="snapshot-table">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th class="text-right">総資産</th>
+                        <th class="text-right">現金</th>
+                        <th class="text-right">前日比</th>
+                        <th class="text-right">累積リターン</th>
+                        <th>リバランス</th>
+                        <th style="width: 80px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for snapshot in snapshots | reverse %}
+                    <tr class="{{ 'dynamic-row' if snapshot.is_dynamic else '' }}">
+                        <td>
+                            {{ snapshot.date }}
+                            {% if snapshot.is_dynamic %}
+                            <span class="dynamic-badge" title="前日ポジション+当日価格で動的計算">計算値</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if portfolio.currency == 'JPY' %}
+                            ¥{{ "{:,.0f}".format(snapshot.total_value) }}
+                            {% else %}
+                            ${{ "{:,.2f}".format(snapshot.total_value) }}
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if portfolio.currency == 'JPY' %}
+                            ¥{{ "{:,.0f}".format(snapshot.cash) }}
+                            {% else %}
+                            ${{ "{:,.2f}".format(snapshot.cash) }}
+                            {% endif %}
+                        </td>
+                        <td class="text-right {{ 'positive' if snapshot.daily_return and snapshot.daily_return > 0 else 'negative' if snapshot.daily_return and snapshot.daily_return < 0 else '' }}">
+                            {% if snapshot.daily_return is not none %}
+                            {{ "{:+.2f}".format(snapshot.daily_return * 100) }}%
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-right {{ 'positive' if snapshot.cumulative_return > 0 else 'negative' if snapshot.cumulative_return < 0 else '' }}">
+                            {{ "{:+.2f}".format(snapshot.cumulative_return * 100) }}%
+                        </td>
+                        <td>
+                            {% if snapshot.is_rebalance_day %}
+                            <span class="rebalance-marker" title="リバランス実行日"></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if snapshot.is_dynamic %}
+                            <div class="snapshot-actions">
+                                <button class="btn-icon save" onclick="saveDynamicSnapshot('{{ snapshot.date }}', {{ snapshot.cash }}, {{ snapshot.positions | tojson | e }})" title="スナップショットとして保存">
+                                    💾
+                                </button>
+                            </div>
+                            {% else %}
+                            <div class="snapshot-actions">
+                                <button class="btn-icon edit" onclick="editSnapshot('{{ snapshot.date }}')" title="編集">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon delete" onclick="deleteSnapshot('{{ snapshot.date }}')" title="削除">
+                                    🗑️
+                                </button>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 銘柄別推移タブ -->
+    <div id="positions-tab" class="tab-content">
+        <div class="snapshot-wrapper">
+            {% if snapshots %}
+            <table class="snapshot-table">
+                <thead>
+                    <tr>
+                        <th>銘柄</th>
+                        {% for snapshot in snapshots[-7:] | reverse %}
+                        <th class="text-right">{{ snapshot.date[-5:] }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set all_symbols = [] %}
+                    {% for snapshot in snapshots %}
+                        {% if snapshot.positions %}
+                            {% for symbol in snapshot.positions.keys() %}
+                                {% if symbol not in all_symbols %}
+                                    {% set _ = all_symbols.append(symbol) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% for symbol in all_symbols %}
+                    <tr>
+                        <td class="symbol-cell">{{ symbol }}</td>
+                        {% set prev_shares = namespace(value=0) %}
+                        {% for snapshot in snapshots[-7:] | reverse %}
+                        <td class="text-right">
+                            {% set current_shares = snapshot.positions.get(symbol, {}).shares if snapshot.positions else 0 %}
+                            {% if current_shares %}
+                                {{ "{:,.0f}".format(current_shares) }}株
+                                {% if prev_shares.value != 0 and current_shares != prev_shares.value %}
+                                    {% set diff = current_shares - prev_shares.value %}
+                                    <span class="position-change {{ 'increase' if diff > 0 else 'decrease' }}">
+                                        {{ "{:+,.0f}".format(diff) }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                            {% set prev_shares.value = current_shares %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="text-align: center; color: #666; padding: 2rem;">スナップショットデータがありません</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+<!-- スナップショット編集モーダル -->
+<div class="modal-overlay" id="snapshotModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">スナップショット編集</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">日付</label>
+                <input type="date" class="form-input" id="modalDate">
+
+            <div class="form-group">
+                <label class="form-label">現金残高</label>
+                <input type="number" class="form-input" id="modalCash" step="0.01" min="0">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">保有銘柄</label>
+                <table class="positions-edit-table">
+                    <thead>
+                        <tr>
+                            <th>銘柄</th>
+                            <th>株数</th>
+                            <th>価格</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalPositionsBody">
+                        <!-- 動的に追加 -->
+                    </tbody>
+                </table>
+                <button type="button" class="btn-add-position" onclick="addModalPosition()">
+                    + 銘柄を追加
+                </button>
+            </div>
+
+            <div class="form-group">
+                <div class="apply-checkbox" id="applyToHoldingsGroup" style="display: none;">
+                    <input type="checkbox" id="applyToHoldings" checked>
+                    <label for="applyToHoldings">現在の保有資産にも反映する（最新日付の場合のみ有効）</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+            <button class="btn btn-success" onclick="saveSnapshot()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const portfolioId = '{{ portfolio.id }}';
+    const timeseriesData = {{ timeseries | safe }};
+
+    // Sub-tab switching (inside history tab)
+    function showTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+        document.querySelector(`.tab[onclick*="${tabId}"]`).classList.add('active');
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+    }
+
+    // Main tab switching
+    let perfChartsInitialized = false;
+
+    function showMainTab(tabId) {
+        document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.main-tab-content').forEach(t => t.classList.remove('active'));
+
+        document.querySelector(`.main-tab[onclick*="${tabId}"]`).classList.add('active');
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+
+        // Initialize performance charts when the tab is first shown
+        if (tabId === 'performance' && !perfChartsInitialized) {
+            initPerfCharts();
+            perfChartsInitialized = true;
+        }
+    }
+
+    // Check URL for tab parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['holdings', 'performance', 'history'].includes(tabParam)) {
+        showMainTab(tabParam);
+    }
+
+    // Update prices
+    async function updatePrices() {
+        const btn = document.getElementById('updatePricesBtn');
+        const originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 取得中...';
+
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/update-prices`, {
+                method: 'POST',
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                btn.innerHTML = '✅ 更新完了';
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                throw new Error('Failed to update prices');
+            }
+        } catch (error) {
+            console.error('Failed to update prices:', error);
+            btn.innerHTML = '❌ 失敗';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 2000);
+        }
+    }
+
+    // Chart rendering
+    if (timeseriesData.dates && timeseriesData.dates.length > 0) {
+        const ctx = document.getElementById('valueChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeseriesData.dates,
+                datasets: [{
+                    label: '総資産',
+                    data: timeseriesData.total_value,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '{% if portfolio.currency == "JPY" %}¥{% else %}${% endif %}' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // =========================================================================
+    // Snapshot Edit/Delete/Create Functions
+    // =========================================================================
+
+    let currentEditDate = null;
+    let modalMode = 'edit'; // 'edit' or 'create'
+    let latestSnapshotDate = null;
+    let allSnapshots = [];
+
+    // Get all snapshots and find the latest real (non-dynamic) snapshot date
+    {% if snapshots %}
+    allSnapshots = {{ snapshots | tojson | safe }};
+    const realSnapshots = allSnapshots.filter(s => !s.is_dynamic);
+    if (realSnapshots.length > 0) {
+        // Sort by date and get the latest
+        realSnapshots.sort((a, b) => a.date.localeCompare(b.date));
+        latestSnapshotDate = realSnapshots[realSnapshots.length - 1].date;
+    }
+    {% endif %}
+
+    // Open modal for adding a new snapshot
+    function openAddSnapshotModal() {
+        modalMode = 'create';
+        currentEditDate = null;
+
+        document.getElementById('modalTitle').textContent = 'スナップショット追加';
+        document.getElementById('modalDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('modalDate').readOnly = false;
+        document.getElementById('modalDate').style.backgroundColor = '';
+        document.getElementById('modalCash').value = '';
+
+        // Clear positions
+        const tbody = document.getElementById('modalPositionsBody');
+        tbody.innerHTML = '';
+
+        // Show apply to holdings checkbox
+        const applyGroup = document.getElementById('applyToHoldingsGroup');
+        applyGroup.style.display = 'flex';
+        document.getElementById('applyToHoldings').checked = false;
+
+        document.getElementById('snapshotModal').classList.add('show');
+    }
+
+    // Save dynamic snapshot (convert computed snapshot to real one)
+    async function saveDynamicSnapshot(dateStr, cash, positions) {
+        if (!confirm(`${dateStr} の計算値をスナップショットとして保存しますか？`)) {
+            return;
+        }
+
+        const positionsArray = Object.entries(positions).map(([symbol, pos]) => ({
+            symbol: symbol,
+            shares: pos.shares,
+            price: pos.price,
+        }));
+
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/snapshot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: dateStr,
+                    cash: cash,
+                    positions: positionsArray,
+                    is_rebalance: false,
+                    apply_to_holdings: false,
+                }),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('保存に失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Failed to save snapshot:', error);
+            alert('保存に失敗しました: ' + error.message);
+        }
+    }
+
+    // Edit snapshot modal
+    async function editSnapshot(dateStr) {
+        modalMode = 'edit';
+        currentEditDate = dateStr;
+
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/snapshot/${dateStr}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch snapshot');
+            }
+
+            const snapshot = await response.json();
+
+            // Populate modal
+            document.getElementById('modalTitle').textContent = 'スナップショット編集';
+            document.getElementById('modalDate').value = dateStr;
+            document.getElementById('modalDate').readOnly = true;
+            document.getElementById('modalDate').style.backgroundColor = '#f8f9fa';
+            document.getElementById('modalCash').value = snapshot.cash;
+
+            // Populate positions
+            const tbody = document.getElementById('modalPositionsBody');
+            tbody.innerHTML = '';
+
+            for (const [symbol, pos] of Object.entries(snapshot.positions || {})) {
+                addModalPosition({
+                    symbol: symbol,
+                    shares: pos.shares,
+                    price: pos.price,
+                });
+            }
+
+            // Show apply to holdings checkbox only for the latest date
+            const applyGroup = document.getElementById('applyToHoldingsGroup');
+            if (dateStr === latestSnapshotDate) {
+                applyGroup.style.display = 'flex';
+                document.getElementById('applyToHoldings').checked = true;
+            } else {
+                applyGroup.style.display = 'none';
+            }
+
+            // Show modal
+            document.getElementById('snapshotModal').classList.add('show');
+
+        } catch (error) {
+            console.error('Failed to load snapshot:', error);
+            alert('スナップショットの読み込みに失敗しました');
+        }
+    }
+
+    function addModalPosition(data = {}) {
+        const tbody = document.getElementById('modalPositionsBody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-input" name="symbol" value="${data.symbol || ''}" placeholder="7203.T" required></td>
+            <td><input type="number" class="form-input" name="shares" value="${data.shares || ''}" step="0.01" min="0" required></td>
+            <td><input type="number" class="form-input" name="price" value="${data.price || ''}" step="0.01" min="0" required></td>
+            <td><button type="button" class="btn-remove-position" onclick="this.closest('tr').remove()">&times;</button></td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    function closeModal() {
+        document.getElementById('snapshotModal').classList.remove('show');
+        currentEditDate = null;
+    }
+
+    async function saveSnapshot() {
+        const dateValue = document.getElementById('modalDate').value;
+
+        if (!dateValue) {
+            alert('日付を入力してください');
+            return;
+        }
+
+        const cash = parseFloat(document.getElementById('modalCash').value) || 0;
+        const positions = [];
+
+        document.querySelectorAll('#modalPositionsBody tr').forEach(row => {
+            const symbol = row.querySelector('input[name="symbol"]').value.trim();
+            const shares = parseFloat(row.querySelector('input[name="shares"]').value) || 0;
+            const price = parseFloat(row.querySelector('input[name="price"]').value) || 0;
+
+            if (symbol && shares > 0) {
+                positions.push({ symbol, shares, price });
+            }
+        });
+
+        const applyToHoldings = document.getElementById('applyToHoldings').checked;
+
+        try {
+            let response;
+
+            if (modalMode === 'create') {
+                // Create new snapshot
+                response = await fetch(`/portfolios/api/${portfolioId}/snapshot`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: dateValue,
+                        cash,
+                        positions,
+                        is_rebalance: false,
+                        apply_to_holdings: applyToHoldings,
+                    }),
+                });
+            } else {
+                // Update existing snapshot
+                response = await fetch(`/portfolios/api/${portfolioId}/snapshot/${currentEditDate}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cash,
+                        positions,
+                        apply_to_holdings: applyToHoldings,
+                    }),
+                });
+            }
+
+            if (response.ok) {
+                closeModal();
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('保存に失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Failed to save snapshot:', error);
+            alert('保存に失敗しました: ' + error.message);
+        }
+    }
+
+    async function deleteSnapshot(dateStr) {
+        if (!confirm(`${dateStr} のスナップショットを削除しますか？\nこの操作は取り消せません。`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/snapshot/${dateStr}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('削除に失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Failed to delete snapshot:', error);
+            alert('削除に失敗しました: ' + error.message);
+        }
+    }
+
+    // Close modal on overlay click
+    document.getElementById('snapshotModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+
+    // =========================================================================
+    // Run Rebalance Now
+    // =========================================================================
+
+    async function runRebalanceNow() {
+        const btn = document.getElementById('runRebalanceBtn');
+        const originalText = btn.innerHTML;
+
+        if (!confirm('リバランスチェックを実行しますか？\n\n実行内容:\n1. 最新価格を取得\n2. スナップショットを記録\n3. リバランス計算\n4. Discord通知（設定時）')) {
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 実行中...';
+
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/run-now`, {
+                method: 'POST',
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                if (result.status === 'rebalance_needed') {
+                    alert(`✅ リバランスが必要です\n\n${result.message || ''}`);
+                } else if (result.status === 'no_rebalance') {
+                    alert(`ℹ️ リバランス不要\n\n${result.message || '現在のポートフォリオはバランスが取れています。'}`);
+                } else if (result.status === 'error') {
+                    alert(`❌ エラー: ${result.error || 'Unknown error'}`);
+                } else {
+                    alert(`✅ 実行完了\n\nステータス: ${result.status}`);
+                }
+                window.location.reload();
+            } else {
+                throw new Error(result.detail || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ 実行に失敗しました: ' + error.message);
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // =========================================================================
+    // Performance Charts & Functions
+    // =========================================================================
+
+    let perfValueChart, perfReturnChart, perfDailyReturnChart;
+
+    function formatCurrency(value) {
+        {% if portfolio.currency == 'JPY' %}
+        return '¥' + Math.round(value).toLocaleString();
+        {% else %}
+        return '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        {% endif %}
+    }
+
+    function initPerfCharts() {
+        if (!timeseriesData.dates || timeseriesData.dates.length === 0) {
+            return;
+        }
+
+        // 資産推移チャート
+        const valueCtx = document.getElementById('perfValueChart').getContext('2d');
+        perfValueChart = new Chart(valueCtx, {
+            type: 'line',
+            data: {
+                labels: timeseriesData.dates,
+                datasets: [{
+                    label: '総資産',
+                    data: timeseriesData.total_value,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHitRadius: 10,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => formatCurrency(ctx.raw)
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: (value) => formatCurrency(value)
+                        }
+                    }
+                }
+            }
+        });
+
+        // 累積リターンチャート
+        const returnCtx = document.getElementById('perfReturnChart').getContext('2d');
+        perfReturnChart = new Chart(returnCtx, {
+            type: 'line',
+            data: {
+                labels: timeseriesData.dates,
+                datasets: [{
+                    label: '累積リターン',
+                    data: timeseriesData.cumulative_return,
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.raw.toFixed(2) + '%'
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: (value) => value + '%'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 日次リターン分布（ヒストグラム風）
+        const dailyReturns = (timeseriesData.daily_return || []).filter(r => r !== 0);
+        const bins = {};
+        const binSize = 0.5;
+
+        dailyReturns.forEach(r => {
+            const bin = Math.floor(r / binSize) * binSize;
+            bins[bin] = (bins[bin] || 0) + 1;
+        });
+
+        const sortedBins = Object.keys(bins).map(Number).sort((a, b) => a - b);
+        const binLabels = sortedBins.map(b => b.toFixed(1) + '%');
+        const binCounts = sortedBins.map(b => bins[b]);
+        const binColors = sortedBins.map(b => b >= 0 ? 'rgba(46, 204, 113, 0.7)' : 'rgba(231, 76, 60, 0.7)');
+
+        const dailyCtx = document.getElementById('perfDailyReturnChart').getContext('2d');
+        perfDailyReturnChart = new Chart(dailyCtx, {
+            type: 'bar',
+            data: {
+                labels: binLabels,
+                datasets: [{
+                    label: '日数',
+                    data: binCounts,
+                    backgroundColor: binColors,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: { display: true, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // 期間フィルタ
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const period = this.dataset.period;
+            let startIndex = 0;
+
+            if (period !== 'all') {
+                const totalDays = timeseriesData.dates.length;
+                const periodDays = {
+                    '1m': 30,
+                    '3m': 90,
+                    '6m': 180,
+                    '1y': 365
+                };
+                startIndex = Math.max(0, totalDays - periodDays[period]);
+            }
+
+            const filteredDates = timeseriesData.dates.slice(startIndex);
+            const filteredValue = timeseriesData.total_value.slice(startIndex);
+            const filteredReturn = timeseriesData.cumulative_return.slice(startIndex);
+
+            if (perfValueChart) {
+                perfValueChart.data.labels = filteredDates;
+                perfValueChart.data.datasets[0].data = filteredValue;
+                perfValueChart.update();
+            }
+
+            if (perfReturnChart) {
+                perfReturnChart.data.labels = filteredDates;
+                perfReturnChart.data.datasets[0].data = filteredReturn;
+                perfReturnChart.update();
+            }
+        });
+    });
+
+    // CSVエクスポート
+    async function exportCSV() {
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/export`);
+            if (response.ok) {
+                const data = await response.json();
+                alert('✅ エクスポート完了\n\nファイル: ' + data.file_path);
+            } else {
+                const error = await response.json();
+                alert('❌ エクスポートに失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('❌ エクスポートに失敗しました: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

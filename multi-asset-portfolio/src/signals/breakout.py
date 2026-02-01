@@ -14,7 +14,13 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from src.signals.base import ParameterSpec, Signal, SignalResult
+from src.signals.base import (
+    ParameterSpec,
+    Signal,
+    SignalResult,
+    TimeframeAffinity,
+    TimeframeConfig,
+)
 from src.signals.registry import SignalRegistry
 
 
@@ -37,6 +43,21 @@ class DonchianChannelSignal(Signal):
     - -1: Price breaking below lower channel (bearish breakout)
     - 0: Price within channel (no breakout)
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Donchian Channel: medium-term breakout (10-60 days).
+
+        Turtle trading used 20-day and 55-day channels. Very long
+        periods (126+) lose breakout sensitivity.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=10,
+            max_period=60,
+            # medium(20) and long(60) are within spec range [10, 60]
+            supported_variants=["medium", "long"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
@@ -146,6 +167,20 @@ class HighLowBreakoutSignal(Signal):
     - -1: New N-day low (bearish)
     - Gradual values: Distance from highs/lows
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """High/Low Breakout: medium-term (5-60 days).
+
+        Similar to Donchian, effective for detecting breakouts
+        in medium-term timeframes.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=5,
+            max_period=60,
+            supported_variants=["short", "medium", "long"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
@@ -269,6 +304,21 @@ class RangeBreakoutSignal(Signal):
     - -1: Strong downward range expansion
     - Near 0: Consolidation phase
     """
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Range Breakout: short-to-medium term (5-30 days).
+
+        Range breakouts are most effective for short-term trading.
+        Note: consolidation_period spec is [5, 30], atr_period is [7, 28]
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.SHORT_TERM,
+            min_period=7,
+            max_period=28,
+            # medium(20) is within atr_period spec range [7, 28]
+            supported_variants=["medium"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:

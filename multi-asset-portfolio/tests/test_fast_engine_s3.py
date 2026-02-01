@@ -1,7 +1,8 @@
 """
-FastBacktestEngine StorageBackend対応テスト（task_045_7）
+FastBacktestEngine StorageBackend対応テスト
 
 StorageConfig経由でのS3/ローカルバックエンド統合をテスト。
+Note: S3は必須。全てのテストでStorageBackendを使用。
 """
 
 import tempfile
@@ -22,6 +23,17 @@ def temp_cache_dir():
     """一時キャッシュディレクトリ"""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield tmpdir
+
+
+@pytest.fixture
+def storage_config(temp_cache_dir):
+    """テスト用StorageConfig（S3必須）"""
+    return StorageConfig(
+        s3_bucket="test-bucket",
+        base_path=temp_cache_dir,
+        s3_prefix=".cache",
+        s3_region="ap-northeast-1",
+    )
 
 
 @pytest.fixture
@@ -67,10 +79,8 @@ class TestFastBacktestConfigS3:
         assert hasattr(config, "storage_config")
         assert config.storage_config is None
 
-    def test_config_with_storage_config(self, temp_cache_dir):
+    def test_config_with_storage_config(self, storage_config):
         """storage_configを指定して初期化"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         config = FastBacktestConfig(
             start_date=datetime(2023, 1, 1),
             end_date=datetime(2023, 3, 31),
@@ -78,17 +88,14 @@ class TestFastBacktestConfigS3:
         )
 
         assert config.storage_config is not None
-        assert config.storage_config.backend == "local"
-        assert config.storage_config.base_path == temp_cache_dir
+        assert config.storage_config.s3_bucket == "test-bucket"
 
 
 class TestFastBacktestEngineS3Integration:
     """FastBacktestEngine S3統合テスト"""
 
-    def test_init_with_storage_config(self, temp_cache_dir):
+    def test_init_with_storage_config(self, temp_cache_dir, storage_config):
         """StorageConfigを渡して初期化"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         config = FastBacktestConfig(
             start_date=datetime(2023, 1, 1),
             end_date=datetime(2023, 3, 31),
@@ -101,26 +108,10 @@ class TestFastBacktestEngineS3Integration:
         engine = FastBacktestEngine(config)
 
         assert engine._storage_backend is not None
-        assert engine._storage_backend.config.backend == "local"
+        assert engine._storage_backend.config.s3_bucket == "test-bucket"
 
-    def test_init_without_storage_config(self, temp_cache_dir):
-        """StorageConfigなしで初期化（後方互換性）"""
-        config = FastBacktestConfig(
-            start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 3, 31),
-            cov_cache_dir=str(Path(temp_cache_dir) / "covariance"),
-            use_numba=False,
-            warmup_jit=False,
-        )
-
-        engine = FastBacktestEngine(config)
-
-        assert engine._storage_backend is None
-
-    def test_covariance_cache_receives_storage_backend(self, temp_cache_dir):
+    def test_covariance_cache_receives_storage_backend(self, temp_cache_dir, storage_config):
         """CovarianceCacheにstorage_backendが渡されることを確認"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         config = FastBacktestConfig(
             start_date=datetime(2023, 1, 1),
             end_date=datetime(2023, 3, 31),
@@ -138,10 +129,8 @@ class TestFastBacktestEngineS3Integration:
         assert engine.cov_cache._backend is not None
         assert engine.cov_cache._use_backend is True
 
-    def test_storage_backend_attribute_accessible(self, temp_cache_dir):
+    def test_storage_backend_attribute_accessible(self, temp_cache_dir, storage_config):
         """_storage_backend属性がアクセス可能であることを確認"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         config = FastBacktestConfig(
             start_date=datetime(2023, 1, 1),
             end_date=datetime(2023, 3, 31),
@@ -155,54 +144,16 @@ class TestFastBacktestEngineS3Integration:
 
         # 外部からSignalPrecomputer作成時に使用可能
         assert engine._storage_backend is not None
-        assert engine._storage_backend.config.backend == "local"
-
-
-class TestFastBacktestEngineLegacyMode:
-    """後方互換性テスト（storage_configなし）"""
-
-    def test_init_legacy(self, temp_cache_dir):
-        """従来モードで初期化"""
-        config = FastBacktestConfig(
-            start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 3, 31),
-            cov_cache_dir=str(Path(temp_cache_dir) / "covariance"),
-            use_numba=False,
-            warmup_jit=False,
-        )
-
-        engine = FastBacktestEngine(config)
-
-        assert engine._storage_backend is None
-        assert engine.cov_cache is not None
-
-    def test_covariance_cache_legacy(self, temp_cache_dir):
-        """従来モードでCovarianceCacheが正常に動作"""
-        config = FastBacktestConfig(
-            start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 3, 31),
-            cov_cache_dir=str(Path(temp_cache_dir) / "covariance"),
-            use_numba=False,
-            warmup_jit=False,
-        )
-
-        engine = FastBacktestEngine(config)
-
-        # CovarianceCacheは正常に初期化されている
-        assert engine.cov_cache is not None
-        # CovarianceCacheは_backend属性を使用
-        assert engine.cov_cache._backend is None
-        assert engine.cov_cache._use_backend is False
+        assert engine._storage_backend.config.s3_bucket == "test-bucket"
 
 
 class TestFastBacktestEngineWithSignalPrecomputer:
     """SignalPrecomputer連携テスト"""
 
-    def test_external_signal_precomputer_with_storage_backend(self, temp_cache_dir):
+    def test_external_signal_precomputer_with_storage_backend(self, temp_cache_dir, storage_config):
         """外部からstorage_backend付きSignalPrecomputerを渡す"""
         from src.backtest.signal_precompute import SignalPrecomputer
 
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
         backend = StorageBackend(storage_config)
 
         # 外部でSignalPrecomputerを作成
@@ -222,11 +173,9 @@ class TestFastBacktestEngineWithSignalPrecomputer:
         assert engine.signal_precomputer is signal_precomputer
         assert engine.signal_precomputer._use_backend is True
 
-    def test_use_engine_storage_backend_for_signal_precomputer(self, temp_cache_dir):
+    def test_use_engine_storage_backend_for_signal_precomputer(self, temp_cache_dir, storage_config):
         """エンジンのstorage_backendを使ってSignalPrecomputerを作成"""
         from src.backtest.signal_precompute import SignalPrecomputer
-
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
 
         config = FastBacktestConfig(
             start_date=datetime(2023, 1, 1),

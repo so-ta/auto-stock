@@ -249,6 +249,172 @@ logger.info("backtest_completed", sharpe=1.5, max_dd=-0.15)
 - [ ] 例外ログに `exc_info=True` を追加
 - [ ] センシティブ情報のマスキング
 
+## Pipeline Log Infrastructure
+
+### Overview
+
+パイプライン実行時のログを統一管理し、Viewer での確認と信頼性評価を可能にする。
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Pipeline Execution                      │
+├─────────────────────────────────────────────────────────┤
+│  structlog ─┬─> Console (CLI mode)                      │
+│             │                                            │
+│             └─> PipelineLogCollector                     │
+│                        │                                 │
+│                        ├──> ProgressTracker (SSE配信)    │
+│                        │         └──> Viewer リアルタイム │
+│                        │                                 │
+│                        └──> logs.jsonl 保存              │
+└─────────────────────────────────────────────────────────┘
+```
+
+### PipelineLogCollector
+
+パイプライン実行中のログを収集し、永続化する。
+
+```python
+from src.utils.pipeline_log_collector import PipelineLogCollector
+from src.utils.logger import set_log_collector
+
+# ログコレクターを初期化
+collector = PipelineLogCollector(run_id="run_123")
+set_log_collector(collector)
+
+# Pipeline execution...
+# (structlogのログが自動的に収集される)
+
+# ログを保存
+collector.save_to_file(Path("results/run_123/logs.jsonl"))
+```
+
+**主要メソッド**:
+
+| メソッド | 説明 |
+|---------|------|
+| `log(level, event, component, **details)` | ログエントリを追加 |
+| `get_logs(level=None, component=None)` | ログを取得（フィルタ可能） |
+| `get_stats()` | ログ統計を取得 |
+| `has_errors()` / `has_warnings()` | エラー/警告の有無を確認 |
+| `save_to_file(path)` | JSONL形式で保存 |
+| `attach_progress_tracker(tracker)` | ProgressTrackerと連携 |
+
+### Reliability Assessment
+
+ログに基づいてバックテスト結果の信頼性を評価する。
+
+```python
+from src.backtest.reliability import ReliabilityCalculator
+
+calculator = ReliabilityCalculator()
+assessment = calculator.calculate(log_collector)
+
+print(f"Score: {assessment.score:.0%}")
+print(f"Level: {assessment.level}")  # high, medium, low, unreliable
+print(f"Reliable: {assessment.is_reliable}")
+
+for reason in assessment.reasons:
+    print(f"  - {reason}")
+```
+
+**信頼性スコア減点トリガー**:
+
+| トリガー | 減点 | 説明 |
+|---------|------|------|
+| `unhandled_exception` | -1.0 | 未処理例外 |
+| `data_fetch_failed` | -0.5 | データ取得失敗 |
+| `insufficient_data` | -0.4 | データ不足 |
+| `error_recovered` | -0.3 | リカバリー発生 |
+| `fallback_activated` | -0.25 | フォールバック発動 |
+| `covariance_failed` | -0.25 | 共分散計算失敗 |
+| `data_quality_warnings_high` | -0.2 | 警告10件以上 |
+| `signal_computation_failed` | -0.15 | シグナル計算失敗 |
+| `missing_benchmark` | -0.15 | ベンチマーク欠損 |
+| `data_quality_warnings` | -0.1 | 警告1-9件 |
+| `partial_data` | -0.1 | データ不完全 |
+
+**スコアレベル対応**:
+
+| スコア | レベル | 解釈 |
+|--------|--------|------|
+| ≥ 0.9 | high | 信頼性高い |
+| 0.7-0.9 | medium | 許容範囲 |
+| 0.4-0.7 | low | 注意が必要 |
+| < 0.4 | unreliable | 信頼できない |
+
+### Log Persistence
+
+バックテスト結果と共にログを保存する。
+
+```python
+from src.analysis.result_store import BacktestResultStore
+
+store = BacktestResultStore()
+archive_id = store.save(
+    result=result,
+    name="Monthly Backtest",
+    log_collector=log_collector,  # ログも保存
+)
+```
+
+**保存される構造**:
+```
+results/{archive_id}/
+├── metadata.json          # reliability フィールド含む
+├── logs.jsonl             # 全実行ログ
+├── config_snapshot.yaml
+├── timeseries.parquet
+├── rebalances.parquet
+└── universe.json
+```
+
+### Viewer Integration
+
+Viewer でログと信頼性を確認できる。
+
+**API エンドポイント**:
+```
+GET /backtest/api/logs/{archive_id}
+GET /backtest/api/logs/{archive_id}?level=ERROR
+GET /backtest/api/logs/{archive_id}?level=WARNING&limit=100
+```
+
+**Response**:
+```json
+{
+  "logs": [
+    {
+      "timestamp": "2026-02-01 12:34:56.789",
+      "level": "INFO",
+      "event": "Pipeline started",
+      "component": "pipeline",
+      "message": "",
+      "details": {"run_id": "abc123"}
+    }
+  ],
+  "total": 500,
+  "filtered": 500
+}
+```
+
+**UI表示**:
+- 信頼性バナー: メトリクスの上部に表示
+- ログタブ: タブナビゲーションからアクセス
+- フィルタ機能: レベル別・検索
+
+### logging → structlog Bridge
+
+標準 `logging` モジュールを使用しているレガシーコードのログも自動収集される。
+
+```python
+import logging
+logger = logging.getLogger(__name__)
+logger.info("This will be captured by PipelineLogCollector")
+```
+
+ブリッジは `setup_logging()` で自動的に有効化される。
+
 ## References
 
 - [Python Logging HOWTO](https://docs.python.org/3/howto/logging.html)

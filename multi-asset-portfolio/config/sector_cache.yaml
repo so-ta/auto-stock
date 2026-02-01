@@ -1,0 +1,3946 @@
+metadata:
+  last_updated: '2026-02-01T02:19:28.708886'
+  total_entries: 657
+sectors:
+  1332.T:
+    fetched_at: '2026-02-01T02:15:48.127679'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  1333.T:
+    fetched_at: '2026-02-01T02:15:49.123137'
+    industry: Farm Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  1605.T:
+    fetched_at: '2026-02-01T02:15:50.174472'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  1721.T:
+    fetched_at: '2026-02-01T02:15:51.355509'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  1801.T:
+    fetched_at: '2026-02-01T02:15:52.363730'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  1802.T:
+    fetched_at: '2026-02-01T02:15:53.387931'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  1803.T:
+    fetched_at: '2026-02-01T02:15:54.496316'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  1808.T:
+    fetched_at: '2026-02-01T02:15:55.497175'
+    industry: Residential Construction
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  1812.T:
+    fetched_at: '2026-02-01T02:15:56.567014'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  1925.T:
+    fetched_at: '2026-02-01T02:15:57.607351'
+    industry: Real Estate - Development
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  1928.T:
+    fetched_at: '2026-02-01T02:15:58.660230'
+    industry: Residential Construction
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  1963.T:
+    fetched_at: '2026-02-01T02:15:59.664404'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  2002.T:
+    fetched_at: '2026-02-01T02:16:00.671769'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2269.T:
+    fetched_at: '2026-02-01T02:16:01.675716'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2282.T:
+    fetched_at: '2026-02-01T02:16:02.662645'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2413.T:
+    fetched_at: '2026-02-01T02:16:03.676246'
+    industry: Health Information Services
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  2432.T:
+    fetched_at: '2026-02-01T02:16:04.699035'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  2501.T:
+    fetched_at: '2026-02-01T02:16:05.718842'
+    industry: Beverages - Brewers
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2502.T:
+    fetched_at: '2026-02-01T02:16:06.729450'
+    industry: Beverages - Brewers
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2503.T:
+    fetched_at: '2026-02-01T02:16:07.730814'
+    industry: Beverages - Brewers
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2531.T:
+    fetched_at: '2026-02-01T02:16:08.724877'
+    industry: Beverages - Brewers
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2768.T:
+    fetched_at: '2026-02-01T02:16:09.801044'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  2801.T:
+    fetched_at: '2026-02-01T02:16:10.854689'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2802.T:
+    fetched_at: '2026-02-01T02:16:11.850245'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2871.T:
+    fetched_at: '2026-02-01T02:16:12.848097'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  2914.T:
+    fetched_at: '2026-02-01T02:16:13.898042'
+    industry: Tobacco
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  3086.T:
+    fetched_at: '2026-02-01T02:16:15.155258'
+    industry: Department Stores
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  3099.T:
+    fetched_at: '2026-02-01T02:16:16.163486'
+    industry: Department Stores
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  3101.T:
+    fetched_at: '2026-02-01T02:16:17.184153'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  3103.T:
+    fetched_at: '2026-02-01T02:16:18.185276'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  3105.T:
+    fetched_at: '2026-02-01T02:16:19.183237'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  3289.T:
+    fetched_at: '2026-02-01T02:16:20.237344'
+    industry: Real Estate - Diversified
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  3382.T:
+    fetched_at: '2026-02-01T02:16:21.242521'
+    industry: Grocery Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  3401.T:
+    fetched_at: '2026-02-01T02:16:22.246192'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  3402.T:
+    fetched_at: '2026-02-01T02:16:23.355522'
+    industry: Textile Manufacturing
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  3405.T:
+    fetched_at: '2026-02-01T02:16:24.353800'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  3407.T:
+    fetched_at: '2026-02-01T02:16:25.353187'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  3436.T:
+    fetched_at: '2026-02-01T02:16:26.348376'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  3861.T:
+    fetched_at: '2026-02-01T02:16:27.341688'
+    industry: Paper & Paper Products
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  3863.T:
+    fetched_at: '2026-02-01T02:16:28.397302'
+    industry: Paper & Paper Products
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4004.T:
+    fetched_at: '2026-02-01T02:16:29.389197'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4005.T:
+    fetched_at: '2026-02-01T02:16:30.383530'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4021.T:
+    fetched_at: '2026-02-01T02:16:31.438254'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4042.T:
+    fetched_at: '2026-02-01T02:16:32.453420'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4043.T:
+    fetched_at: '2026-02-01T02:16:33.510034'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4061.T:
+    fetched_at: '2026-02-01T02:16:34.509619'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4063.T:
+    fetched_at: '2026-02-01T02:16:35.509860'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4151.T:
+    fetched_at: '2026-02-01T02:16:36.761238'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4183.T:
+    fetched_at: '2026-02-01T02:16:37.826145'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4188.T:
+    fetched_at: '2026-02-01T02:16:38.820567'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4208.T:
+    fetched_at: '2026-02-01T02:16:39.873055'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4272.T:
+    fetched_at: '2026-02-01T02:16:40.876861'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4324.T:
+    fetched_at: '2026-02-01T02:16:41.882726'
+    industry: Advertising Agencies
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  4452.T:
+    fetched_at: '2026-02-01T02:16:42.953631'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  4502.T:
+    fetched_at: '2026-02-01T02:16:43.961037'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4503.T:
+    fetched_at: '2026-02-01T02:16:44.956918'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4506.T:
+    fetched_at: '2026-02-01T02:16:46.106800'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4507.T:
+    fetched_at: '2026-02-01T02:16:47.119456'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4519.T:
+    fetched_at: '2026-02-01T02:16:48.360976'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4523.T:
+    fetched_at: '2026-02-01T02:16:49.509969'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4543.T:
+    fetched_at: '2026-02-01T02:16:50.557912'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4568.T:
+    fetched_at: '2026-02-01T02:16:51.562986'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4578.T:
+    fetched_at: '2026-02-01T02:16:52.613988'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  4631.T:
+    fetched_at: '2026-02-01T02:16:53.616317'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  4661.T:
+    fetched_at: '2026-02-01T02:16:54.638012'
+    industry: Leisure
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  4689.T:
+    fetched_at: '2026-02-01T02:16:55.844863'
+    industry: Internet Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  4704.T:
+    fetched_at: '2026-02-01T02:16:56.844282'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  4751.T:
+    fetched_at: '2026-02-01T02:16:57.840694'
+    industry: Advertising Agencies
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  4755.T:
+    fetched_at: '2026-02-01T02:16:58.835680'
+    industry: Internet Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  4901.T:
+    fetched_at: '2026-02-01T02:16:59.834429'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  4902.T:
+    fetched_at: '2026-02-01T02:17:00.821520'
+    industry: Business Equipment & Supplies
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  4911.T:
+    fetched_at: '2026-02-01T02:17:01.818203'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  5019.T:
+    fetched_at: '2026-02-01T02:17:02.881354'
+    industry: Oil & Gas Refining & Marketing
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  5020.T:
+    fetched_at: '2026-02-01T02:17:03.882323'
+    industry: Oil & Gas Refining & Marketing
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  5101.T:
+    fetched_at: '2026-02-01T02:17:04.886050'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  5108.T:
+    fetched_at: '2026-02-01T02:17:05.991592'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  5201.T:
+    fetched_at: '2026-02-01T02:17:07.248360'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  5202.T:
+    fetched_at: '2026-02-01T02:17:08.241921'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  5214.T:
+    fetched_at: '2026-02-01T02:17:09.341422'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  5232.T:
+    fetched_at: '2026-02-01T02:17:10.395600'
+    industry: Building Materials
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5233.T:
+    fetched_at: '2026-02-01T02:17:11.397146'
+    industry: Building Materials
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5301.T:
+    fetched_at: '2026-02-01T02:17:12.519318'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5631.T:
+    fetched_at: '2026-02-01T02:17:13.509796'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  5703.T:
+    fetched_at: '2026-02-01T02:17:14.559148'
+    industry: Aluminum
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5706.T:
+    fetched_at: '2026-02-01T02:17:15.769476'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  5707.T:
+    fetched_at: '2026-02-01T02:17:16.833645'
+    industry: Other Industrial Metals & Mining
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5711.T:
+    fetched_at: '2026-02-01T02:17:17.836511'
+    industry: Other Industrial Metals & Mining
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5713.T:
+    fetched_at: '2026-02-01T02:17:18.830901'
+    industry: Other Industrial Metals & Mining
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5714.T:
+    fetched_at: '2026-02-01T02:17:19.825697'
+    industry: Other Industrial Metals & Mining
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  5801.T:
+    fetched_at: '2026-02-01T02:17:20.878144'
+    industry: Electrical Equipment & Parts
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  5802.T:
+    fetched_at: '2026-02-01T02:17:22.038256'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  5803.T:
+    fetched_at: '2026-02-01T02:17:23.034820'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  5901.T:
+    fetched_at: '2026-02-01T02:17:24.082609'
+    industry: Packaging & Containers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  6098.T:
+    fetched_at: '2026-02-01T02:17:25.076278'
+    industry: Internet Content & Information
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  6103.T:
+    fetched_at: '2026-02-01T02:17:26.077597'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6113.T:
+    fetched_at: '2026-02-01T02:17:27.125122'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6178.T:
+    fetched_at: '2026-02-01T02:17:28.176096'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  6273.T:
+    fetched_at: '2026-02-01T02:17:29.176861'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6301.T:
+    fetched_at: '2026-02-01T02:17:30.163029'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6302.T:
+    fetched_at: '2026-02-01T02:17:31.225555'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6305.T:
+    fetched_at: '2026-02-01T02:17:32.224533'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6326.T:
+    fetched_at: '2026-02-01T02:17:33.286710'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6361.T:
+    fetched_at: '2026-02-01T02:17:34.287174'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6367.T:
+    fetched_at: '2026-02-01T02:17:35.292153'
+    industry: Building Products & Equipment
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6471.T:
+    fetched_at: '2026-02-01T02:17:36.342874'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  6472.T:
+    fetched_at: '2026-02-01T02:17:37.395050'
+    industry: Tools & Accessories
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6473.T:
+    fetched_at: '2026-02-01T02:17:38.389530'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  6501.T:
+    fetched_at: '2026-02-01T02:17:39.389776'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6503.T:
+    fetched_at: '2026-02-01T02:17:40.454321'
+    industry: Electrical Equipment & Parts
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6504.T:
+    fetched_at: '2026-02-01T02:17:41.520891'
+    industry: Electrical Equipment & Parts
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6506.T:
+    fetched_at: '2026-02-01T02:17:42.590486'
+    industry: Electrical Equipment & Parts
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6645.T:
+    fetched_at: '2026-02-01T02:17:43.586326'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6674.T:
+    fetched_at: '2026-02-01T02:17:44.582882'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  6701.T:
+    fetched_at: '2026-02-01T02:17:45.704214'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6702.T:
+    fetched_at: '2026-02-01T02:17:46.810624'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6703.T:
+    fetched_at: '2026-02-01T02:17:47.905218'
+    industry: Communication Equipment
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6724.T:
+    fetched_at: '2026-02-01T02:17:48.958811'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6752.T:
+    fetched_at: '2026-02-01T02:17:50.060889'
+    industry: Consumer Electronics
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6753.T:
+    fetched_at: '2026-02-01T02:17:51.123913'
+    industry: Consumer Electronics
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6758.T:
+    fetched_at: '2026-02-01T02:17:52.355835'
+    industry: Consumer Electronics
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6762.T:
+    fetched_at: '2026-02-01T02:17:53.360609'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6770.T:
+    fetched_at: '2026-02-01T02:17:54.410366'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6841.T:
+    fetched_at: '2026-02-01T02:17:55.404744'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6857.T:
+    fetched_at: '2026-02-01T02:17:56.466381'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6861.T:
+    fetched_at: '2026-02-01T02:17:57.454028'
+    industry: Scientific & Technical Instruments
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6902.T:
+    fetched_at: '2026-02-01T02:17:58.453660'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  6952.T:
+    fetched_at: '2026-02-01T02:17:59.451200'
+    industry: Consumer Electronics
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6954.T:
+    fetched_at: '2026-02-01T02:18:00.447418'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6971.T:
+    fetched_at: '2026-02-01T02:18:01.440215'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  6976.T:
+    fetched_at: '2026-02-01T02:18:02.465909'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6981.T:
+    fetched_at: '2026-02-01T02:18:03.459094'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  6988.T:
+    fetched_at: '2026-02-01T02:18:04.517556'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  7003.T:
+    fetched_at: '2026-02-01T02:18:05.519774'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7004.T:
+    fetched_at: '2026-02-01T02:18:06.536237'
+    industry: Pollution & Treatment Controls
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7011.T:
+    fetched_at: '2026-02-01T02:18:07.598216'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7012.T:
+    fetched_at: '2026-02-01T02:18:08.789138'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7013.T:
+    fetched_at: '2026-02-01T02:18:09.838905'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7205.T:
+    fetched_at: '2026-02-01T02:18:10.847027'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7211.T:
+    fetched_at: '2026-02-01T02:18:11.863536'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7261.T:
+    fetched_at: '2026-02-01T02:18:12.875019'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7267.T:
+    fetched_at: '2026-02-01T02:18:13.883923'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7269.T:
+    fetched_at: '2026-02-01T02:18:14.874771'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7270.T:
+    fetched_at: '2026-02-01T02:18:15.862639'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7272.T:
+    fetched_at: '2026-02-01T02:18:16.860048'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7731.T:
+    fetched_at: '2026-02-01T02:18:17.908109'
+    industry: Leisure
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7733.T:
+    fetched_at: '2026-02-01T02:18:18.904909'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  7735.T:
+    fetched_at: '2026-02-01T02:18:19.918589'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  7751.T:
+    fetched_at: '2026-02-01T02:18:20.972368'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  7752.T:
+    fetched_at: '2026-02-01T02:18:22.029852'
+    industry: Business Equipment & Supplies
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7762.T:
+    fetched_at: '2026-02-01T02:18:23.038306'
+    industry: Footwear & Accessories
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7832.T:
+    fetched_at: '2026-02-01T02:18:24.229191'
+    industry: Leisure
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  7911.T:
+    fetched_at: '2026-02-01T02:18:25.275709'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7912.T:
+    fetched_at: '2026-02-01T02:18:26.277388'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  7951.T:
+    fetched_at: '2026-02-01T02:18:27.269031'
+    industry: Leisure
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  8001.T:
+    fetched_at: '2026-02-01T02:18:28.317959'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  8002.T:
+    fetched_at: '2026-02-01T02:18:29.519664'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  8015.T:
+    fetched_at: '2026-02-01T02:18:30.692039'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  8031.T:
+    fetched_at: '2026-02-01T02:18:31.682931'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  8035.T:
+    fetched_at: '2026-02-01T02:18:32.689882'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  8053.T:
+    fetched_at: '2026-02-01T02:18:33.690936'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  8058.T:
+    fetched_at: '2026-02-01T02:18:34.694735'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  8233.T:
+    fetched_at: '2026-02-01T02:18:35.685092'
+    industry: Department Stores
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  8252.T:
+    fetched_at: '2026-02-01T02:18:36.737286'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8253.T:
+    fetched_at: '2026-02-01T02:18:37.727925'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8267.T:
+    fetched_at: '2026-02-01T02:18:38.781313'
+    industry: Department Stores
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  8303.T:
+    fetched_at: '2026-02-01T02:18:39.982214'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8304.T:
+    fetched_at: '2026-02-01T02:18:40.982089'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8306.T:
+    fetched_at: '2026-02-01T02:18:41.991639'
+    industry: Banks - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8308.T:
+    fetched_at: '2026-02-01T02:18:43.039824'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8309.T:
+    fetched_at: '2026-02-01T02:18:44.083886'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8316.T:
+    fetched_at: '2026-02-01T02:18:45.075761'
+    industry: Banks - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8331.T:
+    fetched_at: '2026-02-01T02:18:46.077530'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8354.T:
+    fetched_at: '2026-02-01T02:18:47.079433'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8411.T:
+    fetched_at: '2026-02-01T02:18:48.130260'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8591.T:
+    fetched_at: '2026-02-01T02:18:49.122780'
+    industry: Financial Conglomerates
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8601.T:
+    fetched_at: '2026-02-01T02:18:50.126197'
+    industry: Capital Markets
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8604.T:
+    fetched_at: '2026-02-01T02:18:51.142752'
+    industry: Capital Markets
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8628.T:
+    fetched_at: '2026-02-01T02:18:52.153779'
+    industry: Capital Markets
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8630.T:
+    fetched_at: '2026-02-01T02:18:53.163035'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8697.T:
+    fetched_at: '2026-02-01T02:18:54.157610'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8725.T:
+    fetched_at: '2026-02-01T02:18:55.169145'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8750.T:
+    fetched_at: '2026-02-01T02:18:56.211335'
+    industry: Insurance - Life
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8766.T:
+    fetched_at: '2026-02-01T02:18:57.298361'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8795.T:
+    fetched_at: '2026-02-01T02:18:58.290559'
+    industry: Insurance - Life
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  8801.T:
+    fetched_at: '2026-02-01T02:18:59.284686'
+    industry: Real Estate - Diversified
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  8802.T:
+    fetched_at: '2026-02-01T02:19:00.279141'
+    industry: Real Estate - Diversified
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  8804.T:
+    fetched_at: '2026-02-01T02:19:01.275215'
+    industry: Real Estate Services
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  8830.T:
+    fetched_at: '2026-02-01T02:19:02.269520'
+    industry: Real Estate Services
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  9001.T:
+    fetched_at: '2026-02-01T02:19:03.266068'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9005.T:
+    fetched_at: '2026-02-01T02:19:04.319615'
+    industry: Department Stores
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  9007.T:
+    fetched_at: '2026-02-01T02:19:05.376211'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9008.T:
+    fetched_at: '2026-02-01T02:19:06.428399'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9009.T:
+    fetched_at: '2026-02-01T02:19:07.415768'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9020.T:
+    fetched_at: '2026-02-01T02:19:08.417958'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9021.T:
+    fetched_at: '2026-02-01T02:19:09.665272'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9022.T:
+    fetched_at: '2026-02-01T02:19:10.665410'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9064.T:
+    fetched_at: '2026-02-01T02:19:11.859736'
+    industry: Trucking
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9101.T:
+    fetched_at: '2026-02-01T02:19:12.851611'
+    industry: Marine Shipping
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9104.T:
+    fetched_at: '2026-02-01T02:19:13.895970'
+    industry: Marine Shipping
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9107.T:
+    fetched_at: '2026-02-01T02:19:14.979364'
+    industry: Marine Shipping
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9202.T:
+    fetched_at: '2026-02-01T02:19:16.033041'
+    industry: Airlines
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9301.T:
+    fetched_at: '2026-02-01T02:19:17.034150'
+    industry: Integrated Freight & Logistics
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  9412.T:
+    fetched_at: '2026-02-01T02:19:18.026195'
+    industry: Broadcasting
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  9432.T:
+    fetched_at: '2026-02-01T02:19:19.217467'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  9433.T:
+    fetched_at: '2026-02-01T02:19:20.324888'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  9434.T:
+    fetched_at: '2026-02-01T02:19:21.327658'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  9501.T:
+    fetched_at: '2026-02-01T02:19:22.361845'
+    industry: Utilities - Renewable
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  9502.T:
+    fetched_at: '2026-02-01T02:19:23.413017'
+    industry: Utilities - Diversified
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  9503.T:
+    fetched_at: '2026-02-01T02:19:24.413932'
+    industry: Utilities - Renewable
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  9531.T:
+    fetched_at: '2026-02-01T02:19:25.408967'
+    industry: Utilities - Regulated Gas
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  9532.T:
+    fetched_at: '2026-02-01T02:19:26.410447'
+    industry: Utilities - Regulated Gas
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  9602.T:
+    fetched_at: '2026-02-01T02:19:27.411331'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  9735.T:
+    fetched_at: '2026-02-01T02:19:28.406186'
+    industry: Security & Protection Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  AAL:
+    fetched_at: '2026-02-01T02:08:05.669945'
+    industry: Airlines
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  AAPL:
+    fetched_at: '2026-02-01T02:08:06.671421'
+    industry: Consumer Electronics
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ABNB:
+    fetched_at: '2026-02-01T02:08:07.676478'
+    industry: Travel Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  ABT:
+    fetched_at: '2026-02-01T02:08:08.747283'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  ACGL:
+    fetched_at: '2026-02-01T02:08:09.797460'
+    industry: Insurance - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  ACN:
+    fetched_at: '2026-02-01T02:08:10.792475'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ADBE:
+    fetched_at: '2026-02-01T02:08:11.840141'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ADI:
+    fetched_at: '2026-02-01T02:08:12.879915'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ADM:
+    fetched_at: '2026-02-01T02:08:13.868971'
+    industry: Farm Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  ADP:
+    fetched_at: '2026-02-01T02:08:14.930457'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ADSK:
+    fetched_at: '2026-02-01T02:08:15.986093'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  AEE:
+    fetched_at: '2026-02-01T02:08:17.030267'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  AEP:
+    fetched_at: '2026-02-01T02:08:18.261472'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  AES:
+    fetched_at: '2026-02-01T02:08:19.307810'
+    industry: Utilities - Diversified
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  AFL:
+    fetched_at: '2026-02-01T02:08:20.363737'
+    industry: Insurance - Life
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AIG:
+    fetched_at: '2026-02-01T02:08:21.358437'
+    industry: Insurance - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AIZ:
+    fetched_at: '2026-02-01T02:08:22.354879'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AJG:
+    fetched_at: '2026-02-01T02:08:23.342601'
+    industry: Insurance Brokers
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AKAM:
+    fetched_at: '2026-02-01T02:08:24.345161'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ALB:
+    fetched_at: '2026-02-01T02:08:25.385659'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  ALGN:
+    fetched_at: '2026-02-01T02:08:26.433899'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  ALL:
+    fetched_at: '2026-02-01T02:08:27.419244'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  ALLE:
+    fetched_at: '2026-02-01T02:08:28.407564'
+    industry: Security & Protection Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  AMAT:
+    fetched_at: '2026-02-01T02:08:29.398355'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  AMCR:
+    fetched_at: '2026-02-01T02:08:30.438496'
+    industry: Packaging & Containers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  AMD:
+    fetched_at: '2026-02-01T02:08:31.483377'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  AME:
+    fetched_at: '2026-02-01T02:08:32.476581'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  AMGN:
+    fetched_at: '2026-02-01T02:08:33.468441'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  AMP:
+    fetched_at: '2026-02-01T02:08:34.573736'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AMT:
+    fetched_at: '2026-02-01T02:08:35.633667'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  AMZN:
+    fetched_at: '2026-02-01T02:08:36.632677'
+    industry: Internet Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  ANET:
+    fetched_at: '2026-02-01T02:08:37.629187'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  AON:
+    fetched_at: '2026-02-01T02:08:38.669313'
+    industry: Insurance Brokers
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AOS:
+    fetched_at: '2026-02-01T02:08:39.660791'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  APA:
+    fetched_at: '2026-02-01T02:08:40.758784'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  APD:
+    fetched_at: '2026-02-01T02:08:41.755162'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  APH:
+    fetched_at: '2026-02-01T02:08:42.739137'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  APTV:
+    fetched_at: '2026-02-01T02:08:43.734156'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  ARE:
+    fetched_at: '2026-02-01T02:08:44.807198'
+    industry: REIT - Office
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  ATO:
+    fetched_at: '2026-02-01T02:08:45.850857'
+    industry: Utilities - Regulated Gas
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  AVB:
+    fetched_at: '2026-02-01T02:08:46.887689'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  AVGO:
+    fetched_at: '2026-02-01T02:08:47.943427'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  AVY:
+    fetched_at: '2026-02-01T02:08:48.948444'
+    industry: Packaging & Containers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  AWK:
+    fetched_at: '2026-02-01T02:08:50.050014'
+    industry: Utilities - Regulated Water
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  AXON:
+    fetched_at: '2026-02-01T02:08:51.041679'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  AXP:
+    fetched_at: '2026-02-01T02:08:52.093446'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  AZO:
+    fetched_at: '2026-02-01T02:08:53.182124'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  BA:
+    fetched_at: '2026-02-01T02:08:54.176205'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  BAC:
+    fetched_at: '2026-02-01T02:08:55.168718'
+    industry: Banks - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  BALL:
+    fetched_at: '2026-02-01T02:08:56.223222'
+    industry: Packaging & Containers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  BAX:
+    fetched_at: '2026-02-01T02:08:57.279443'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  BBWI:
+    fetched_at: '2026-02-01T02:08:58.473944'
+    industry: Specialty Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  BBY:
+    fetched_at: '2026-02-01T02:08:59.469703'
+    industry: Specialty Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  BDX:
+    fetched_at: '2026-02-01T02:09:00.659498'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  BEN:
+    fetched_at: '2026-02-01T02:09:01.873647'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  BG:
+    fetched_at: '2026-02-01T02:09:02.919672'
+    industry: Farm Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  BIIB:
+    fetched_at: '2026-02-01T02:09:03.927304'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  BIO:
+    fetched_at: '2026-02-01T02:09:04.963036'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  BK:
+    fetched_at: '2026-02-01T02:09:05.950066'
+    industry: Banks - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  BKNG:
+    fetched_at: '2026-02-01T02:09:06.946526'
+    industry: Travel Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  BKR:
+    fetched_at: '2026-02-01T02:09:07.941786'
+    industry: Oil & Gas Equipment & Services
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  BLDR:
+    fetched_at: '2026-02-01T02:09:09.001970'
+    industry: Building Products & Equipment
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  BLK:
+    fetched_at: '2026-02-01T02:09:10.048509'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  BMY:
+    fetched_at: '2026-02-01T02:09:11.043345'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  BR:
+    fetched_at: '2026-02-01T02:09:12.034468'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  BRO:
+    fetched_at: '2026-02-01T02:09:13.079820'
+    industry: Insurance Brokers
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  BSX:
+    fetched_at: '2026-02-01T02:09:14.193296'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  BWA:
+    fetched_at: '2026-02-01T02:09:15.199050'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  BX:
+    fetched_at: '2026-02-01T02:09:16.184439'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  BXP:
+    fetched_at: '2026-02-01T02:09:17.238870'
+    industry: REIT - Office
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  CAG:
+    fetched_at: '2026-02-01T02:09:18.262620'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  CAH:
+    fetched_at: '2026-02-01T02:09:19.281971'
+    industry: Medical Distribution
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  CARR:
+    fetched_at: '2026-02-01T02:09:20.392973'
+    industry: Building Products & Equipment
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  CAT:
+    fetched_at: '2026-02-01T02:09:21.549430'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  CB:
+    fetched_at: '2026-02-01T02:09:22.596588'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  CBOE:
+    fetched_at: '2026-02-01T02:09:23.660505'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  CBRE:
+    fetched_at: '2026-02-01T02:09:24.705710'
+    industry: Real Estate Services
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  CCI:
+    fetched_at: '2026-02-01T02:09:25.692324'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  CCL:
+    fetched_at: '2026-02-01T02:09:26.698869'
+    industry: Travel Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  CDNS:
+    fetched_at: '2026-02-01T02:09:27.741819'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  CE:
+    fetched_at: '2026-02-01T02:09:28.736095'
+    industry: Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  CEG:
+    fetched_at: '2026-02-01T02:09:29.730670'
+    industry: Utilities - Independent Power Producers
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  CF:
+    fetched_at: '2026-02-01T02:09:30.753851'
+    industry: Agricultural Inputs
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  CHTR:
+    fetched_at: '2026-02-01T02:09:31.790359'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  CI:
+    fetched_at: '2026-02-01T02:09:32.784737'
+    industry: Healthcare Plans
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  CINF:
+    fetched_at: '2026-02-01T02:09:33.827554'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  CL:
+    fetched_at: '2026-02-01T02:09:34.826226'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  CLX:
+    fetched_at: '2026-02-01T02:09:35.882253'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  CMA:
+    fetched_at: '2026-02-01T02:09:36.871920'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  CMCSA:
+    fetched_at: '2026-02-01T02:09:37.997245'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  CME:
+    fetched_at: '2026-02-01T02:09:38.981047'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  CMG:
+    fetched_at: '2026-02-01T02:09:39.971620'
+    industry: Restaurants
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  CMI:
+    fetched_at: '2026-02-01T02:09:40.969516'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  CNP:
+    fetched_at: '2026-02-01T02:09:41.960957'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  COF:
+    fetched_at: '2026-02-01T02:09:42.963124'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  COO:
+    fetched_at: '2026-02-01T02:09:43.965941'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  COP:
+    fetched_at: '2026-02-01T02:09:44.961174'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  COR:
+    fetched_at: '2026-02-01T02:09:45.956606'
+    industry: Medical Distribution
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  COST:
+    fetched_at: '2026-02-01T02:09:47.011691'
+    industry: Discount Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  CPAY:
+    fetched_at: '2026-02-01T02:09:48.078279'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  CPB:
+    fetched_at: '2026-02-01T02:09:49.151774'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  CPRT:
+    fetched_at: '2026-02-01T02:09:50.136705'
+    industry: Specialty Business Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  CPT:
+    fetched_at: '2026-02-01T02:09:51.130126'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  CRL:
+    fetched_at: '2026-02-01T02:09:52.176671'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  CRM:
+    fetched_at: '2026-02-01T02:09:53.224371'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  CRWD:
+    fetched_at: '2026-02-01T02:09:54.265163'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  CSCO:
+    fetched_at: '2026-02-01T02:09:55.259457'
+    industry: Communication Equipment
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  CSGP:
+    fetched_at: '2026-02-01T02:09:56.248060'
+    industry: Real Estate Services
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  CSX:
+    fetched_at: '2026-02-01T02:09:57.271230'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  CTAS:
+    fetched_at: '2026-02-01T02:09:58.270090'
+    industry: Specialty Business Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  CTRA:
+    fetched_at: '2026-02-01T02:09:59.509303'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  CTSH:
+    fetched_at: '2026-02-01T02:10:00.509816'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  CVX:
+    fetched_at: '2026-02-01T02:10:01.561244'
+    industry: Oil & Gas Integrated
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  D:
+    fetched_at: '2026-02-01T02:10:02.763128'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  DAL:
+    fetched_at: '2026-02-01T02:10:03.844195'
+    industry: Airlines
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  DAY:
+    fetched_at: '2026-02-01T02:10:04.837202'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  DD:
+    fetched_at: '2026-02-01T02:10:05.840352'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  DE:
+    fetched_at: '2026-02-01T02:10:06.892817'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  DECK:
+    fetched_at: '2026-02-01T02:10:07.997383'
+    industry: Footwear & Accessories
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  DG:
+    fetched_at: '2026-02-01T02:10:09.001952'
+    industry: Discount Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  DGX:
+    fetched_at: '2026-02-01T02:10:09.992658'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  DHI:
+    fetched_at: '2026-02-01T02:10:10.991512'
+    industry: Residential Construction
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  DHR:
+    fetched_at: '2026-02-01T02:10:11.993659'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  DIS:
+    fetched_at: '2026-02-01T02:10:12.981665'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  DLR:
+    fetched_at: '2026-02-01T02:10:13.984489'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  DLTR:
+    fetched_at: '2026-02-01T02:10:14.989753'
+    industry: Discount Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  DOC:
+    fetched_at: '2026-02-01T02:10:16.039451'
+    industry: REIT - Healthcare Facilities
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  DOV:
+    fetched_at: '2026-02-01T02:10:17.097577'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  DPZ:
+    fetched_at: '2026-02-01T02:10:18.153220'
+    industry: Restaurants
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  DRI:
+    fetched_at: '2026-02-01T02:10:19.252020'
+    industry: Restaurants
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  DTE:
+    fetched_at: '2026-02-01T02:10:20.501403'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  DUK:
+    fetched_at: '2026-02-01T02:10:21.484805'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  DVA:
+    fetched_at: '2026-02-01T02:10:22.478971'
+    industry: Medical Care Facilities
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  DVN:
+    fetched_at: '2026-02-01T02:10:23.534929'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  DXCM:
+    fetched_at: '2026-02-01T02:10:24.530001'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  EA:
+    fetched_at: '2026-02-01T02:10:25.570938'
+    industry: Electronic Gaming & Multimedia
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  EBAY:
+    fetched_at: '2026-02-01T02:10:26.568060'
+    industry: Internet Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  ECL:
+    fetched_at: '2026-02-01T02:10:27.608063'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  ED:
+    fetched_at: '2026-02-01T02:10:28.653070'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  EFX:
+    fetched_at: '2026-02-01T02:10:29.670794'
+    industry: Consulting Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  EG:
+    fetched_at: '2026-02-01T02:10:30.663984'
+    industry: Insurance - Reinsurance
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  EIX:
+    fetched_at: '2026-02-01T02:10:31.652276'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  EL:
+    fetched_at: '2026-02-01T02:10:32.715720'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  ELV:
+    fetched_at: '2026-02-01T02:10:33.712253'
+    industry: Healthcare Plans
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  EMR:
+    fetched_at: '2026-02-01T02:10:34.757984'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  ENPH:
+    fetched_at: '2026-02-01T02:10:35.828629'
+    industry: Solar
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  EOG:
+    fetched_at: '2026-02-01T02:10:36.822283'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  EPAM:
+    fetched_at: '2026-02-01T02:10:37.924109'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  EQIX:
+    fetched_at: '2026-02-01T02:10:38.920051'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  EQR:
+    fetched_at: '2026-02-01T02:10:40.167204'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  EQT:
+    fetched_at: '2026-02-01T02:10:41.148505'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  ERIE:
+    fetched_at: '2026-02-01T02:10:42.147946'
+    industry: Insurance Brokers
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  ES:
+    fetched_at: '2026-02-01T02:10:43.197852'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  ESS:
+    fetched_at: '2026-02-01T02:10:44.182883'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  ETN:
+    fetched_at: '2026-02-01T02:10:45.171169'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  ETR:
+    fetched_at: '2026-02-01T02:10:46.214325'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  EXC:
+    fetched_at: '2026-02-01T02:10:47.254997'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  EXPD:
+    fetched_at: '2026-02-01T02:10:48.297597'
+    industry: Integrated Freight & Logistics
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  EXPE:
+    fetched_at: '2026-02-01T02:10:49.335932'
+    industry: Travel Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  EXR:
+    fetched_at: '2026-02-01T02:10:50.331424'
+    industry: REIT - Industrial
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  F:
+    fetched_at: '2026-02-01T02:10:51.310017'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  FANG:
+    fetched_at: '2026-02-01T02:10:52.361991'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  FAST:
+    fetched_at: '2026-02-01T02:10:53.409388'
+    industry: Industrial Distribution
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  FCX:
+    fetched_at: '2026-02-01T02:10:54.426696'
+    industry: Copper
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  FDS:
+    fetched_at: '2026-02-01T02:10:55.422467'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  FDX:
+    fetched_at: '2026-02-01T02:10:56.410115'
+    industry: Integrated Freight & Logistics
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  FE:
+    fetched_at: '2026-02-01T02:10:57.477615'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  FFIV:
+    fetched_at: '2026-02-01T02:10:58.568935'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  FICO:
+    fetched_at: '2026-02-01T02:10:59.563724'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  FIS:
+    fetched_at: '2026-02-01T02:11:00.637899'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  FITB:
+    fetched_at: '2026-02-01T02:11:01.878104'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  FMC:
+    fetched_at: '2026-02-01T02:11:02.926327'
+    industry: Agricultural Inputs
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  FOX:
+    fetched_at: '2026-02-01T02:11:03.971453'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  FOXA:
+    fetched_at: '2026-02-01T02:11:05.019935'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  FTNT:
+    fetched_at: '2026-02-01T02:11:06.075786'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  FTV:
+    fetched_at: '2026-02-01T02:11:07.075656'
+    industry: Scientific & Technical Instruments
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  GD:
+    fetched_at: '2026-02-01T02:11:08.076432'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  GDDY:
+    fetched_at: '2026-02-01T02:11:09.189598'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  GE:
+    fetched_at: '2026-02-01T02:11:10.189437'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  GEHC:
+    fetched_at: '2026-02-01T02:11:11.185614'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  GEN:
+    fetched_at: '2026-02-01T02:11:12.200694'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  GEV:
+    fetched_at: '2026-02-01T02:11:13.289158'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  GILD:
+    fetched_at: '2026-02-01T02:11:14.340448'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  GIS:
+    fetched_at: '2026-02-01T02:11:15.332888'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  GL:
+    fetched_at: '2026-02-01T02:11:16.387590'
+    industry: Insurance - Life
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  GM:
+    fetched_at: '2026-02-01T02:11:17.380445'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  GNRC:
+    fetched_at: '2026-02-01T02:11:18.431126'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  GOOG:
+    fetched_at: '2026-02-01T02:11:19.429211'
+    industry: Internet Content & Information
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  GOOGL:
+    fetched_at: '2026-02-01T02:11:20.529002'
+    industry: Internet Content & Information
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  GPC:
+    fetched_at: '2026-02-01T02:11:21.518271'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  GPN:
+    fetched_at: '2026-02-01T02:11:22.815916'
+    industry: Specialty Business Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  GRMN:
+    fetched_at: '2026-02-01T02:11:23.918483'
+    industry: Scientific & Technical Instruments
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  GS:
+    fetched_at: '2026-02-01T02:11:24.911496'
+    industry: Capital Markets
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  HAS:
+    fetched_at: '2026-02-01T02:11:25.904843'
+    industry: Leisure
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  HBAN:
+    fetched_at: '2026-02-01T02:11:27.154712'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  HCA:
+    fetched_at: '2026-02-01T02:11:28.150392'
+    industry: Medical Care Facilities
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  HD:
+    fetched_at: '2026-02-01T02:11:29.196263'
+    industry: Home Improvement Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  HIG:
+    fetched_at: '2026-02-01T02:11:30.322441'
+    industry: Insurance - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  HII:
+    fetched_at: '2026-02-01T02:11:31.311437'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  HLT:
+    fetched_at: '2026-02-01T02:11:32.414541'
+    industry: Lodging
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  HOLX:
+    fetched_at: '2026-02-01T02:11:33.440064'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  HON:
+    fetched_at: '2026-02-01T02:11:34.428460'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  HPE:
+    fetched_at: '2026-02-01T02:11:35.421305'
+    industry: Communication Equipment
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  HPQ:
+    fetched_at: '2026-02-01T02:11:36.474745'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  HRL:
+    fetched_at: '2026-02-01T02:11:37.452870'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  HSIC:
+    fetched_at: '2026-02-01T02:11:38.658683'
+    industry: Medical Distribution
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  HST:
+    fetched_at: '2026-02-01T02:11:39.707398'
+    industry: REIT - Hotel & Motel
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  HWM:
+    fetched_at: '2026-02-01T02:11:40.761835'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  IBM:
+    fetched_at: '2026-02-01T02:11:41.756276'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ICE:
+    fetched_at: '2026-02-01T02:11:42.752248'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  IDXX:
+    fetched_at: '2026-02-01T02:11:43.801660'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  IEX:
+    fetched_at: '2026-02-01T02:11:45.149544'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  IFF:
+    fetched_at: '2026-02-01T02:11:46.143659'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  INCY:
+    fetched_at: '2026-02-01T02:11:47.246580'
+    industry: Biotechnology
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  INTC:
+    fetched_at: '2026-02-01T02:11:48.266034'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  INTU:
+    fetched_at: '2026-02-01T02:11:49.260015'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  INVH:
+    fetched_at: '2026-02-01T02:11:50.312446'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  IP:
+    fetched_at: '2026-02-01T02:11:51.317222'
+    industry: Packaging & Containers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  IQV:
+    fetched_at: '2026-02-01T02:11:52.310338'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  IR:
+    fetched_at: '2026-02-01T02:11:53.314694'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  IRM:
+    fetched_at: '2026-02-01T02:11:54.313744'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  ISRG:
+    fetched_at: '2026-02-01T02:11:55.364977'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  IT:
+    fetched_at: '2026-02-01T02:11:56.364442'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  J:
+    fetched_at: '2026-02-01T02:11:57.423197'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  JBHT:
+    fetched_at: '2026-02-01T02:11:58.463690'
+    industry: Integrated Freight & Logistics
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  JBL:
+    fetched_at: '2026-02-01T02:11:59.563501'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  JCI:
+    fetched_at: '2026-02-01T02:12:00.604503'
+    industry: Building Products & Equipment
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  JKHY:
+    fetched_at: '2026-02-01T02:12:01.599197'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  JNJ:
+    fetched_at: '2026-02-01T02:12:02.589494'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  JPM:
+    fetched_at: '2026-02-01T02:12:03.578227'
+    industry: Banks - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  KDP:
+    fetched_at: '2026-02-01T02:12:04.570069'
+    industry: Beverages - Non-Alcoholic
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  KEY:
+    fetched_at: '2026-02-01T02:12:05.565398'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  KEYS:
+    fetched_at: '2026-02-01T02:12:06.551086'
+    industry: Scientific & Technical Instruments
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  KHC:
+    fetched_at: '2026-02-01T02:12:07.540835'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  KIM:
+    fetched_at: '2026-02-01T02:12:08.527762'
+    industry: REIT - Retail
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  KKR:
+    fetched_at: '2026-02-01T02:12:09.526456'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  KLAC:
+    fetched_at: '2026-02-01T02:12:10.571952'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  KMB:
+    fetched_at: '2026-02-01T02:12:11.552731'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  KMI:
+    fetched_at: '2026-02-01T02:12:12.591927'
+    industry: Oil & Gas Midstream
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  KMX:
+    fetched_at: '2026-02-01T02:12:13.632503'
+    industry: Auto & Truck Dealerships
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  KO:
+    fetched_at: '2026-02-01T02:12:14.645985'
+    industry: Beverages - Non-Alcoholic
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  KR:
+    fetched_at: '2026-02-01T02:12:15.691870'
+    industry: Grocery Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  L:
+    fetched_at: '2026-02-01T02:12:16.732081'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  LDOS:
+    fetched_at: '2026-02-01T02:12:17.782894'
+    industry: Information Technology Services
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  LEN:
+    fetched_at: '2026-02-01T02:12:18.769134'
+    industry: Residential Construction
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  LH:
+    fetched_at: '2026-02-01T02:12:19.769039'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  LHX:
+    fetched_at: '2026-02-01T02:12:20.820609'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  LIN:
+    fetched_at: '2026-02-01T02:12:21.828711'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  LKQ:
+    fetched_at: '2026-02-01T02:12:22.813594'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  LLY:
+    fetched_at: '2026-02-01T02:12:23.804478'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  LMT:
+    fetched_at: '2026-02-01T02:12:24.793145'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  LNT:
+    fetched_at: '2026-02-01T02:12:26.041030'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  LRCX:
+    fetched_at: '2026-02-01T02:12:27.089526'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  LULU:
+    fetched_at: '2026-02-01T02:12:28.136235'
+    industry: Apparel Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  LUV:
+    fetched_at: '2026-02-01T02:12:29.179019'
+    industry: Airlines
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  LVS:
+    fetched_at: '2026-02-01T02:12:30.170063'
+    industry: Resorts & Casinos
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  LYB:
+    fetched_at: '2026-02-01T02:12:31.169994'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  LYV:
+    fetched_at: '2026-02-01T02:12:32.219941'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  MA:
+    fetched_at: '2026-02-01T02:12:33.216722'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  MAA:
+    fetched_at: '2026-02-01T02:12:34.261409'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  MCHP:
+    fetched_at: '2026-02-01T02:12:35.306787'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  MCK:
+    fetched_at: '2026-02-01T02:12:36.348071'
+    industry: Medical Distribution
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  MCO:
+    fetched_at: '2026-02-01T02:12:37.353896'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  MDLZ:
+    fetched_at: '2026-02-01T02:12:38.399787'
+    industry: Confectioners
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  MDT:
+    fetched_at: '2026-02-01T02:12:39.388087'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  MET:
+    fetched_at: '2026-02-01T02:12:40.377391'
+    industry: Insurance - Life
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  META:
+    fetched_at: '2026-02-01T02:12:41.365464'
+    industry: Internet Content & Information
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  MGM:
+    fetched_at: '2026-02-01T02:12:43.357740'
+    industry: Resorts & Casinos
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  MHK:
+    fetched_at: '2026-02-01T02:12:44.380982'
+    industry: Furnishings, Fixtures & Appliances
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  MKC:
+    fetched_at: '2026-02-01T02:12:45.573419'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  MKTX:
+    fetched_at: '2026-02-01T02:12:46.583837'
+    industry: Capital Markets
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  MLM:
+    fetched_at: '2026-02-01T02:12:47.687761'
+    industry: Building Materials
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  MMM:
+    fetched_at: '2026-02-01T02:12:48.949537'
+    industry: Conglomerates
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  MNST:
+    fetched_at: '2026-02-01T02:12:49.955971'
+    industry: Beverages - Non-Alcoholic
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  MO:
+    fetched_at: '2026-02-01T02:12:50.945381'
+    industry: Tobacco
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  MOH:
+    fetched_at: '2026-02-01T02:12:52.199815'
+    industry: Healthcare Plans
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  MOS:
+    fetched_at: '2026-02-01T02:12:53.249497'
+    industry: Agricultural Inputs
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  MPC:
+    fetched_at: '2026-02-01T02:12:54.587564'
+    industry: Oil & Gas Refining & Marketing
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  MPWR:
+    fetched_at: '2026-02-01T02:12:55.594525'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  MRK:
+    fetched_at: '2026-02-01T02:12:56.634583'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  MRNA:
+    fetched_at: '2026-02-01T02:12:57.636498'
+    industry: Biotechnology
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  MS:
+    fetched_at: '2026-02-01T02:12:58.622619'
+    industry: Capital Markets
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  MSCI:
+    fetched_at: '2026-02-01T02:12:59.679023'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  MSFT:
+    fetched_at: '2026-02-01T02:13:00.689744'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  MSI:
+    fetched_at: '2026-02-01T02:13:01.710657'
+    industry: Communication Equipment
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  MTB:
+    fetched_at: '2026-02-01T02:13:02.714112'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  MTCH:
+    fetched_at: '2026-02-01T02:13:03.969234'
+    industry: Internet Content & Information
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  MTD:
+    fetched_at: '2026-02-01T02:13:05.020536'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  MU:
+    fetched_at: '2026-02-01T02:13:06.064666'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  NCLH:
+    fetched_at: '2026-02-01T02:13:07.178676'
+    industry: Travel Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  NDAQ:
+    fetched_at: '2026-02-01T02:13:08.178285'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  NDSN:
+    fetched_at: '2026-02-01T02:13:09.169487'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  NEE:
+    fetched_at: '2026-02-01T02:13:10.162223'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  NEM:
+    fetched_at: '2026-02-01T02:13:11.358965'
+    industry: Gold
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  NFLX:
+    fetched_at: '2026-02-01T02:13:12.417672'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  NI:
+    fetched_at: '2026-02-01T02:13:13.465372'
+    industry: Utilities - Regulated Gas
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  NKE:
+    fetched_at: '2026-02-01T02:13:14.511582'
+    industry: Footwear & Accessories
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  NOC:
+    fetched_at: '2026-02-01T02:13:15.505443'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  NRG:
+    fetched_at: '2026-02-01T02:13:16.494702'
+    industry: Utilities - Independent Power Producers
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  NSC:
+    fetched_at: '2026-02-01T02:13:17.494131'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  NTAP:
+    fetched_at: '2026-02-01T02:13:18.560167'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  NTRS:
+    fetched_at: '2026-02-01T02:13:19.553647'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  NUE:
+    fetched_at: '2026-02-01T02:13:20.653369'
+    industry: Steel
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  NVDA:
+    fetched_at: '2026-02-01T02:13:21.699930'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  NVR:
+    fetched_at: '2026-02-01T02:13:22.805757'
+    industry: Residential Construction
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  NWSA:
+    fetched_at: '2026-02-01T02:13:23.806288'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  O:
+    fetched_at: '2026-02-01T02:13:24.792280'
+    industry: REIT - Retail
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  ODFL:
+    fetched_at: '2026-02-01T02:13:25.777250'
+    industry: Trucking
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  OKE:
+    fetched_at: '2026-02-01T02:13:26.781264'
+    industry: Oil & Gas Midstream
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  OMC:
+    fetched_at: '2026-02-01T02:13:28.025599'
+    industry: Advertising Agencies
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  'ON':
+    fetched_at: '2026-02-01T02:13:29.021432'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ORCL:
+    fetched_at: '2026-02-01T02:13:30.011277'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ORLY:
+    fetched_at: '2026-02-01T02:13:31.001777'
+    industry: Auto Parts
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  OTIS:
+    fetched_at: '2026-02-01T02:13:32.099117'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  OXY:
+    fetched_at: '2026-02-01T02:13:33.092011'
+    industry: Oil & Gas E&P
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  PAYC:
+    fetched_at: '2026-02-01T02:13:34.079312'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  PAYX:
+    fetched_at: '2026-02-01T02:13:35.080155'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  PCAR:
+    fetched_at: '2026-02-01T02:13:36.079656'
+    industry: Farm & Heavy Construction Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  PCG:
+    fetched_at: '2026-02-01T02:13:37.075004'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  PEG:
+    fetched_at: '2026-02-01T02:13:38.062672'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  PEP:
+    fetched_at: '2026-02-01T02:13:39.055184'
+    industry: Beverages - Non-Alcoholic
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  PFE:
+    fetched_at: '2026-02-01T02:13:40.046536'
+    industry: Drug Manufacturers - General
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  PFG:
+    fetched_at: '2026-02-01T02:13:41.092060'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  PG:
+    fetched_at: '2026-02-01T02:13:42.085642'
+    industry: Household & Personal Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  PGR:
+    fetched_at: '2026-02-01T02:13:43.071630'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  PH:
+    fetched_at: '2026-02-01T02:13:44.064060'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  PHM:
+    fetched_at: '2026-02-01T02:13:45.123486'
+    industry: Residential Construction
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  PKG:
+    fetched_at: '2026-02-01T02:13:46.123308'
+    industry: Packaging & Containers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  PLD:
+    fetched_at: '2026-02-01T02:13:47.111002'
+    industry: REIT - Industrial
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  PLTR:
+    fetched_at: '2026-02-01T02:13:48.161016'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  PNC:
+    fetched_at: '2026-02-01T02:13:49.230885'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  PNR:
+    fetched_at: '2026-02-01T02:13:50.273455'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  PODD:
+    fetched_at: '2026-02-01T02:13:51.314344'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  POOL:
+    fetched_at: '2026-02-01T02:13:52.312080'
+    industry: Industrial Distribution
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  PPG:
+    fetched_at: '2026-02-01T02:13:53.310872'
+    industry: Specialty Chemicals
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  PPL:
+    fetched_at: '2026-02-01T02:13:54.450403'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  PRU:
+    fetched_at: '2026-02-01T02:13:55.483279'
+    industry: Insurance - Life
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  PSA:
+    fetched_at: '2026-02-01T02:13:56.484476'
+    industry: REIT - Industrial
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  PSX:
+    fetched_at: '2026-02-01T02:13:57.485045'
+    industry: Oil & Gas Refining & Marketing
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  PTC:
+    fetched_at: '2026-02-01T02:13:58.478225'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  PWR:
+    fetched_at: '2026-02-01T02:13:59.498558'
+    industry: Engineering & Construction
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  QCOM:
+    fetched_at: '2026-02-01T02:14:00.497233'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  QRVO:
+    fetched_at: '2026-02-01T02:14:01.545711'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  RCL:
+    fetched_at: '2026-02-01T02:14:02.533954'
+    industry: Travel Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  REG:
+    fetched_at: '2026-02-01T02:14:03.533492'
+    industry: REIT - Retail
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  REGN:
+    fetched_at: '2026-02-01T02:14:04.825179'
+    industry: Biotechnology
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  RF:
+    fetched_at: '2026-02-01T02:14:05.876396'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  RJF:
+    fetched_at: '2026-02-01T02:14:06.874584'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  RL:
+    fetched_at: '2026-02-01T02:14:07.884646'
+    industry: Apparel Manufacturing
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  RMD:
+    fetched_at: '2026-02-01T02:14:08.896881'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  ROK:
+    fetched_at: '2026-02-01T02:14:09.945288'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  ROL:
+    fetched_at: '2026-02-01T02:14:10.951086'
+    industry: Personal Services
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  ROP:
+    fetched_at: '2026-02-01T02:14:11.960896'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ROST:
+    fetched_at: '2026-02-01T02:14:13.013195'
+    industry: Apparel Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  RSG:
+    fetched_at: '2026-02-01T02:14:14.018849'
+    industry: Waste Management
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  RTX:
+    fetched_at: '2026-02-01T02:14:15.114445'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  SBAC:
+    fetched_at: '2026-02-01T02:14:16.111604'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  SBUX:
+    fetched_at: '2026-02-01T02:14:17.168635'
+    industry: Restaurants
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  SJM:
+    fetched_at: '2026-02-01T02:14:18.205987'
+    industry: Packaged Foods
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  SLB:
+    fetched_at: '2026-02-01T02:14:19.302311'
+    industry: Oil & Gas Equipment & Services
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  SMCI:
+    fetched_at: '2026-02-01T02:14:20.506959'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  SNA:
+    fetched_at: '2026-02-01T02:14:21.694017'
+    industry: Tools & Accessories
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  SNPS:
+    fetched_at: '2026-02-01T02:14:22.688927'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  SO:
+    fetched_at: '2026-02-01T02:14:23.830033'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  SOLV:
+    fetched_at: '2026-02-01T02:14:24.890553'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  SPG:
+    fetched_at: '2026-02-01T02:14:25.930458'
+    industry: REIT - Retail
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  SPGI:
+    fetched_at: '2026-02-01T02:14:26.919820'
+    industry: Financial Data & Stock Exchanges
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  SRE:
+    fetched_at: '2026-02-01T02:14:27.911657'
+    industry: Utilities - Diversified
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  STE:
+    fetched_at: '2026-02-01T02:14:28.969722'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  STLD:
+    fetched_at: '2026-02-01T02:14:29.968792'
+    industry: Steel
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  STT:
+    fetched_at: '2026-02-01T02:14:31.228286'
+    industry: Asset Management
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  STX:
+    fetched_at: '2026-02-01T02:14:32.231533'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  STZ:
+    fetched_at: '2026-02-01T02:14:33.212961'
+    industry: Beverages - Brewers
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  SWK:
+    fetched_at: '2026-02-01T02:14:34.214702'
+    industry: Tools & Accessories
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  SWKS:
+    fetched_at: '2026-02-01T02:14:35.267750'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  SYF:
+    fetched_at: '2026-02-01T02:14:36.379703'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  SYK:
+    fetched_at: '2026-02-01T02:14:37.375537'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  SYY:
+    fetched_at: '2026-02-01T02:14:38.558502'
+    industry: Food Distribution
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  T:
+    fetched_at: '2026-02-01T02:14:39.557609'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  TAP:
+    fetched_at: '2026-02-01T02:14:40.606643'
+    industry: Beverages - Brewers
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  TDG:
+    fetched_at: '2026-02-01T02:14:41.605172'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  TDY:
+    fetched_at: '2026-02-01T02:14:42.655728'
+    industry: Scientific & Technical Instruments
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  TECH:
+    fetched_at: '2026-02-01T02:14:43.644984'
+    industry: Biotechnology
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  TEL:
+    fetched_at: '2026-02-01T02:14:44.649622'
+    industry: Electronic Components
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  TER:
+    fetched_at: '2026-02-01T02:14:45.707674'
+    industry: Semiconductor Equipment & Materials
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  TFC:
+    fetched_at: '2026-02-01T02:14:46.707577'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  TFX:
+    fetched_at: '2026-02-01T02:14:47.762405'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  TGT:
+    fetched_at: '2026-02-01T02:14:48.756352'
+    industry: Discount Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  TJX:
+    fetched_at: '2026-02-01T02:14:49.953442'
+    industry: Apparel Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  TMO:
+    fetched_at: '2026-02-01T02:14:51.003480'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  TMUS:
+    fetched_at: '2026-02-01T02:14:51.997540'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  TPR:
+    fetched_at: '2026-02-01T02:14:52.996791'
+    industry: Luxury Goods
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  TRGP:
+    fetched_at: '2026-02-01T02:14:53.986615'
+    industry: Oil & Gas Midstream
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  TRV:
+    fetched_at: '2026-02-01T02:14:55.307483'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  TSCO:
+    fetched_at: '2026-02-01T02:14:56.307176'
+    industry: Specialty Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  TSLA:
+    fetched_at: '2026-02-01T02:14:57.362656'
+    industry: Auto Manufacturers
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  TSN:
+    fetched_at: '2026-02-01T02:14:58.360812'
+    industry: Farm Products
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  TT:
+    fetched_at: '2026-02-01T02:14:59.351373'
+    industry: Building Products & Equipment
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  TTWO:
+    fetched_at: '2026-02-01T02:15:00.348292'
+    industry: Electronic Gaming & Multimedia
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  TXN:
+    fetched_at: '2026-02-01T02:15:01.333318'
+    industry: Semiconductors
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  TXT:
+    fetched_at: '2026-02-01T02:15:02.474207'
+    industry: Aerospace & Defense
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  TYL:
+    fetched_at: '2026-02-01T02:15:03.559283'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  UAL:
+    fetched_at: '2026-02-01T02:15:04.553935'
+    industry: Airlines
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  UBER:
+    fetched_at: '2026-02-01T02:15:05.558878'
+    industry: Software - Application
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  UDR:
+    fetched_at: '2026-02-01T02:15:06.577915'
+    industry: REIT - Residential
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  UHS:
+    fetched_at: '2026-02-01T02:15:07.932181'
+    industry: Medical Care Facilities
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  ULTA:
+    fetched_at: '2026-02-01T02:15:08.973965'
+    industry: Specialty Retail
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  UNH:
+    fetched_at: '2026-02-01T02:15:10.226522'
+    industry: Healthcare Plans
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  UNP:
+    fetched_at: '2026-02-01T02:15:11.286941'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  UPS:
+    fetched_at: '2026-02-01T02:15:12.270376'
+    industry: Integrated Freight & Logistics
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  URI:
+    fetched_at: '2026-02-01T02:15:13.325517'
+    industry: Rental & Leasing Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  USB:
+    fetched_at: '2026-02-01T02:15:14.337219'
+    industry: Banks - Regional
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  V:
+    fetched_at: '2026-02-01T02:15:15.334508'
+    industry: Credit Services
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  VLO:
+    fetched_at: '2026-02-01T02:15:16.379695'
+    industry: Oil & Gas Refining & Marketing
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  VLTO:
+    fetched_at: '2026-02-01T02:15:17.371167'
+    industry: Pollution & Treatment Controls
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  VMC:
+    fetched_at: '2026-02-01T02:15:18.374415'
+    industry: Building Materials
+    quote_type: EQUITY
+    sector: materials
+    sector_raw: Basic Materials
+  VRSK:
+    fetched_at: '2026-02-01T02:15:19.414755'
+    industry: Consulting Services
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  VRSN:
+    fetched_at: '2026-02-01T02:15:20.473104'
+    industry: Software - Infrastructure
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  VRTX:
+    fetched_at: '2026-02-01T02:15:21.518055'
+    industry: Biotechnology
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  VST:
+    fetched_at: '2026-02-01T02:15:22.531214'
+    industry: Utilities - Independent Power Producers
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  VTR:
+    fetched_at: '2026-02-01T02:15:23.530350'
+    industry: REIT - Healthcare Facilities
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  VTRS:
+    fetched_at: '2026-02-01T02:15:24.653727'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  VZ:
+    fetched_at: '2026-02-01T02:15:25.657736'
+    industry: Telecom Services
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  WAB:
+    fetched_at: '2026-02-01T02:15:26.650897'
+    industry: Railroads
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  WAT:
+    fetched_at: '2026-02-01T02:15:27.725503'
+    industry: Diagnostics & Research
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  WBD:
+    fetched_at: '2026-02-01T02:15:28.729564'
+    industry: Entertainment
+    quote_type: EQUITY
+    sector: communication_services
+    sector_raw: Communication Services
+  WDC:
+    fetched_at: '2026-02-01T02:15:29.742585'
+    industry: Computer Hardware
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  WEC:
+    fetched_at: '2026-02-01T02:15:30.732709'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  WELL:
+    fetched_at: '2026-02-01T02:15:31.743753'
+    industry: REIT - Healthcare Facilities
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  WFC:
+    fetched_at: '2026-02-01T02:15:32.740302'
+    industry: Banks - Diversified
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  WM:
+    fetched_at: '2026-02-01T02:15:33.743898'
+    industry: Waste Management
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  WMB:
+    fetched_at: '2026-02-01T02:15:34.749030'
+    industry: Oil & Gas Midstream
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  WMT:
+    fetched_at: '2026-02-01T02:15:35.752218'
+    industry: Discount Stores
+    quote_type: EQUITY
+    sector: consumer_staples
+    sector_raw: Consumer Defensive
+  WRB:
+    fetched_at: '2026-02-01T02:15:36.740163'
+    industry: Insurance - Property & Casualty
+    quote_type: EQUITY
+    sector: financials
+    sector_raw: Financial Services
+  WST:
+    fetched_at: '2026-02-01T02:15:37.780272'
+    industry: Medical Instruments & Supplies
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  WY:
+    fetched_at: '2026-02-01T02:15:38.832857'
+    industry: REIT - Specialty
+    quote_type: EQUITY
+    sector: real_estate
+    sector_raw: Real Estate
+  WYNN:
+    fetched_at: '2026-02-01T02:15:39.836014'
+    industry: Resorts & Casinos
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  XEL:
+    fetched_at: '2026-02-01T02:15:40.851284'
+    industry: Utilities - Regulated Electric
+    quote_type: EQUITY
+    sector: utilities
+    sector_raw: Utilities
+  XOM:
+    fetched_at: '2026-02-01T02:15:41.935054'
+    industry: Oil & Gas Integrated
+    quote_type: EQUITY
+    sector: energy
+    sector_raw: Energy
+  XYL:
+    fetched_at: '2026-02-01T02:15:42.972014'
+    industry: Specialty Industrial Machinery
+    quote_type: EQUITY
+    sector: industrials
+    sector_raw: Industrials
+  YUM:
+    fetched_at: '2026-02-01T02:15:43.967056'
+    industry: Restaurants
+    quote_type: EQUITY
+    sector: consumer_discretionary
+    sector_raw: Consumer Cyclical
+  ZBH:
+    fetched_at: '2026-02-01T02:15:45.030511'
+    industry: Medical Devices
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare
+  ZBRA:
+    fetched_at: '2026-02-01T02:15:46.085064'
+    industry: Communication Equipment
+    quote_type: EQUITY
+    sector: technology
+    sector_raw: Technology
+  ZTS:
+    fetched_at: '2026-02-01T02:15:47.143918'
+    industry: Drug Manufacturers - Specialty & Generic
+    quote_type: EQUITY
+    sector: healthcare
+    sector_raw: Healthcare

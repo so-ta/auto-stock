@@ -66,6 +66,7 @@ from src.orchestrator.weight_calculation import (
     StrategyWeighter,
     WeightingResult,
 )
+from src.orchestrator.unified_executor import UnifiedExecutor
 
 # CMD_016 integration (optional)
 try:
@@ -91,6 +92,8 @@ __all__ = [
     "Pipeline",
     "PipelineConfig",
     "PipelineResult",
+    # Unified Executor
+    "UnifiedExecutor",
     # Data Preparation (QA-003-P1)
     "DataPreparation",
     "DataPreparationResult",

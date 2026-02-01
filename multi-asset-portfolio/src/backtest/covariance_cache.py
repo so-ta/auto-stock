@@ -22,7 +22,10 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 import numpy as np
 
 if TYPE_CHECKING:
+    import pandas as pd
     from src.utils.storage_backend import StorageBackend
+
+from src.utils.hash_utils import compute_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +148,73 @@ class IncrementalCovarianceEstimator:
             self._decay * self._cov_matrix
             + (1 - self._decay) * np.outer(deviation, deviation)
         )
+
+        self._n_updates += 1
+
+    def update_with_mask(
+        self,
+        returns: np.ndarray,
+        valid_mask: np.ndarray,
+    ) -> None:
+        """
+        マスクを使用して1日分のリターンで共分散を更新（NaN対応）
+
+        有効なアセットのみで平均・共分散を更新し、
+        無効なアセットの値は前回のまま維持する。
+
+        Parameters
+        ----------
+        returns : np.ndarray
+            1日分のリターン、shape (n_assets,)。
+            無効なアセットは任意の値（通常0またはNaN）。
+        valid_mask : np.ndarray
+            有効なアセットのブールマスク、shape (n_assets,)
+        """
+        returns = np.asarray(returns).flatten()
+        valid_mask = np.asarray(valid_mask).flatten().astype(bool)
+
+        if len(returns) != self.n_assets:
+            raise ValueError(
+                f"Expected {self.n_assets} returns, got {len(returns)}"
+            )
+        if len(valid_mask) != self.n_assets:
+            raise ValueError(
+                f"Expected {self.n_assets} mask values, got {len(valid_mask)}"
+            )
+
+        if not np.any(valid_mask):
+            # 全アセットが無効な場合は更新しない
+            return
+
+        if not self._is_initialized:
+            # 初回: 有効なアセットのみ設定、無効なアセットは0
+            self._mean_returns = np.where(valid_mask, returns, 0.0)
+            self._cov_matrix = np.zeros((self.n_assets, self.n_assets))
+            self._is_initialized = True
+            self._n_updates = 1
+            return
+
+        # 有効なアセットのインデックス
+        valid_idx = np.where(valid_mask)[0]
+
+        # 有効なアセットの平均を更新
+        for idx in valid_idx:
+            self._mean_returns[idx] = (
+                self._decay * self._mean_returns[idx] +
+                (1 - self._decay) * returns[idx]
+            )
+
+        # 有効なアセット間の共分散のみ更新
+        for i_pos, i in enumerate(valid_idx):
+            deviation_i = returns[i] - self._mean_returns[i]
+            for j in valid_idx[i_pos:]:  # 対称性を利用
+                deviation_j = returns[j] - self._mean_returns[j]
+                update = (1 - self._decay) * deviation_i * deviation_j
+                self._cov_matrix[i, j] = (
+                    self._decay * self._cov_matrix[i, j] + update
+                )
+                if i != j:
+                    self._cov_matrix[j, i] = self._cov_matrix[i, j]
 
         self._n_updates += 1
 
@@ -292,16 +362,18 @@ class CovarianceCache:
     バックテストの途中再開やウォームスタートに使用。
 
     StorageBackend対応:
-    - storage_backend指定時: S3/ローカルを透過的に操作
+    - storage_backend指定時: S3/ローカルを透過的に操作（推奨）
     - cache_dir指定時: 従来通りローカルファイル操作（後方互換性）
 
     Usage:
-        # 従来のローカルモード
-        cache = CovarianceCache(cache_dir=".cache/covariance")
+        # StorageBackend経由（S3必須）
+        from src.utils.storage_backend import get_storage_backend
+        backend = get_storage_backend()  # S3_BUCKET環境変数が必要
+        cache = CovarianceCache(storage_backend=backend)
 
-        # StorageBackendモード（S3対応）
-        from src.utils.storage_backend import get_storage_backend, StorageConfig
-        backend = get_storage_backend(StorageConfig(backend="s3", s3_bucket="my-bucket"))
+        # 明示的なS3バケット指定
+        from src.utils.storage_backend import StorageBackend, StorageConfig
+        backend = StorageBackend(StorageConfig(s3_bucket="my-bucket"))
         cache = CovarianceCache(storage_backend=backend)
 
         # 状態を保存
@@ -341,7 +413,10 @@ class CovarianceCache:
             logger.debug("CovarianceCache using StorageBackend")
         else:
             # 従来のローカルモード
-            self.cache_dir = Path(cache_dir or ".cache/covariance")
+            if cache_dir is None:
+                from src.config.settings import get_cache_path
+                cache_dir = get_cache_path("covariance")
+            self.cache_dir = Path(cache_dir)
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             logger.debug(f"CovarianceCache using local: {self.cache_dir}")
 
@@ -585,3 +660,273 @@ def create_estimator_from_history(
     estimator.update_batch(returns_matrix)
 
     return estimator
+
+
+# =============================================================================
+# Subset Covariance (v2.4 - Large Universe Optimization)
+# =============================================================================
+
+def compute_covariance_subset(
+    returns_df: "pd.DataFrame",
+    target_assets: List[str],
+    halflife: int = 60,
+    min_observations: int = 60,
+) -> Tuple[np.ndarray, List[str]]:
+    """
+    Top-N銘柄のみで共分散行列を計算（メモリ効率化）
+
+    大規模ユニバース（16,000銘柄等）では全銘柄の共分散行列を保持すると
+    メモリ不足になる（16,000² × 8byte = 2GB）。
+    Top-Nフィルター後の銘柄のみで計算することでメモリ使用量を削減。
+
+    計算量:
+    - 全銘柄: O(n² × T) where n=16,000, T=3,780日（15年）
+    - Top-N: O(m² × T) where m=1,000 → 256倍削減
+
+    Parameters
+    ----------
+    returns_df : pd.DataFrame
+        リターンデータ（列=銘柄、行=日付）
+    target_assets : List[str]
+        計算対象の銘柄リスト（Top-Nフィルター後）
+    halflife : int
+        指数加重の半減期（日数）
+    min_observations : int
+        最低必要な観測数
+
+    Returns
+    -------
+    Tuple[np.ndarray, List[str]]
+        (共分散行列, 有効な銘柄リスト)
+
+    Notes
+    -----
+    NaN処理:
+    - 銘柄ごとにNaN率をチェック
+    - NaN率50%超の銘柄は除外
+    - 残りの銘柄でpairwise共分散を計算
+    """
+    import pandas as pd
+
+    # target_assets に存在する列のみ抽出
+    available_assets = [a for a in target_assets if a in returns_df.columns]
+
+    if len(available_assets) == 0:
+        return np.array([[]]), []
+
+    subset_returns = returns_df[available_assets].copy()
+
+    # NaN率でフィルタリング
+    nan_ratios = subset_returns.isna().sum() / len(subset_returns)
+    valid_cols = nan_ratios[nan_ratios < 0.5].index.tolist()
+
+    if len(valid_cols) == 0:
+        return np.array([[]]), []
+
+    subset_returns = subset_returns[valid_cols]
+
+    # 十分な観測数があるかチェック
+    if len(subset_returns.dropna()) < min_observations:
+        # dropna だと厳しすぎる場合は pairwise で計算
+        pass
+
+    # 指数加重共分散を計算
+    n_assets = len(valid_cols)
+
+    # 指数加重の重み
+    n_obs = len(subset_returns)
+    decay = np.exp(-1.0 / halflife)
+    weights = np.array([decay ** (n_obs - 1 - i) for i in range(n_obs)])
+    weights = weights / weights.sum()  # 正規化
+
+    # 加重平均を計算
+    filled_returns = subset_returns.fillna(0)  # NaN を 0 で埋める（pairwise 計算用）
+    returns_array = filled_returns.values
+
+    weighted_mean = np.average(returns_array, weights=weights, axis=0)
+
+    # 加重共分散を計算
+    centered = returns_array - weighted_mean
+    weighted_cov = np.zeros((n_assets, n_assets))
+
+    for i in range(n_obs):
+        weighted_cov += weights[i] * np.outer(centered[i], centered[i])
+
+    return weighted_cov, valid_cols
+
+
+class SubsetCovarianceCache:
+    """
+    サブセット共分散キャッシュ（大規模ユニバース用）
+
+    Top-Nフィルター後の銘柄セットごとに共分散を効率的にキャッシュ。
+    銘柄セットが変わるたびに再計算が必要だが、フル共分散より
+    大幅に高速かつ省メモリ。
+
+    Usage:
+        cache = SubsetCovarianceCache(storage_backend=backend)
+
+        # 共分散を計算（キャッシュヒットがあれば再利用）
+        cov_matrix, assets = cache.get_or_compute(
+            returns_df=returns,
+            target_assets=top_n_assets,
+            date=rebalance_date,
+        )
+    """
+
+    def __init__(
+        self,
+        storage_backend: Optional["StorageBackend"] = None,
+        cache_dir: Optional[str] = None,
+        halflife: int = 60,
+    ):
+        """
+        初期化
+
+        Parameters
+        ----------
+        storage_backend : StorageBackend, optional
+            ストレージバックエンド（S3対応）
+        cache_dir : str, optional
+            ローカルキャッシュディレクトリ
+        halflife : int
+            共分散計算の半減期
+        """
+        self._backend = storage_backend
+        self._use_backend = storage_backend is not None
+        self._halflife = halflife
+
+        if not self._use_backend:
+            if cache_dir is None:
+                from src.config.settings import get_cache_path
+                cache_dir = get_cache_path("subset_covariance")
+            self._cache_dir = Path(cache_dir)
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            self._cache_subdir = "subset_covariance"
+
+        # インメモリキャッシュ（直近の結果を保持）
+        self._memory_cache: Dict[str, Tuple[np.ndarray, List[str]]] = {}
+        self._max_memory_cache_size = 10
+
+    def _get_cache_key(
+        self,
+        target_assets: List[str],
+        date: datetime,
+    ) -> str:
+        """
+        キャッシュキーを生成
+
+        銘柄セット + 日付からハッシュベースのキーを生成。
+        """
+        assets_str = ",".join(sorted(target_assets))
+        date_str = date.strftime("%Y%m%d")
+        hash_value = compute_cache_key(assets_str, date_str, truncate=12)
+        return f"cov_{date_str}_{hash_value}"
+
+    def get_or_compute(
+        self,
+        returns_df: "pd.DataFrame",
+        target_assets: List[str],
+        date: datetime,
+        min_observations: int = 60,
+    ) -> Tuple[np.ndarray, List[str]]:
+        """
+        共分散を取得（キャッシュヒットがあれば再利用、なければ計算）
+
+        Parameters
+        ----------
+        returns_df : pd.DataFrame
+            リターンデータ
+        target_assets : List[str]
+            計算対象銘柄
+        date : datetime
+            計算日
+        min_observations : int
+            最低必要な観測数
+
+        Returns
+        -------
+        Tuple[np.ndarray, List[str]]
+            (共分散行列, 有効な銘柄リスト)
+        """
+        cache_key = self._get_cache_key(target_assets, date)
+
+        # メモリキャッシュをチェック
+        if cache_key in self._memory_cache:
+            logger.debug(f"Subset covariance cache hit (memory): {cache_key}")
+            return self._memory_cache[cache_key]
+
+        # ストレージキャッシュをチェック
+        cached = self._load_from_storage(cache_key)
+        if cached is not None:
+            logger.debug(f"Subset covariance cache hit (storage): {cache_key}")
+            self._memory_cache[cache_key] = cached
+            self._evict_memory_cache()
+            return cached
+
+        # 計算
+        logger.debug(f"Computing subset covariance: {len(target_assets)} assets")
+        cov_matrix, valid_assets = compute_covariance_subset(
+            returns_df=returns_df,
+            target_assets=target_assets,
+            halflife=self._halflife,
+            min_observations=min_observations,
+        )
+
+        # キャッシュに保存
+        result = (cov_matrix, valid_assets)
+        self._save_to_storage(cache_key, result)
+        self._memory_cache[cache_key] = result
+        self._evict_memory_cache()
+
+        return result
+
+    def _load_from_storage(
+        self,
+        cache_key: str,
+    ) -> Optional[Tuple[np.ndarray, List[str]]]:
+        """ストレージからキャッシュを読み込み"""
+        try:
+            if self._use_backend:
+                path = f"{self._cache_subdir}/{cache_key}.pkl"
+                if self._backend.exists(path):
+                    return self._backend.read_pickle(path)
+            else:
+                path = self._cache_dir / f"{cache_key}.pkl"
+                if path.exists():
+                    with open(path, "rb") as f:
+                        return pickle.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load subset covariance cache: {e}")
+
+        return None
+
+    def _save_to_storage(
+        self,
+        cache_key: str,
+        data: Tuple[np.ndarray, List[str]],
+    ) -> None:
+        """ストレージにキャッシュを保存"""
+        try:
+            if self._use_backend:
+                path = f"{self._cache_subdir}/{cache_key}.pkl"
+                self._backend.write_pickle(data, path)
+            else:
+                path = self._cache_dir / f"{cache_key}.pkl"
+                with open(path, "wb") as f:
+                    pickle.dump(data, f)
+        except Exception as e:
+            logger.warning(f"Failed to save subset covariance cache: {e}")
+
+    def _evict_memory_cache(self) -> None:
+        """メモリキャッシュが上限を超えた場合に古いエントリを削除"""
+        while len(self._memory_cache) > self._max_memory_cache_size:
+            # 最初のキーを削除（FIFO）
+            oldest_key = next(iter(self._memory_cache))
+            del self._memory_cache[oldest_key]
+
+    def clear_cache(self) -> None:
+        """キャッシュをクリア"""
+        self._memory_cache.clear()
+        logger.info("Subset covariance memory cache cleared")

@@ -25,6 +25,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,8 @@ class TopNSelectorConfig:
         softmax_temperature: Softmax温度パラメータ（低いほど勝者総取り）
         include_cash: CASHを候補に含めるか
         cash_symbol: CASHのシンボル名
+        alpha_filter_enabled: アルファスコアフィルタを有効化
+        alpha_percentile: アルファフィルタのパーセンタイル (0-1)
     """
 
     n: int = 10
@@ -47,6 +51,8 @@ class TopNSelectorConfig:
     softmax_temperature: float = 1.0
     include_cash: bool = True
     cash_symbol: str = "CASH"
+    alpha_filter_enabled: bool = False
+    alpha_percentile: float = 0.5
 
     def __post_init__(self) -> None:
         """バリデーション"""
@@ -54,6 +60,8 @@ class TopNSelectorConfig:
             raise ValueError("n must be > 0")
         if self.softmax_temperature <= 0:
             raise ValueError("softmax_temperature must be > 0")
+        if not 0 < self.alpha_percentile <= 1.0:
+            raise ValueError("alpha_percentile must be in (0, 1]")
 
 
 @dataclass
@@ -195,16 +203,23 @@ class TopNSelector:
     def select(
         self,
         evaluations: dict[str, dict[str, dict[str, Any]]],
+        alpha_scores: dict[str, float] | None = None,
     ) -> TopNSelectionResult:
         """上位N個の戦略を選択
 
         Args:
             evaluations: アセット -> シグナル名 -> 評価結果 の辞書
                          評価結果には "score" キーが必須
+            alpha_scores: アルファスコア辞書（アセット -> スコア）
+                         アルファフィルタが有効な場合に使用
 
         Returns:
             選択結果
         """
+        # 0. アルファスコアでプレフィルタ (NEW)
+        if alpha_scores and self.config.alpha_filter_enabled:
+            evaluations = self._apply_alpha_filter(evaluations, alpha_scores)
+
         # 1. 全評価をStrategyScoreに変換
         all_scores: list[StrategyScore] = []
 
@@ -407,6 +422,57 @@ class TopNSelector:
 
         return asset_weights
 
+    def _apply_alpha_filter(
+        self,
+        evaluations: dict[str, dict[str, dict[str, Any]]],
+        alpha_scores: dict[str, float],
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """アルファスコアでプレフィルタ
+
+        アルファスコアが閾値以上のアセットのみを残す。
+
+        Args:
+            evaluations: アセット -> シグナル名 -> 評価結果 の辞書
+            alpha_scores: アルファスコア辞書（アセット -> スコア）
+
+        Returns:
+            フィルタ後の評価辞書
+        """
+        if not alpha_scores:
+            return evaluations
+
+        # アルファスコアの閾値を計算（パーセンタイル）
+        alpha_values = list(alpha_scores.values())
+        if not alpha_values:
+            return evaluations
+
+        # 上位 alpha_percentile を選択するための閾値
+        # percentile=0.5 なら上位50% = 下位50%パーセンタイル以上
+        threshold = np.percentile(
+            alpha_values,
+            (1 - self.config.alpha_percentile) * 100,
+        )
+
+        # フィルタ適用
+        filtered_evaluations: dict[str, dict[str, dict[str, Any]]] = {}
+        for asset, signals in evaluations.items():
+            asset_alpha = alpha_scores.get(asset, float("-inf"))
+            if asset_alpha >= threshold:
+                filtered_evaluations[asset] = signals
+
+        n_before = len(evaluations)
+        n_after = len(filtered_evaluations)
+
+        logger.info(
+            "Alpha filter applied: %d -> %d assets (threshold=%.4f, percentile=%.2f)",
+            n_before,
+            n_after,
+            threshold,
+            self.config.alpha_percentile,
+        )
+
+        return filtered_evaluations
+
     def get_top_strategies_for_asset(
         self,
         evaluations: dict[str, dict[str, dict[str, Any]]],
@@ -454,11 +520,23 @@ def create_selector_from_settings() -> TopNSelector:
         settings = get_settings()
         strategy_weighting = settings.strategy_weighting
 
+        # アルファランキング設定を取得
+        alpha_ranking = getattr(settings, "alpha_ranking", None)
+        alpha_filter_enabled = False
+        alpha_percentile = 0.5
+        if alpha_ranking is not None:
+            alpha_filter_enabled = getattr(alpha_ranking, "enabled", False)
+            filtering = getattr(alpha_ranking, "filtering", None)
+            if filtering is not None:
+                alpha_percentile = getattr(filtering, "alpha_percentile", 0.5)
+
         config = TopNSelectorConfig(
             n=getattr(strategy_weighting, "max_strategies", 10),
             cash_score=getattr(settings, "cash_score", 0.0),
             min_score=getattr(strategy_weighting, "score_threshold", -999.0),
             softmax_temperature=1.0 / getattr(strategy_weighting, "beta", 2.0),
+            alpha_filter_enabled=alpha_filter_enabled,
+            alpha_percentile=alpha_percentile,
         )
         return TopNSelector(config=config)
     except (ImportError, AttributeError) as e:

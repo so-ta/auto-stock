@@ -261,20 +261,23 @@ class TestMultiMethodOptimization:
     ) -> None:
         """Test HRP (Hierarchical Risk Parity) optimization."""
         try:
-            from src.allocation.hrp import HRPAllocator
+            from src.allocation.hrp import HierarchicalRiskParity
         except ImportError:
             pytest.skip("HRP allocator not available")
 
-        allocator = HRPAllocator()
+        allocator = HierarchicalRiskParity()
 
         try:
-            weights = allocator.allocate(sample_returns)
+            # HRP requires covariance matrix, not returns
+            covariance = sample_returns.cov()
+            result = allocator.allocate(covariance)
 
-            assert weights is not None
-            assert abs(sum(weights.values()) - 1.0) < 0.01
+            assert result is not None
+            assert result.is_valid
+            assert abs(result.weights.sum() - 1.0) < 0.01
 
             print(f"\n=== HRP Optimization Test ===")
-            print(f"Weights: {weights}")
+            print(f"Weights: {dict(result.weights)}")
 
         except Exception as e:
             pytest.skip(f"HRP not functional: {e}")
@@ -285,20 +288,23 @@ class TestMultiMethodOptimization:
     ) -> None:
         """Test Risk Parity optimization."""
         try:
-            from src.allocation.risk_parity import RiskParityAllocator
+            from src.allocation.risk_parity import RiskParity
         except ImportError:
             pytest.skip("Risk Parity allocator not available")
 
-        allocator = RiskParityAllocator()
+        allocator = RiskParity()
 
         try:
-            weights = allocator.allocate(sample_returns)
+            # RiskParity requires covariance matrix, not returns
+            covariance = sample_returns.cov()
+            result = allocator.allocate(covariance)
 
-            assert weights is not None
-            assert abs(sum(weights.values()) - 1.0) < 0.01
+            assert result is not None
+            assert result.is_valid
+            assert abs(result.weights.sum() - 1.0) < 0.01
 
             print(f"\n=== Risk Parity Optimization Test ===")
-            print(f"Weights: {weights}")
+            print(f"Weights: {dict(result.weights)}")
 
         except Exception as e:
             pytest.skip(f"Risk Parity not functional: {e}")

@@ -433,6 +433,10 @@ class UnifiedBacktestResult:
     warnings: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
 
+    # 信頼性評価（パイプラインログから計算）
+    # {"score": 0.0-1.0, "level": "high"/"medium"/"low"/"unreliable", "reasons": [...]}
+    reliability: Optional[Dict[str, Any]] = None
+
     @property
     def final_value(self) -> float:
         """最終ポートフォリオ価値"""
@@ -584,6 +588,7 @@ class UnifiedBacktestResult:
             "warnings": self.warnings,
             "errors": self.errors,
             "is_successful": self.is_successful,
+            "reliability": self.reliability,
         }
 
     def summary(self) -> str:

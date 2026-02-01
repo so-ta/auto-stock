@@ -44,8 +44,14 @@ class StockAdapter(BaseAdapter):
         "JP": ".T",  # Tokyo Stock Exchange
         "US": "",  # US stocks (no suffix)
         "HK": ".HK",  # Hong Kong
+        "KR": ".KS",  # Korea Stock Exchange (KOSPI)
         "UK": ".L",  # London
         "DE": ".DE",  # Germany
+        "FR": ".PA",  # Paris (Euronext)
+        "AU": ".AX",  # Australia (ASX)
+        "CA": ".TO",  # Toronto Stock Exchange
+        "SG": ".SI",  # Singapore
+        "TW": ".TW",  # Taiwan
     }
 
     def __init__(

@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Backtest Result Viewer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .settings-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+
+    .setting-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .setting-value {
+        font-weight: 600;
+        font-family: monospace;
+        color: var(--dark-color);
+    }
+
+    .setting-value.highlight {
+        color: var(--primary-color);
+    }
+
+    .cost-profile-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .cost-profile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .cost-profile-name {
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .cost-profile-total {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+    }
+
+    .cost-profile-desc {
+        color: #666;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .cost-breakdown {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .cost-item {
+        background: white;
+        padding: 0.5rem;
+        border-radius: 4px;
+    }
+
+    .cost-value {
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .cost-label {
+        font-size: 0.7rem;
+        color: #666;
+    }
+
+    .config-tree {
+        font-family: monospace;
+        font-size: 0.85rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        padding: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .config-section {
+        margin-bottom: 1rem;
+    }
+
+    .config-key {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .config-nested {
+        margin-left: 1.5rem;
+        border-left: 2px solid #ddd;
+        padding-left: 1rem;
+    }
+
+    .config-value {
+        color: var(--secondary-color);
+    }
+
+    .config-value.string {
+        color: #e67e22;
+    }
+
+    .config-value.number {
+        color: #3498db;
+    }
+
+    .config-value.boolean {
+        color: #9b59b6;
+    }
+
+    .collapsible-header {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .collapsible-header:hover {
+        color: var(--primary-color);
+    }
+
+    .collapse-icon {
+        transition: transform 0.2s;
+    }
+
+    .collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+
+    .collapsed + .config-nested {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-grid">
+    <!-- Backtest Defaults -->
+    <div class="settings-section">
+        <h3 class="section-title">Backtest Defaults</h3>
+
+        <div class="setting-item">
+            <span class="setting-label">Initial Capital</span>
+            <span class="setting-value">${{ "{:,.0f}".format(backtest_defaults.initial_capital) }}</span>
+        </div>
+        <div class="setting-item">
+            <span class="setting-label">Transaction Cost</span>
+            <span class="setting-value">{{ backtest_defaults.transaction_cost_bps }} bps</span>
+        </div>
+        <div class="setting-item">
+            <span class="setting-label">Slippage</span>
+            <span class="setting-value">{{ backtest_defaults.slippage_bps }} bps</span>
+        </div>
+        <div class="setting-item">
+            <span class="setting-label">Rebalance Frequency</span>
+            <span class="setting-value highlight">{{ backtest_defaults.frequency }}</span>
+        </div>
+    </div>
+
+    <!-- Cost Profiles -->
+    <div class="settings-section">
+        <h3 class="section-title">Cost Profiles</h3>
+
+        {% for profile in cost_profiles %}
+        <div class="cost-profile-card">
+            <div class="cost-profile-header">
+                <span class="cost-profile-name">{{ profile.name }}</span>
+                <span class="cost-profile-total">{{ profile.total_bps }} bps total</span>
+            </div>
+            <p class="cost-profile-desc">{{ profile.description }}</p>
+            <div class="cost-breakdown">
+                <div class="cost-item">
+                    <div class="cost-value">{{ profile.spread_bps }}</div>
+                    <div class="cost-label">Spread</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-value">{{ profile.commission_bps }}</div>
+                    <div class="cost-label">Commission</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-value">{{ profile.slippage_bps }}</div>
+                    <div class="cost-label">Slippage</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Full Configuration -->
+<div class="settings-section" style="margin-top: 1.5rem;">
+    <h3 class="section-title">Full Configuration (Read-Only)</h3>
+    <p style="color: #666; margin-bottom: 1rem; font-size: 0.9rem;">
+        This is the complete configuration from config/default.yaml.
+        To modify, edit the YAML file directly.
+    </p>
+
+    <div class="config-tree" id="config-tree">
+        Loading configuration...
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Full defaults from template
+    const defaults = {{ defaults | tojson | safe }};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const tree = document.getElementById('config-tree');
+        tree.innerHTML = renderConfig(defaults, 0);
+
+        // Add click handlers for collapsible sections
+        tree.querySelectorAll('.collapsible-header').forEach(header => {
+            header.addEventListener('click', function() {
+                this.classList.toggle('collapsed');
+            });
+        });
+    });
+
+    function renderConfig(obj, depth) {
+        if (obj === null || obj === undefined) {
+            return '<span class="config-value">null</span>';
+        }
+
+        if (typeof obj !== 'object') {
+            const type = typeof obj;
+            if (type === 'string') {
+                return `<span class="config-value string">"${escapeHtml(obj)}"</span>`;
+            } else if (type === 'number') {
+                return `<span class="config-value number">${obj}</span>`;
+            } else if (type === 'boolean') {
+                return `<span class="config-value boolean">${obj}</span>`;
+            }
+            return `<span class="config-value">${obj}</span>`;
+        }
+
+        if (Array.isArray(obj)) {
+            if (obj.length === 0) return '<span class="config-value">[]</span>';
+            const items = obj.map((item, i) => {
+                return `<div>- ${renderConfig(item, depth + 1)}</div>`;
+            }).join('');
+            return `<div class="config-nested">${items}</div>`;
+        }
+
+        const entries = Object.entries(obj);
+        if (entries.length === 0) return '<span class="config-value">{}</span>';
+
+        const html = entries.map(([key, value]) => {
+            const isNested = typeof value === 'object' && value !== null && !Array.isArray(value);
+            const hasContent = isNested && Object.keys(value).length > 0;
+
+            if (hasContent) {
+                return `
+                    <div class="config-section">
+                        <div class="collapsible-header">
+                            <span class="collapse-icon">▼</span>
+                            <span class="config-key">${escapeHtml(key)}:</span>
+                        </div>
+                        ${renderConfig(value, depth + 1)}
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="config-section">
+                        <span class="config-key">${escapeHtml(key)}:</span> ${renderConfig(value, depth + 1)}
+                    </div>
+                `;
+            }
+        }).join('');
+
+        if (depth > 0) {
+            return `<div class="config-nested">${html}</div>`;
+        }
+        return html;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

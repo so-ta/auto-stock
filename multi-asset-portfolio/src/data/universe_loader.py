@@ -1,23 +1,116 @@
 """
-Universe Loader - Asset Universe Management
+Universe Loader - Asset Universe Management (v3.0)
 
-This module provides functionality to load and manage the investment universe,
-including stock indices (S&P 500, Nikkei 225), ETFs, commodities, and forex pairs.
+This module provides functionality to load and manage the investment universe
+from the unified asset_master.yaml file.
+
+v3.0 features:
+- Single source of truth: asset_master.yaml
+- Dynamic taxonomy (extensible via YAML only)
+- Named subsets for easy filtering
+- Report generation support via group_by_taxonomy()
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 import structlog
 import yaml
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Symbol Dataclass
+# =============================================================================
+
+
+@dataclass
+class Symbol:
+    """
+    Represents a symbol with taxonomy classification and tags.
+
+    Attributes:
+        ticker: The ticker symbol (e.g., "AAPL", "7203.T")
+        taxonomy: Key-value pairs for classification (market, asset_class, sector, etc.)
+        tags: List of tags for filtering (sbi, quality, sp500, etc.)
+    """
+
+    ticker: str
+    taxonomy: dict[str, str] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Symbol":
+        """Create Symbol from dictionary."""
+        return cls(
+            ticker=data["ticker"],
+            taxonomy=data.get("taxonomy", {}),
+            tags=data.get("tags", []),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert Symbol to dictionary."""
+        result: dict[str, Any] = {"ticker": self.ticker}
+        if self.taxonomy:
+            result["taxonomy"] = self.taxonomy
+        if self.tags:
+            result["tags"] = self.tags
+        return result
+
+    @property
+    def market(self) -> str:
+        """Get market from taxonomy."""
+        return self.taxonomy.get("market", "unknown")
+
+    @property
+    def asset_class(self) -> str:
+        """Get asset_class from taxonomy."""
+        return self.taxonomy.get("asset_class", "equity")
+
+    @property
+    def sector(self) -> str | None:
+        """Get sector from taxonomy."""
+        return self.taxonomy.get("sector")
+
+    @property
+    def etf_category(self) -> str | None:
+        """Get etf_category from taxonomy."""
+        return self.taxonomy.get("etf_category")
+
+    def has_tag(self, tag: str) -> bool:
+        """Check if symbol has a specific tag."""
+        return tag in self.tags
+
+    def matches_taxonomy(self, **filters: str | list[str] | None) -> bool:
+        """
+        Check if symbol matches the given taxonomy filters.
+
+        Args:
+            **filters: Key-value pairs to match against taxonomy.
+                       Values can be single strings or lists.
+
+        Returns:
+            True if all filters match.
+        """
+        for key, value in filters.items():
+            if value is None:
+                continue
+            symbol_value = self.taxonomy.get(key)
+            if isinstance(value, list):
+                if symbol_value not in value:
+                    return False
+            elif symbol_value != value:
+                return False
+        return True
+
+
+# =============================================================================
+# Exceptions
+# =============================================================================
 
 
 class UniverseLoaderError(Exception):
@@ -32,825 +125,458 @@ class ConfigNotFoundError(UniverseLoaderError):
     pass
 
 
-class FetchError(UniverseLoaderError):
-    """Raised when fetching ticker data fails."""
+class InvalidVersionError(UniverseLoaderError):
+    """Raised when the asset master version is not supported."""
 
     pass
 
 
-@dataclass
-class UniverseConfig:
-    """Configuration for the investment universe."""
-
-    us_stocks_enabled: bool = True
-    japan_stocks_enabled: bool = False
-    etfs_enabled: bool = True
-    commodities_enabled: bool = True
-    forex_enabled: bool = True
-    filters: dict[str, Any] = field(default_factory=dict)
-
-    # Custom ticker lists (override automatic fetching)
-    custom_us_stocks: list[str] = field(default_factory=list)
-    custom_japan_stocks: list[str] = field(default_factory=list)
-    custom_etfs: list[str] = field(default_factory=list)
-    custom_commodities: list[str] = field(default_factory=list)
-    custom_forex: list[str] = field(default_factory=list)
-
-    # Limits
-    max_us_stocks: int = 100
-    max_japan_stocks: int = 50
-    max_tickers: int = 150  # Total universe limit
-
-    # Regional allocation
-    regional_allocation: dict[str, float] = field(
-        default_factory=lambda: {"us": 0.70, "international": 0.30}
-    )
-
-    # Dynamic selection settings
-    dynamic_selection: dict[str, Any] = field(default_factory=dict)
+# =============================================================================
+# UniverseLoader
+# =============================================================================
 
 
 class UniverseLoader:
     """
-    Loads and manages the investment universe.
+    Loads and manages the investment universe from asset_master.yaml.
 
-    Provides methods to fetch tickers from various sources including:
-    - S&P 500 constituents (from Wikipedia)
-    - Nikkei 225 constituents
-    - ETFs
-    - Commodities (futures)
-    - Forex pairs
+    Provides methods to:
+    - Get all symbols or filter by criteria
+    - Use named subsets (standard, sbi, japan, etc.)
+    - Access taxonomy definitions
+    - Group symbols for report generation
 
     Example:
         >>> loader = UniverseLoader()
-        >>> tickers = loader.get_all_tickers()
-        >>> print(tickers["us_stocks"][:5])
-        ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA']
+        >>> symbols = loader.get_subset("standard")
+        >>> print(f"Standard universe: {len(symbols)} symbols")
+
+        >>> # Filter by taxonomy
+        >>> us_equities = loader.filter_symbols(
+        ...     taxonomy={"market": ["us"], "asset_class": ["equity"]}
+        ... )
+
+        >>> # Group for report
+        >>> by_sector = loader.group_by_taxonomy(us_equities, "sector")
+        >>> for sector, syms in by_sector.items():
+        ...     print(f"{sector}: {len(syms)} symbols")
     """
 
-    # Wikipedia URL for S&P 500 constituents
-    SP500_WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-
-    # Cache settings
-    CACHE_DURATION_DAYS = 7
-
-    # Default ETF tickers
-    DEFAULT_ETFS = [
-        "SPY",   # S&P 500
-        "QQQ",   # Nasdaq 100
-        "IWM",   # Russell 2000
-        "DIA",   # Dow Jones
-        "VTI",   # Total US Market
-        "EFA",   # EAFE (International Developed)
-        "EEM",   # Emerging Markets
-        "VNQ",   # Real Estate
-        "TLT",   # Long-term Treasury
-        "GLD",   # Gold
-        "SLV",   # Silver
-        "USO",   # Oil
-        "XLF",   # Financials
-        "XLK",   # Technology
-        "XLE",   # Energy
-        "XLV",   # Healthcare
-    ]
-
-    # Default commodity tickers (Yahoo Finance format)
-    DEFAULT_COMMODITIES = [
-        "GC=F",   # Gold Futures
-        "SI=F",   # Silver Futures
-        "CL=F",   # Crude Oil Futures
-        "NG=F",   # Natural Gas Futures
-        "HG=F",   # Copper Futures
-        "ZC=F",   # Corn Futures
-        "ZW=F",   # Wheat Futures
-        "ZS=F",   # Soybean Futures
-    ]
-
-    # Default forex pairs (Yahoo Finance format)
-    DEFAULT_FOREX = [
-        "USDJPY=X",   # USD/JPY
-        "EURUSD=X",   # EUR/USD
-        "GBPUSD=X",   # GBP/USD
-        "AUDUSD=X",   # AUD/USD
-        "USDCAD=X",   # USD/CAD
-        "USDCHF=X",   # USD/CHF
-        "EURJPY=X",   # EUR/JPY
-        "GBPJPY=X",   # GBP/JPY
-    ]
-
-    # Fallback S&P 500 top tickers (in case Wikipedia fetch fails)
-    FALLBACK_SP500 = [
-        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B",
-        "UNH", "JNJ", "JPM", "V", "XOM", "PG", "MA", "HD", "CVX", "MRK",
-        "ABBV", "LLY", "PEP", "KO", "COST", "AVGO", "WMT", "MCD", "CSCO",
-        "TMO", "ACN", "ABT", "DHR", "NEE", "VZ", "ADBE", "CRM", "NKE",
-        "CMCSA", "TXN", "PM", "INTC", "WFC", "AMD", "UPS", "RTX", "QCOM",
-        "MS", "T", "BMY", "ORCL", "SPGI",
-    ]
-
-    # Nikkei 225 representative tickers
-    NIKKEI225_TICKERS = [
-        "7203",   # Toyota
-        "6758",   # Sony
-        "9984",   # SoftBank Group
-        "6861",   # Keyence
-        "8306",   # MUFG
-        "9432",   # NTT
-        "6098",   # Recruit
-        "7267",   # Honda
-        "6501",   # Hitachi
-        "4063",   # Shin-Etsu Chemical
-        "7974",   # Nintendo
-        "8035",   # Tokyo Electron
-        "6367",   # Daikin
-        "9433",   # KDDI
-        "4502",   # Takeda
-        "6902",   # Denso
-        "7751",   # Canon
-        "8058",   # Mitsubishi Corp
-        "6954",   # Fanuc
-        "7832",   # Bandai Namco
-        "9983",   # Fast Retailing
-        "4519",   # Chugai Pharmaceutical
-        "6702",   # Fujitsu
-        "8031",   # Mitsui & Co
-        "6857",   # Advantest
-    ]
+    SUPPORTED_VERSIONS = ["3.0"]
 
     def __init__(
         self,
-        config_path: str | Path | None = None,
-        cache_dir: str | Path | None = None,
+        master_path: str | Path | None = None,
     ) -> None:
         """
         Initialize the UniverseLoader.
 
         Args:
-            config_path: Path to universe.yaml config file.
-                        If None, uses default configuration.
-            cache_dir: Directory for caching fetched data.
-                      If None, uses a default cache location.
+            master_path: Path to asset_master.yaml. If None, uses default location.
         """
-        self._config_path = Path(config_path) if config_path else None
-        self._cache_dir = Path(cache_dir) if cache_dir else Path("data/cache/universe")
-        self._config: UniverseConfig | None = None
+        if master_path is None:
+            # Default to config/asset_master.yaml relative to project root
+            project_root = Path(__file__).parent.parent.parent
+            master_path = project_root / "config" / "asset_master.yaml"
 
-        # Ensure cache directory exists
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._master_path = Path(master_path)
+        self._master_data: dict | None = None
+        self._symbols_cache: list[Symbol] | None = None
 
-        logger.info(
+        logger.debug(
             "UniverseLoader initialized",
-            config_path=str(self._config_path),
-            cache_dir=str(self._cache_dir),
+            master_path=str(self._master_path),
         )
 
-    def load_config(self) -> UniverseConfig:
+    def _load_master(self) -> dict:
         """
-        Load universe configuration from YAML file.
+        Load and cache the master file.
 
         Returns:
-            UniverseConfig with settings from file or defaults.
+            Parsed YAML data.
+
+        Raises:
+            ConfigNotFoundError: If the file doesn't exist.
+            InvalidVersionError: If the version is not supported.
         """
-        if self._config is not None:
-            return self._config
+        if self._master_data is not None:
+            return self._master_data
 
-        if self._config_path and self._config_path.exists():
-            try:
-                with open(self._config_path) as f:
-                    data = yaml.safe_load(f) or {}
+        if not self._master_path.exists():
+            raise ConfigNotFoundError(f"Asset master not found: {self._master_path}")
 
-                universe_data = data.get("universe", data)
-                self._config = UniverseConfig(
-                    us_stocks_enabled=universe_data.get("us_stocks_enabled", True),
-                    japan_stocks_enabled=universe_data.get("japan_stocks_enabled", False),
-                    etfs_enabled=universe_data.get("etfs_enabled", True),
-                    commodities_enabled=universe_data.get("commodities_enabled", True),
-                    forex_enabled=universe_data.get("forex_enabled", True),
-                    filters=universe_data.get("filters", {}),
-                    custom_us_stocks=universe_data.get("custom_us_stocks", []),
-                    custom_japan_stocks=universe_data.get("custom_japan_stocks", []),
-                    custom_etfs=universe_data.get("custom_etfs", []),
-                    custom_commodities=universe_data.get("custom_commodities", []),
-                    custom_forex=universe_data.get("custom_forex", []),
-                    max_us_stocks=universe_data.get("max_us_stocks", 100),
-                    max_japan_stocks=universe_data.get("max_japan_stocks", 50),
-                )
-                logger.info("Loaded universe config from file", path=str(self._config_path))
-            except Exception as e:
-                logger.warning(
-                    "Failed to load config, using defaults",
-                    error=str(e),
-                    path=str(self._config_path),
-                )
-                self._config = UniverseConfig()
-        else:
-            logger.info("No config file found, using defaults")
-            self._config = UniverseConfig()
+        with open(self._master_path) as f:
+            data = yaml.safe_load(f) or {}
 
-        return self._config
-
-    def _get_cache_path(self, name: str) -> Path:
-        """Get the cache file path for a given data type."""
-        return self._cache_dir / f"{name}_cache.json"
-
-    def _is_cache_valid(self, cache_path: Path) -> bool:
-        """Check if cache file exists and is not expired."""
-        if not cache_path.exists():
-            return False
-
-        try:
-            with open(cache_path) as f:
-                data = json.load(f)
-
-            cached_time = datetime.fromisoformat(data.get("timestamp", "2000-01-01"))
-            expiry = cached_time + timedelta(days=self.CACHE_DURATION_DAYS)
-            return datetime.now() < expiry
-        except Exception:
-            return False
-
-    def _load_from_cache(self, name: str) -> list[str] | None:
-        """Load tickers from cache if valid."""
-        cache_path = self._get_cache_path(name)
-        if not self._is_cache_valid(cache_path):
-            return None
-
-        try:
-            with open(cache_path) as f:
-                data = json.load(f)
-            logger.debug(f"Loaded {name} from cache", count=len(data.get("tickers", [])))
-            return data.get("tickers", [])
-        except Exception as e:
-            logger.warning(f"Failed to load {name} cache", error=str(e))
-            return None
-
-    def _save_to_cache(self, name: str, tickers: list[str]) -> None:
-        """Save tickers to cache."""
-        cache_path = self._get_cache_path(name)
-        try:
-            with open(cache_path, "w") as f:
-                json.dump(
-                    {"timestamp": datetime.now().isoformat(), "tickers": tickers},
-                    f,
-                    indent=2,
-                )
-            logger.debug(f"Saved {name} to cache", count=len(tickers))
-        except Exception as e:
-            logger.warning(f"Failed to save {name} cache", error=str(e))
-
-    def get_sp500_tickers(self, use_cache: bool = True) -> list[str]:
-        """
-        Get S&P 500 constituent tickers.
-
-        Attempts to fetch from Wikipedia. Falls back to a predefined list
-        if the fetch fails.
-
-        Args:
-            use_cache: Whether to use cached data if available.
-
-        Returns:
-            List of S&P 500 ticker symbols.
-        """
-        config = self.load_config()
-
-        # Use custom list if provided
-        if config.custom_us_stocks:
-            logger.info("Using custom US stocks list", count=len(config.custom_us_stocks))
-            return config.custom_us_stocks[: config.max_us_stocks]
-
-        # Check cache
-        if use_cache:
-            cached = self._load_from_cache("sp500")
-            if cached:
-                return cached[: config.max_us_stocks]
-
-        # Try to fetch from Wikipedia
-        try:
-            logger.info("Fetching S&P 500 from Wikipedia")
-            tables = pd.read_html(self.SP500_WIKI_URL)
-
-            # The first table contains the S&P 500 list
-            df = tables[0]
-
-            # Find the ticker column (usually "Symbol" or "Ticker")
-            ticker_col = None
-            for col in df.columns:
-                if "symbol" in str(col).lower() or "ticker" in str(col).lower():
-                    ticker_col = col
-                    break
-
-            if ticker_col is None:
-                # Try first column as fallback
-                ticker_col = df.columns[0]
-
-            tickers = df[ticker_col].tolist()
-
-            # Clean tickers (remove any notes like "BRK.B" -> "BRK-B")
-            tickers = [str(t).replace(".", "-").strip() for t in tickers if pd.notna(t)]
-
-            logger.info("Fetched S&P 500 tickers", count=len(tickers))
-            self._save_to_cache("sp500", tickers)
-            return tickers[: config.max_us_stocks]
-
-        except Exception as e:
-            logger.warning(
-                "Failed to fetch S&P 500 from Wikipedia, using fallback",
-                error=str(e),
+        # Validate version
+        version = data.get("version", "1.0")
+        if not any(version.startswith(v.split(".")[0]) for v in self.SUPPORTED_VERSIONS):
+            raise InvalidVersionError(
+                f"Asset master version {version} is not supported. "
+                f"Supported versions: {self.SUPPORTED_VERSIONS}"
             )
-            return self.FALLBACK_SP500[: config.max_us_stocks]
 
-    def get_nikkei225_tickers(self, use_cache: bool = True) -> list[str]:
+        self._master_data = data
+        logger.info(
+            "Loaded asset master",
+            version=version,
+            name=data.get("name"),
+            symbol_count=len(data.get("symbols", [])),
+        )
+        return data
+
+    def _get_symbols_list(self) -> list[Symbol]:
+        """Get all symbols as Symbol objects (cached)."""
+        if self._symbols_cache is not None:
+            return self._symbols_cache
+
+        data = self._load_master()
+        symbols_data = data.get("symbols", [])
+        self._symbols_cache = [Symbol.from_dict(s) for s in symbols_data]
+        return self._symbols_cache
+
+    # =========================================================================
+    # Public API: Symbol Access
+    # =========================================================================
+
+    def get_all_symbols(self) -> list[Symbol]:
         """
-        Get Nikkei 225 constituent tickers.
+        Get all symbols in the master file.
 
-        Returns tickers with .T suffix for Yahoo Finance compatibility.
+        Returns:
+            List of all Symbol objects.
+        """
+        return self._get_symbols_list().copy()
+
+    def get_all_tickers(self) -> list[str]:
+        """
+        Get all ticker strings.
+
+        Returns:
+            List of ticker strings.
+        """
+        return [s.ticker for s in self._get_symbols_list()]
+
+    def get_subset(self, subset_name: str) -> list[Symbol]:
+        """
+        Get symbols matching a named subset.
 
         Args:
-            use_cache: Whether to use cached data if available.
+            subset_name: Name of the subset (e.g., "standard", "sbi", "japan")
 
         Returns:
-            List of Nikkei 225 ticker symbols (e.g., "7203.T").
+            List of Symbol objects matching the subset filters.
+
+        Raises:
+            KeyError: If the subset doesn't exist.
         """
-        config = self.load_config()
+        data = self._load_master()
+        subsets = data.get("subsets", {})
 
-        # Use custom list if provided
-        if config.custom_japan_stocks:
-            # Ensure .T suffix
-            tickers = [
-                t if t.endswith(".T") else f"{t}.T"
-                for t in config.custom_japan_stocks
-            ]
-            logger.info("Using custom Japan stocks list", count=len(tickers))
-            return tickers[: config.max_japan_stocks]
+        if subset_name not in subsets:
+            available = list(subsets.keys())
+            raise KeyError(
+                f"Subset '{subset_name}' not found. Available: {available}"
+            )
 
-        # Check cache
-        if use_cache:
-            cached = self._load_from_cache("nikkei225")
-            if cached:
-                return cached[: config.max_japan_stocks]
+        subset_def = subsets[subset_name]
+        filters = subset_def.get("filters", {})
 
-        # Use predefined list (add .T suffix)
-        tickers = [f"{code}.T" for code in self.NIKKEI225_TICKERS]
+        return self._apply_filters(filters)
 
-        logger.info("Using predefined Nikkei 225 tickers", count=len(tickers))
-        self._save_to_cache("nikkei225", tickers)
-        return tickers[: config.max_japan_stocks]
-
-    def get_etf_tickers(self) -> list[str]:
+    def get_subset_tickers(self, subset_name: str) -> list[str]:
         """
-        Get ETF tickers.
+        Get ticker strings for a named subset.
+
+        Args:
+            subset_name: Name of the subset.
 
         Returns:
-            List of ETF ticker symbols.
+            List of ticker strings.
         """
-        config = self.load_config()
+        return [s.ticker for s in self.get_subset(subset_name)]
 
-        if config.custom_etfs:
-            logger.info("Using custom ETF list", count=len(config.custom_etfs))
-            return config.custom_etfs
-
-        return self.DEFAULT_ETFS.copy()
-
-    def get_commodity_tickers(self) -> list[str]:
-        """
-        Get commodity futures tickers.
-
-        Returns:
-            List of commodity ticker symbols (Yahoo Finance format).
-        """
-        config = self.load_config()
-
-        if config.custom_commodities:
-            logger.info("Using custom commodities list", count=len(config.custom_commodities))
-            return config.custom_commodities
-
-        return self.DEFAULT_COMMODITIES.copy()
-
-    def get_forex_pairs(self) -> list[str]:
-        """
-        Get forex pair tickers.
-
-        Returns:
-            List of forex pair symbols (Yahoo Finance format).
-        """
-        config = self.load_config()
-
-        if config.custom_forex:
-            logger.info("Using custom forex list", count=len(config.custom_forex))
-            return config.custom_forex
-
-        return self.DEFAULT_FOREX.copy()
-
-    def apply_filters(
+    def filter_symbols(
         self,
-        tickers: list[str],
-        category: str | None = None,
+        tags: list[str] | None = None,
+        exclude_tags: list[str] | None = None,
+        taxonomy: dict[str, list[str]] | None = None,
+    ) -> list[Symbol]:
+        """
+        Filter symbols by tags and taxonomy.
+
+        Args:
+            tags: Include symbols with ANY of these tags.
+            exclude_tags: Exclude symbols with ANY of these tags.
+            taxonomy: Filter by taxonomy values (e.g., {"market": ["us", "japan"]}).
+
+        Returns:
+            List of matching Symbol objects.
+        """
+        filters = {}
+        if tags:
+            filters["tags"] = tags
+        if exclude_tags:
+            filters["exclude_tags"] = exclude_tags
+        if taxonomy:
+            filters["taxonomy"] = taxonomy
+
+        return self._apply_filters(filters)
+
+    def filter_tickers(
+        self,
+        tags: list[str] | None = None,
+        exclude_tags: list[str] | None = None,
+        taxonomy: dict[str, list[str]] | None = None,
     ) -> list[str]:
         """
-        Apply configured filters to a list of tickers.
+        Filter ticker strings by criteria.
 
         Args:
-            tickers: List of ticker symbols.
-            category: Optional category name for category-specific filters.
+            tags: Include symbols with ANY of these tags.
+            exclude_tags: Exclude symbols with ANY of these tags.
+            taxonomy: Filter by taxonomy values.
 
         Returns:
-            Filtered list of tickers.
+            List of matching ticker strings.
         """
-        config = self.load_config()
-        filters = config.filters
+        symbols = self.filter_symbols(tags, exclude_tags, taxonomy)
+        return [s.ticker for s in symbols]
 
-        if not filters:
-            return tickers
+    def _apply_filters(self, filters: dict) -> list[Symbol]:
+        """Apply filter dictionary to symbols."""
+        all_symbols = self._get_symbols_list()
+        result = []
 
-        result = tickers.copy()
+        tags_filter = filters.get("tags", [])
+        exclude_tags = filters.get("exclude_tags", [])
+        taxonomy_filter = filters.get("taxonomy", {})
 
-        # Apply exclude list
-        exclude = filters.get("exclude", [])
-        if exclude:
-            result = [t for t in result if t not in exclude]
+        for symbol in all_symbols:
+            # Check exclude tags first
+            if exclude_tags:
+                if any(symbol.has_tag(t) for t in exclude_tags):
+                    continue
 
-        # Apply include list (overrides everything else)
-        include = filters.get("include", [])
-        if include:
-            result = [t for t in result if t in include]
+            # Check required tags (any match)
+            if tags_filter:
+                if not any(symbol.has_tag(t) for t in tags_filter):
+                    continue
 
-        # Apply category-specific filters
-        if category and category in filters:
-            cat_filters = filters[category]
-            if "exclude" in cat_filters:
-                result = [t for t in result if t not in cat_filters["exclude"]]
-            if "include" in cat_filters:
-                result = [t for t in result if t in cat_filters["include"]]
+            # Check taxonomy filters
+            if taxonomy_filter:
+                match = True
+                for key, values in taxonomy_filter.items():
+                    if not symbol.matches_taxonomy(**{key: values}):
+                        match = False
+                        break
+                if not match:
+                    continue
+
+            result.append(symbol)
 
         return result
 
-    def get_all_tickers(self) -> dict[str, list[str]]:
+    # =========================================================================
+    # Public API: Taxonomy
+    # =========================================================================
+
+    def get_taxonomy(self) -> dict[str, dict[str, str]]:
         """
-        Get all tickers organized by category.
+        Get all taxonomy definitions.
 
         Returns:
-            Dictionary with categories as keys and ticker lists as values.
-            {
-                "us_stocks": ["AAPL", "MSFT", ...],
-                "japan_stocks": ["7203.T", ...],
-                "etfs": ["SPY", ...],
-                "commodities": ["GC=F", ...],
-                "forex": ["USDJPY=X", ...]
-            }
+            Dictionary with taxonomy categories and their value labels.
+            Example: {"market": {"us": "US Markets", "japan": "Japanese Markets"}, ...}
         """
-        config = self.load_config()
-        result: dict[str, list[str]] = {}
+        data = self._load_master()
+        return data.get("taxonomy", {})
 
-        if config.us_stocks_enabled:
-            tickers = self.get_sp500_tickers()
-            result["us_stocks"] = self.apply_filters(tickers, "us_stocks")
-            logger.info("Loaded US stocks", count=len(result["us_stocks"]))
+    def get_taxonomy_keys(self) -> list[str]:
+        """
+        Get available taxonomy keys.
 
-        if config.japan_stocks_enabled:
-            tickers = self.get_nikkei225_tickers()
-            result["japan_stocks"] = self.apply_filters(tickers, "japan_stocks")
-            logger.info("Loaded Japan stocks", count=len(result["japan_stocks"]))
+        Returns:
+            List of taxonomy keys (e.g., ["market", "asset_class", "sector"]).
+        """
+        return list(self.get_taxonomy().keys())
 
-        if config.etfs_enabled:
-            tickers = self.get_etf_tickers()
-            result["etfs"] = self.apply_filters(tickers, "etfs")
-            logger.info("Loaded ETFs", count=len(result["etfs"]))
+    def get_taxonomy_label(self, key: str, value: str) -> str:
+        """
+        Get the display label for a taxonomy value.
 
-        if config.commodities_enabled:
-            tickers = self.get_commodity_tickers()
-            result["commodities"] = self.apply_filters(tickers, "commodities")
-            logger.info("Loaded commodities", count=len(result["commodities"]))
+        Args:
+            key: Taxonomy key (e.g., "market").
+            value: Taxonomy value (e.g., "us").
 
-        if config.forex_enabled:
-            tickers = self.get_forex_pairs()
-            result["forex"] = self.apply_filters(tickers, "forex")
-            logger.info("Loaded forex pairs", count=len(result["forex"]))
+        Returns:
+            Display label (e.g., "US Markets"), or the value itself if not found.
+        """
+        taxonomy = self.get_taxonomy()
+        return taxonomy.get(key, {}).get(value, value)
 
-        total = sum(len(v) for v in result.values())
-        logger.info("Loaded complete universe", total_tickers=total, categories=len(result))
+    # =========================================================================
+    # Public API: Grouping for Reports
+    # =========================================================================
+
+    def group_by_taxonomy(
+        self,
+        symbols: list[Symbol],
+        taxonomy_key: str,
+    ) -> dict[str, list[Symbol]]:
+        """
+        Group symbols by a taxonomy key.
+
+        Args:
+            symbols: List of symbols to group.
+            taxonomy_key: Key to group by (e.g., "sector", "market").
+
+        Returns:
+            Dictionary mapping taxonomy values to lists of symbols.
+            Example: {"technology": [AAPL, MSFT, ...], "healthcare": [JNJ, ...]}
+        """
+        groups: dict[str, list[Symbol]] = {}
+
+        for symbol in symbols:
+            value = symbol.taxonomy.get(taxonomy_key, "unknown")
+            if value not in groups:
+                groups[value] = []
+            groups[value].append(symbol)
+
+        return groups
+
+    def group_by_tag(
+        self,
+        symbols: list[Symbol],
+        tag: str,
+    ) -> dict[bool, list[Symbol]]:
+        """
+        Group symbols by whether they have a specific tag.
+
+        Args:
+            symbols: List of symbols to group.
+            tag: Tag to check.
+
+        Returns:
+            Dictionary with True/False keys mapping to symbol lists.
+        """
+        return {
+            True: [s for s in symbols if s.has_tag(tag)],
+            False: [s for s in symbols if not s.has_tag(tag)],
+        }
+
+    # =========================================================================
+    # Public API: Subset Info
+    # =========================================================================
+
+    def get_available_subsets(self) -> list[dict]:
+        """
+        Get information about available subsets.
+
+        Returns:
+            List of subset info dictionaries with name, description, and count.
+        """
+        data = self._load_master()
+        subsets_def = data.get("subsets", {})
+        result = []
+
+        for name, subset in subsets_def.items():
+            try:
+                symbols = self.get_subset(name)
+                count = len(symbols)
+            except Exception:
+                count = 0
+
+            result.append({
+                "name": name,
+                "description": subset.get("description", ""),
+                "symbol_count": count,
+            })
 
         return result
+
+    def get_symbols_summary(self) -> dict[str, Any]:
+        """
+        Get summary statistics of all symbols.
+
+        Returns:
+            Dictionary with counts by market, asset_class, etc.
+        """
+        symbols = self._get_symbols_list()
+
+        by_market: dict[str, int] = {}
+        by_asset_class: dict[str, int] = {}
+        by_sector: dict[str, int] = {}
+
+        for s in symbols:
+            # Market
+            market = s.market
+            by_market[market] = by_market.get(market, 0) + 1
+
+            # Asset class
+            asset_class = s.asset_class
+            by_asset_class[asset_class] = by_asset_class.get(asset_class, 0) + 1
+
+            # Sector (only for equities with sector)
+            sector = s.sector
+            if sector:
+                by_sector[sector] = by_sector.get(sector, 0) + 1
+
+        return {
+            "total": len(symbols),
+            "by_market": by_market,
+            "by_asset_class": by_asset_class,
+            "by_sector": by_sector,
+        }
+
+    # =========================================================================
+    # Backward Compatibility: Legacy Format Output
+    # =========================================================================
+
+    def load_standard_universe(self) -> dict[str, list[str]]:
+        """
+        Load standard universe in legacy format.
+
+        This method provides backward compatibility with code expecting
+        the old dictionary format.
+
+        Returns:
+            Dictionary with "us_stocks", "japan_stocks", "etfs" keys.
+        """
+        try:
+            symbols = self.get_subset("standard")
+        except KeyError:
+            symbols = self.get_all_symbols()
+
+        us_stocks = []
+        japan_stocks = []
+        etfs = []
+
+        for s in symbols:
+            if s.asset_class == "etf":
+                etfs.append(s.ticker)
+            elif s.market == "japan":
+                japan_stocks.append(s.ticker)
+            elif s.market == "us":
+                us_stocks.append(s.ticker)
+
+        return {
+            "us_stocks": us_stocks,
+            "japan_stocks": japan_stocks,
+            "etfs": etfs,
+        }
 
     def get_flat_ticker_list(self) -> list[str]:
         """
         Get all tickers as a flat list.
 
         Returns:
-            List of all ticker symbols across all categories.
+            List of all ticker strings.
         """
-        all_tickers = self.get_all_tickers()
-        flat_list = []
-        for tickers in all_tickers.values():
-            flat_list.extend(tickers)
-        return flat_list
+        return self.get_all_tickers()
 
-    def clear_cache(self) -> None:
-        """Clear all cached ticker data."""
-        for cache_file in self._cache_dir.glob("*_cache.json"):
-            try:
-                cache_file.unlink()
-                logger.info("Deleted cache file", path=str(cache_file))
-            except Exception as e:
-                logger.warning("Failed to delete cache file", path=str(cache_file), error=str(e))
-
-    # ═══════════════════════════════════════════════════════════════
-    # Enhanced Filtering Methods (IMP-001: Universe Size Optimization)
-    # ═══════════════════════════════════════════════════════════════
-
-    def apply_liquidity_filter(
-        self,
-        tickers: list[str],
-        price_data: dict[str, pd.DataFrame] | None = None,
-        min_daily_volume: float = 10_000_000,
-        min_price: float = 5.0,
-        max_price: float = 10_000.0,
-    ) -> list[str]:
-        """
-        Apply enhanced liquidity filters to ticker list.
-
-        Args:
-            tickers: List of ticker symbols
-            price_data: Optional price data dict {ticker: DataFrame}
-            min_daily_volume: Minimum daily dollar volume
-            min_price: Minimum stock price
-            max_price: Maximum stock price
-
-        Returns:
-            Filtered list of tickers meeting liquidity criteria
-        """
-        if price_data is None:
-            logger.warning("No price data provided for liquidity filter, returning all tickers")
-            return tickers
-
-        filtered = []
-        for ticker in tickers:
-            if ticker not in price_data:
-                continue
-
-            df = price_data[ticker]
-
-            # Find close and volume columns (handle various formats)
-            close_col = None
-            volume_col = None
-            for col in df.columns:
-                col_lower = str(col).lower()
-                if "close" in col_lower:
-                    close_col = col
-                elif "volume" in col_lower:
-                    volume_col = col
-
-            if close_col is None or volume_col is None:
-                continue
-
-            try:
-                # Calculate average metrics
-                close_prices = df[close_col].dropna()
-                volumes = df[volume_col].dropna()
-
-                if len(close_prices) < 20:
-                    continue
-
-                avg_price = close_prices.mean()
-                avg_volume = volumes.mean()
-                dollar_volume = avg_price * avg_volume
-
-                # Apply filters
-                if dollar_volume >= min_daily_volume and min_price <= avg_price <= max_price:
-                    filtered.append(ticker)
-
-            except Exception as e:
-                logger.debug(f"Liquidity filter error for {ticker}: {e}")
-                continue
-
-        logger.info(
-            "Applied liquidity filter",
-            input_count=len(tickers),
-            output_count=len(filtered),
-            min_volume=min_daily_volume,
-        )
-        return filtered
-
-    def apply_sector_diversification(
-        self,
-        tickers: list[str],
-        sector_mapping: dict[str, str] | None = None,
-        max_sector_weight: float = 0.15,
-        min_sector_count: int = 8,
-    ) -> list[str]:
-        """
-        Apply sector diversification constraints.
-
-        Args:
-            tickers: List of ticker symbols
-            sector_mapping: Dict mapping ticker to sector name
-            max_sector_weight: Maximum weight per sector (0-1)
-            min_sector_count: Minimum number of sectors required
-
-        Returns:
-            Diversified list of tickers
-        """
-        if sector_mapping is None:
-            # Use default sector hints from config or return as-is
-            logger.warning("No sector mapping provided, skipping diversification")
-            return tickers
-
-        # Group tickers by sector
-        sector_tickers: dict[str, list[str]] = {}
-        for ticker in tickers:
-            sector = sector_mapping.get(ticker, "unknown")
-            if sector not in sector_tickers:
-                sector_tickers[sector] = []
-            sector_tickers[sector].append(ticker)
-
-        # Calculate target count per sector
-        total_target = len(tickers)
-        max_per_sector = int(total_target * max_sector_weight)
-
-        # Select tickers respecting sector limits
-        selected = []
-        for sector, sector_list in sector_tickers.items():
-            # Limit tickers per sector
-            selected.extend(sector_list[:max_per_sector])
-
-        # Ensure minimum sector count
-        active_sectors = len([s for s in sector_tickers if sector_tickers[s]])
-        if active_sectors < min_sector_count:
-            logger.warning(
-                f"Only {active_sectors} sectors available, target was {min_sector_count}"
-            )
-
-        logger.info(
-            "Applied sector diversification",
-            input_count=len(tickers),
-            output_count=len(selected),
-            sectors=len(sector_tickers),
-        )
-        return selected
-
-    def dynamic_ticker_selection(
-        self,
-        candidates: list[str],
-        price_data: dict[str, pd.DataFrame],
-        target_count: int = 150,
-        momentum_weight: float = 0.4,
-        liquidity_weight: float = 0.3,
-        volatility_weight: float = 0.2,
-        diversification_weight: float = 0.1,
-        momentum_lookback: int = 60,
-    ) -> list[str]:
-        """
-        Dynamically select optimal tickers based on multiple criteria.
-
-        Args:
-            candidates: List of candidate tickers
-            price_data: Price data dict {ticker: DataFrame}
-            target_count: Number of tickers to select
-            momentum_weight: Weight for momentum score (0-1)
-            liquidity_weight: Weight for liquidity score (0-1)
-            volatility_weight: Weight for volatility score (0-1, lower vol = higher score)
-            diversification_weight: Weight for diversification score (0-1)
-            momentum_lookback: Days for momentum calculation
-
-        Returns:
-            Optimally selected list of tickers
-        """
-        import numpy as np
-
-        scores: dict[str, float] = {}
-
-        for ticker in candidates:
-            if ticker not in price_data:
-                continue
-
-            df = price_data[ticker]
-
-            # Find columns
-            close_col = None
-            volume_col = None
-            for col in df.columns:
-                col_lower = str(col).lower()
-                if "close" in col_lower:
-                    close_col = col
-                elif "volume" in col_lower:
-                    volume_col = col
-
-            if close_col is None:
-                continue
-
-            try:
-                closes = df[close_col].dropna()
-                if len(closes) < momentum_lookback:
-                    continue
-
-                # Momentum score (higher = better)
-                recent = closes.iloc[-momentum_lookback:]
-                if len(recent) >= 2 and recent.iloc[0] > 0:
-                    momentum = (recent.iloc[-1] / recent.iloc[0]) - 1
-                else:
-                    momentum = 0
-
-                # Volatility score (lower vol = higher score)
-                returns = closes.pct_change().dropna()
-                volatility = returns.std() if len(returns) > 0 else 1.0
-                vol_score = 1 / (1 + volatility * 10)  # Normalize
-
-                # Liquidity score
-                if volume_col is not None:
-                    volumes = df[volume_col].dropna()
-                    avg_volume = volumes.mean() if len(volumes) > 0 else 0
-                    avg_price = closes.mean()
-                    dollar_volume = avg_price * avg_volume
-                    # Log scale normalization
-                    liquidity_score = np.log10(max(dollar_volume, 1)) / 12  # Normalize to ~0-1
-                else:
-                    liquidity_score = 0.5
-
-                # Combined score
-                score = (
-                    momentum_weight * max(min(momentum, 1), -1)  # Clip momentum
-                    + volatility_weight * vol_score
-                    + liquidity_weight * min(liquidity_score, 1)
-                    + diversification_weight * 0.5  # Base diversification score
-                )
-                scores[ticker] = score
-
-            except Exception as e:
-                logger.debug(f"Scoring error for {ticker}: {e}")
-                continue
-
-        # Sort by score and select top N
-        sorted_tickers = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        selected = [t[0] for t in sorted_tickers[:target_count]]
-
-        logger.info(
-            "Dynamic ticker selection complete",
-            candidates=len(candidates),
-            selected=len(selected),
-            target=target_count,
-        )
-        return selected
-
-    def load_optimized_universe(
-        self,
-        config_path: str = "config/universe_optimized.yaml",
-        price_data: dict[str, pd.DataFrame] | None = None,
-    ) -> list[str]:
-        """
-        Load optimized universe with all filters applied.
-
-        Args:
-            config_path: Path to optimized universe config
-            price_data: Optional price data for dynamic filtering
-
-        Returns:
-            Optimized list of tickers
-        """
-        config_file = Path(config_path)
-        if not config_file.exists():
-            logger.warning(f"Optimized config not found: {config_path}, using defaults")
-            return self.get_flat_ticker_list()
-
-        try:
-            with open(config_file) as f:
-                config = yaml.safe_load(f)
-
-            universe_cfg = config.get("universe", {})
-            filters = universe_cfg.get("filters", {})
-            dynamic_cfg = universe_cfg.get("dynamic_selection", {})
-
-            # Start with all candidates
-            all_tickers = self.get_flat_ticker_list()
-            logger.info(f"Starting with {len(all_tickers)} candidates")
-
-            # Apply liquidity filter if price data available
-            if price_data:
-                all_tickers = self.apply_liquidity_filter(
-                    all_tickers,
-                    price_data,
-                    min_daily_volume=filters.get("min_daily_volume", 10_000_000),
-                    min_price=filters.get("min_price", 5.0),
-                    max_price=filters.get("max_price", 10_000.0),
-                )
-
-            # Apply dynamic selection if enabled
-            if dynamic_cfg.get("enabled", False) and price_data:
-                all_tickers = self.dynamic_ticker_selection(
-                    all_tickers,
-                    price_data,
-                    target_count=universe_cfg.get("max_tickers", 150),
-                    momentum_weight=dynamic_cfg.get("momentum_weight", 0.4),
-                    liquidity_weight=dynamic_cfg.get("liquidity_weight", 0.3),
-                    volatility_weight=dynamic_cfg.get("volatility_weight", 0.2),
-                    diversification_weight=dynamic_cfg.get("diversification_weight", 0.1),
-                    momentum_lookback=dynamic_cfg.get("momentum_lookback", 60),
-                )
-            else:
-                # Just limit to max_tickers
-                max_tickers = universe_cfg.get("max_tickers", 150)
-                all_tickers = all_tickers[:max_tickers]
-
-            logger.info(f"Optimized universe: {len(all_tickers)} tickers")
-            return all_tickers
-
-        except Exception as e:
-            logger.error(f"Failed to load optimized universe: {e}")
-            return self.get_flat_ticker_list()[:150]
+    def reload(self) -> None:
+        """Clear cache and reload the master file."""
+        self._master_data = None
+        self._symbols_cache = None
+        self._load_master()

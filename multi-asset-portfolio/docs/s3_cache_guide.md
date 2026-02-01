@@ -175,14 +175,14 @@ df = backend.read_parquet("signals/momentum_20.parquet")
 ### 3.1 基本的な使用方法
 
 ```bash
-# S3キャッシュモードでバックテスト実行
-python scripts/run_all_backtests.py --s3
+# S3キャッシュモードでバックテスト実行（config/default.yamlでbackend: "s3"を設定）
+python scripts/run_backtest.py -f monthly
 
-# 特定の頻度のみ実行
-python scripts/run_all_backtests.py --s3 --frequency daily
+# 特定の頻度で実行
+python scripts/run_backtest.py -f daily
 
-# チェックポイントから再開
-python scripts/run_all_backtests.py --s3 --frequency weekly --resume checkpoints/weekly/cp_0050.pkl
+# テストモード（5銘柄×短期間）
+python scripts/run_backtest.py --test -f monthly
 ```
 
 ### 3.2 環境変数でのカスタマイズ
@@ -192,7 +192,7 @@ python scripts/run_all_backtests.py --s3 --frequency weekly --resume checkpoints
 export BACKTEST_S3_BUCKET="my-custom-bucket"
 export BACKTEST_S3_PREFIX="backtest-cache"
 
-python scripts/run_all_backtests.py --s3
+python scripts/run_backtest.py -f monthly
 ```
 
 ### 3.3 AWS認証情報を指定して実行
@@ -200,7 +200,7 @@ python scripts/run_all_backtests.py --s3
 ```bash
 # 一時的に認証情報を指定
 AWS_ACCESS_KEY_ID=xxx AWS_SECRET_ACCESS_KEY=xxx \
-python scripts/run_all_backtests.py --s3
+python scripts/run_backtest.py -f monthly
 ```
 
 ### 3.4 ローカルキャッシュのクリア
@@ -387,8 +387,21 @@ rm -f /tmp/.backtest_cache/.cache_metadata.json
 
 ## 6. 参考資料
 
+### 関連ドキュメント
+
+| ドキュメント | 概要 |
+|-------------|------|
+| [CACHE_SYSTEM.md](CACHE_SYSTEM.md) | キャッシュシステム全体の解説 |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | S3/キャッシュ問題の解決方法 |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | 本番環境でのS3設定 |
+
+### 実装・設定ファイル
+
 - [StorageBackend実装](../src/utils/storage_backend.py)
 - [設定ファイル](../config/default.yaml)
-- [バックテスト実行スクリプト](../scripts/run_all_backtests.py)
+- [バックテスト実行スクリプト](../scripts/run_backtest.py)
+
+### 外部ドキュメント
+
 - [AWS S3ドキュメント](https://docs.aws.amazon.com/s3/)
 - [fsspec公式ドキュメント](https://filesystem-spec.readthedocs.io/)

@@ -12,6 +12,9 @@ Available Signal Categories:
 - seasonality: Calendar-based signals (DayOfWeekSignal, MonthEffectSignal, etc.)
 - factor: Cross-sectional factor signals (ValueFactor, QualityFactor, LowVolFactor, etc.)
 - sector: Sector-based signals (SectorMomentum, SectorRelativeStrength, SectorBreadth)
+- volume: Order flow signals (OBVMomentum, MFI, VWAP, AccumulationDistribution)
+- correlation: Regime detection signals (CorrelationRegime, ReturnDispersion)
+- advanced_technical: Adaptive indicators (KAMA, KeltnerChannel)
 
 Usage:
     from signals import SignalRegistry, Signal
@@ -248,6 +251,68 @@ from src.signals.short_term_reversal import (
     MonthlyShortTermReversalSignal,
 )
 
+# Volume signals (Order Flow)
+from src.signals.volume import (
+    OBVMomentumSignal,
+    MoneyFlowIndexSignal,
+    VWAPDeviationSignal,
+    AccumulationDistributionSignal,
+)
+
+# Correlation signals (Regime Detection)
+from src.signals.correlation import (
+    CorrelationRegimeSignal,
+    ReturnDispersionSignal,
+    CrossAssetCorrelationSignal,
+)
+
+# Advanced Technical signals (Adaptive Indicators)
+from src.signals.advanced_technical import (
+    KAMASignal,
+    KeltnerChannelSignal,
+)
+
+# Fifty Two Week High (George & Hwang 2004)
+from src.signals.fifty_two_week_high import (
+    FiftyTwoWeekHighMomentumSignal,
+)
+
+# Lead-Lag Signal (Oxford研究ベース)
+from src.signals.lead_lag import (
+    LeadLagSignal,
+    LeadLagPair,
+    compute_lead_lag_signal,
+)
+
+# Low Volatility Premium (ファクター投資)
+from src.signals.low_vol_premium import (
+    LowVolPremiumSignal,
+    LowVolPremiumStrategy,
+    LowVolPremiumConfig,
+    calculate_volatility_rank,
+    apply_low_vol_premium,
+)
+
+# Enhanced Yield Curve Signal (マクロ)
+from src.signals.yield_curve_signal import (
+    EnhancedYieldCurveRegisteredSignal,
+    EnhancedYieldCurveSignal,
+    CurveShape,
+    get_current_yield_curve_shape,
+    get_yield_curve_allocation_adjustment,
+)
+
+# Meta Validation (Optimization Level Selection)
+from src.signals.meta_validation import (
+    MetaValidationCache,
+    MetaValidator,
+    MetaValidationResult,
+    LevelValidationResult,
+    AdaptiveParameterCalculator,
+    OptimizationLevel,
+    create_adaptive_calculator,
+)
+
 __all__ = [
     # Base
     "Signal",
@@ -407,6 +472,44 @@ __all__ = [
     "ShortTermReversalSignal",
     "WeeklyShortTermReversalSignal",
     "MonthlyShortTermReversalSignal",
+    # Volume signals (Order Flow)
+    "OBVMomentumSignal",
+    "MoneyFlowIndexSignal",
+    "VWAPDeviationSignal",
+    "AccumulationDistributionSignal",
+    # Correlation signals (Regime Detection)
+    "CorrelationRegimeSignal",
+    "ReturnDispersionSignal",
+    "CrossAssetCorrelationSignal",
+    # Advanced Technical signals (Adaptive Indicators)
+    "KAMASignal",
+    "KeltnerChannelSignal",
+    # Fifty Two Week High (George & Hwang 2004)
+    "FiftyTwoWeekHighMomentumSignal",
+    # Meta Validation (Optimization Level Selection)
+    "MetaValidationCache",
+    "MetaValidator",
+    "MetaValidationResult",
+    "LevelValidationResult",
+    "AdaptiveParameterCalculator",
+    "OptimizationLevel",
+    "create_adaptive_calculator",
+    # Lead-Lag Signal (Oxford研究ベース)
+    "LeadLagSignal",
+    "LeadLagPair",
+    "compute_lead_lag_signal",
+    # Low Volatility Premium (ファクター投資)
+    "LowVolPremiumSignal",
+    "LowVolPremiumStrategy",
+    "LowVolPremiumConfig",
+    "calculate_volatility_rank",
+    "apply_low_vol_premium",
+    # Enhanced Yield Curve Signal (マクロ)
+    "EnhancedYieldCurveRegisteredSignal",
+    "EnhancedYieldCurveSignal",
+    "CurveShape",
+    "get_current_yield_curve_shape",
+    "get_yield_curve_allocation_adjustment",
 ]
 
 __version__ = "1.0.0"

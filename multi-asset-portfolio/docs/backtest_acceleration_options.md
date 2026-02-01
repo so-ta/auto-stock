@@ -167,7 +167,7 @@ config = FastBacktestConfig(
 ```bash
 # EC2インスタンス起動後
 pip install cupy-cuda11x
-python scripts/run_all_backtests.py
+python scripts/run_backtest.py -f daily
 ```
 
 ---
@@ -356,3 +356,14 @@ df = cudf.read_parquet("prices.parquet")
 **最終目標**:
 - 日次15年バックテスト: 30-60分 → **数秒〜1分**
 - 月次15年バックテスト: 1-2分 → **数秒**
+
+---
+
+## 関連ドキュメント
+
+| ドキュメント | 概要 |
+|-------------|------|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | 本番環境でのGPU/リソース設定 |
+| [INSTALLATION.md](INSTALLATION.md) | GPU/Ray依存関係のインストール |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | パフォーマンス問題の解決 |
+| [CACHE_SYSTEM.md](CACHE_SYSTEM.md) | キャッシュによる高速化 |

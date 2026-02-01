@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}バックテスト履歴 - バックテスト管理{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 1.5rem; color: var(--dark-color);">バックテスト履歴</h2>
+
+<!-- フィルター＆検索バー -->
+<div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <input type="text" id="searchInput" placeholder="検索..."
+                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
+        </div>
+        <div>
+            <select id="tagFilter" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
+                <option value="">全てのタグ</option>
+                {% for tag in all_tags %}
+                <option value="{{ tag }}">{{ tag }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="compareMode">
+                <span>比較モード</span>
+            </label>
+        </div>
+        <button id="compareBtn" class="btn btn-primary" style="display: none;" onclick="executeCompare()">
+            選択した結果を比較
+        </button>
+    </div>
+</div>
+
+<!-- アーカイブ一覧テーブル -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">アーカイブ一覧 ({{ archives|length }}件)</h3>
+    </div>
+
+    {% if archives %}
+    <table id="archiveTable">
+        <thead>
+            <tr>
+                <th style="width: 40px;" class="compare-column" hidden>
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                </th>
+                <th>ID</th>
+                <th>名前</th>
+                <th>タグ</th>
+                <th class="text-right">トータルリターン</th>
+                <th class="text-right">シャープレシオ</th>
+                <th class="text-right">最大DD</th>
+                <th>期間</th>
+                <th>作成日時</th>
+                <th style="width: 60px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for archive in archives %}
+            <tr data-name="{{ archive.name or '' }}" data-tags="{{ (archive.tags or [])|join(',') }}" data-id="{{ archive.archive_id }}">
+                <td class="compare-column" hidden>
+                    <input type="checkbox" class="archive-checkbox" value="{{ archive.archive_id }}">
+                </td>
+                <td>
+                    <a href="/backtest/{{ archive.archive_id }}" style="color: var(--primary-color); text-decoration: none; font-family: monospace; font-size: 0.85rem;">
+                        {{ archive.archive_id[-20:] }}
+                    </a>
+                </td>
+                <td>{{ archive.name or '-' }}</td>
+                <td>
+                    {% for tag in archive.tags or [] %}
+                    <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </td>
+                <td class="text-right {% if archive.total_return > 0 %}positive{% else %}negative{% endif %}">
+                    {{ "%.2f"|format((archive.total_return or 0) * 100) }}%
+                </td>
+                <td class="text-right">
+                    {{ "%.3f"|format(archive.sharpe_ratio or 0) }}
+                </td>
+                <td class="text-right negative">
+                    {{ "%.2f"|format((archive.max_drawdown or 0) * 100) }}%
+                </td>
+                <td style="font-size: 0.85rem;">
+                    {% if archive.start_date and archive.end_date %}
+                    {{ archive.start_date[:10] }} ~ {{ archive.end_date[:10] }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td style="font-size: 0.85rem; color: #666;">
+                    {{ archive.created_at[:16] if archive.created_at else '-' }}
+                </td>
+                <td style="white-space: nowrap;">
+                    <a href="/backtest/{{ archive.archive_id }}" class="btn btn-secondary btn-sm">詳細</a>
+                    <button class="btn btn-danger btn-sm" onclick="deleteArchive('{{ archive.archive_id }}', this)" title="削除">✕</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>アーカイブがありません</h3>
+        <p><code>--save</code> フラグを付けてバックテストを実行すると、アーカイブが作成されます。</p>
+        <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-top: 1rem; text-align: left; display: inline-block;">
+python scripts/run_backtest.py -f monthly --save --name "My Backtest"
+        </pre>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 比較結果表示エリア -->
+<div id="compareResults" class="card" style="display: none; margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">比較結果</h3>
+        <button class="btn btn-secondary btn-sm" onclick="clearComparison()">閉じる</button>
+    </div>
+    <div id="compareContent"></div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .compare-column[hidden] {
+        display: none;
+    }
+    .archive-checkbox:checked + label,
+    tr:has(.archive-checkbox:checked) {
+        background-color: rgba(52, 152, 219, 0.1);
+    }
+    #compareResults table {
+        margin-top: 1rem;
+    }
+    .compare-charts {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 1.5rem;
+    }
+    .compare-charts h4 {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 比較モード切り替え
+    document.getElementById('compareMode').addEventListener('change', function(e) {
+        const isCompareMode = e.target.checked;
+        const columns = document.querySelectorAll('.compare-column');
+        const compareBtn = document.getElementById('compareBtn');
+
+        columns.forEach(col => {
+            if (isCompareMode) {
+                col.removeAttribute('hidden');
+            } else {
+                col.setAttribute('hidden', '');
+            }
+        });
+
+        compareBtn.style.display = isCompareMode ? 'inline-block' : 'none';
+
+        // 比較モード解除時にチェックをクリア
+        if (!isCompareMode) {
+            document.querySelectorAll('.archive-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('selectAll').checked = false;
+        }
+    });
+
+    // 全選択切り替え
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.archive-checkbox');
+        checkboxes.forEach(cb => {
+            const row = cb.closest('tr');
+            if (row.style.display !== 'none') {
+                cb.checked = selectAll.checked;
+            }
+        });
+    }
+
+    // 検索フィルタ
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('tagFilter').addEventListener('change', filterTable);
+
+    function filterTable() {
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+        const tagFilter = document.getElementById('tagFilter').value;
+        const rows = document.querySelectorAll('#archiveTable tbody tr');
+
+        rows.forEach(row => {
+            const name = row.dataset.name.toLowerCase();
+            const tags = row.dataset.tags;
+            const id = row.dataset.id.toLowerCase();
+
+            const matchesSearch = name.includes(searchText) || id.includes(searchText);
+            const matchesTag = !tagFilter || tags.includes(tagFilter);
+
+            row.style.display = (matchesSearch && matchesTag) ? '' : 'none';
+        });
+    }
+
+    // 比較実行
+    async function executeCompare() {
+        const checkboxes = document.querySelectorAll('.archive-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+
+        if (ids.length < 2) {
+            alert('比較するには2つ以上のアーカイブを選択してください。');
+            return;
+        }
+
+        try {
+            // 比較データを取得
+            const response = await fetch('/api/compare?ids=' + ids.join(','));
+            const data = await response.json();
+
+            // タイムシリーズデータを取得
+            const timeseriesPromises = ids.map(id =>
+                fetch(`/api/archive/${id}/timeseries`).then(r => r.json()).catch(() => null)
+            );
+            const timeseriesResults = await Promise.all(timeseriesPromises);
+            const timeseriesData = {};
+            ids.forEach((id, i) => {
+                if (timeseriesResults[i]) {
+                    timeseriesData[id] = timeseriesResults[i];
+                }
+            });
+
+            displayCompareResults(data, ids, timeseriesData);
+        } catch (error) {
+            console.error('比較エラー:', error);
+            alert('比較中にエラーが発生しました。');
+        }
+    }
+
+    // 比較結果表示
+    function displayCompareResults(data, ids, timeseriesData) {
+        const container = document.getElementById('compareResults');
+        const content = document.getElementById('compareContent');
+
+        // メトリクス比較テーブル
+        const metrics = data.metric_comparison;
+        let tableHtml = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>指標</th>
+                        ${ids.map(id => `<th class="text-right">${id.slice(-12)}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>トータルリターン</td>
+                        ${ids.map(id => {
+                            const val = metrics[id]?.total_return || 0;
+                            return `<td class="text-right ${val > 0 ? 'positive' : 'negative'}">${(val * 100).toFixed(2)}%</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td>年率リターン</td>
+                        ${ids.map(id => {
+                            const val = metrics[id]?.annual_return || 0;
+                            return `<td class="text-right ${val > 0 ? 'positive' : 'negative'}">${(val * 100).toFixed(2)}%</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td>シャープレシオ</td>
+                        ${ids.map(id => `<td class="text-right">${(metrics[id]?.sharpe_ratio || 0).toFixed(3)}</td>`).join('')}
+                    </tr>
+                    <tr>
+                        <td>ソルティノレシオ</td>
+                        ${ids.map(id => `<td class="text-right">${(metrics[id]?.sortino_ratio || 0).toFixed(3)}</td>`).join('')}
+                    </tr>
+                    <tr>
+                        <td>最大ドローダウン</td>
+                        ${ids.map(id => `<td class="text-right negative">${((metrics[id]?.max_drawdown || 0) * 100).toFixed(2)}%</td>`).join('')}
+                    </tr>
+                    <tr>
+                        <td>ボラティリティ</td>
+                        ${ids.map(id => `<td class="text-right">${((metrics[id]?.volatility || 0) * 100).toFixed(2)}%</td>`).join('')}
+                    </tr>
+                    <tr>
+                        <td>勝率</td>
+                        ${ids.map(id => `<td class="text-right">${((metrics[id]?.win_rate || 0) * 100).toFixed(1)}%</td>`).join('')}
+                    </tr>
+                </tbody>
+            </table>
+        `;
+
+        // チャートエリア
+        tableHtml += `
+            <div class="compare-charts">
+                <div>
+                    <h4>累積リターン (%)</h4>
+                    <div class="chart-container">
+                        <canvas id="historyReturnChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h4>ドローダウン (%)</h4>
+                    <div class="chart-container">
+                        <canvas id="historyDrawdownChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        content.innerHTML = tableHtml;
+        container.style.display = 'block';
+
+        // チャート描画
+        drawCompareCharts(ids, timeseriesData);
+
+        // 結果エリアにスクロール
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // チャート描画
+    function drawCompareCharts(ids, timeseriesData) {
+        const colors = [
+            { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' },
+            { border: '#e74c3c', bg: 'rgba(231, 76, 60, 0.1)' },
+            { border: '#2ecc71', bg: 'rgba(46, 204, 113, 0.1)' },
+            { border: '#f39c12', bg: 'rgba(243, 156, 18, 0.1)' },
+            { border: '#9b59b6', bg: 'rgba(155, 89, 182, 0.1)' },
+        ];
+
+        if (Object.keys(timeseriesData).length === 0) return;
+
+        // 共通日付範囲を取得
+        let allDates = new Set();
+        for (const id of ids) {
+            if (timeseriesData[id]) {
+                timeseriesData[id].dates.forEach(d => allDates.add(d));
+            }
+        }
+        const dates = Array.from(allDates).sort();
+
+        // 累積リターンチャート
+        const returnDatasets = ids.map((id, i) => {
+            const data = timeseriesData[id];
+            if (!data) return null;
+
+            const dateMap = {};
+            data.dates.forEach((d, idx) => {
+                dateMap[d] = (data.cumulative_return[idx] || 0) * 100;
+            });
+
+            return {
+                label: id.slice(-12),
+                data: dates.map(d => dateMap[d] ?? null),
+                borderColor: colors[i % colors.length].border,
+                backgroundColor: colors[i % colors.length].bg,
+                fill: false,
+                tension: 0.1,
+                pointRadius: 0,
+                borderWidth: 2,
+                spanGaps: true,
+            };
+        }).filter(d => d !== null);
+
+        if (returnDatasets.length > 0) {
+            const returnCtx = document.getElementById('historyReturnChart').getContext('2d');
+            new Chart(returnCtx, {
+                type: 'line',
+                data: { labels: dates, datasets: returnDatasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { display: true, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                        y: { display: true, ticks: { callback: v => v + '%', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // ドローダウンチャート
+        const ddDatasets = ids.map((id, i) => {
+            const data = timeseriesData[id];
+            if (!data) return null;
+
+            const dateMap = {};
+            data.dates.forEach((d, idx) => {
+                dateMap[d] = (data.drawdown[idx] || 0) * 100;
+            });
+
+            return {
+                label: id.slice(-12),
+                data: dates.map(d => dateMap[d] ?? null),
+                borderColor: colors[i % colors.length].border,
+                backgroundColor: colors[i % colors.length].bg,
+                fill: false,
+                tension: 0.1,
+                pointRadius: 0,
+                borderWidth: 2,
+                spanGaps: true,
+            };
+        }).filter(d => d !== null);
+
+        if (ddDatasets.length > 0) {
+            const ddCtx = document.getElementById('historyDrawdownChart').getContext('2d');
+            new Chart(ddCtx, {
+                type: 'line',
+                data: { labels: dates, datasets: ddDatasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { display: true, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                        y: { display: true, max: 0, ticks: { callback: v => v + '%', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+    }
+
+    // 比較結果クリア
+    function clearComparison() {
+        document.getElementById('compareResults').style.display = 'none';
+        document.getElementById('compareContent').innerHTML = '';
+    }
+
+    // アーカイブ削除
+    async function deleteArchive(archiveId, button) {
+        if (!confirm('このバックテスト結果を削除しますか？\n\nこの操作は取り消せません。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/archive/${archiveId}`, { method: 'DELETE' });
+            if (response.ok) {
+                // 行を削除
+                const row = button.closest('tr');
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            } else {
+                const data = await response.json();
+                alert('削除に失敗しました: ' + (data.detail || '不明なエラー'));
+            }
+        } catch (err) {
+            console.error('Failed to delete archive:', err);
+            alert('削除に失敗しました');
+        }
+    }
+</script>
+{% endblock %}

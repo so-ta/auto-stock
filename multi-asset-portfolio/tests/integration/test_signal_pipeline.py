@@ -218,7 +218,7 @@ class TestSignalPipeline:
         # Get registered signals
         try:
             registry = SignalRegistry()
-            available_signals = registry.list_signals()
+            available_signals = registry.list_all()
 
             assert isinstance(available_signals, (list, dict)), \
                 "Registry should return list or dict"
@@ -260,15 +260,17 @@ class TestSignalPipeline:
             # Initialize regime detector
             detector = EnhancedRegimeDetector()
 
-            # Detect regime
-            regime_result = detector.detect(sample_returns)
+            # Detect regime - need price data, not returns
+            # Create a price series from returns
+            price_series = (1 + sample_returns.iloc[:, 0]).cumprod() * 100
+            regime_result = detector.detect_regime(price_series)
 
             assert regime_result is not None, "Regime detection should return result"
-            assert hasattr(regime_result, "current_regime"), \
-                "Result should have current_regime"
+            assert hasattr(regime_result, "regime"), \
+                "Result should have regime"
 
             print(f"\n=== Regime Adaptive Signals Test ===")
-            print(f"Current regime: {regime_result.current_regime}")
+            print(f"Current regime: {regime_result.regime}")
 
             # Verify regime is valid
             valid_regimes = ["bull", "bear", "neutral", "high_vol", "low_vol",

@@ -14,7 +14,13 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from src.signals.base import ParameterSpec, Signal, SignalResult
+from src.signals.base import (
+    ParameterSpec,
+    Signal,
+    SignalResult,
+    TimeframeAffinity,
+    TimeframeConfig,
+)
 from src.signals.registry import SignalRegistry
 
 
@@ -38,6 +44,20 @@ class ATRSignal(Signal):
     """
 
     @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """ATR: multi-timeframe volatility measure (5-60 days).
+
+        ATR works across short to medium timeframes. Very long periods
+        smooth out volatility too much to be useful for timing.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MULTI_TIMEFRAME,
+            min_period=5,
+            max_period=60,
+            supported_variants=["short", "medium", "long"],
+        )
+
+    @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
         return [
             ParameterSpec(
@@ -45,7 +65,7 @@ class ATRSignal(Signal):
                 default=14,
                 searchable=True,
                 min_value=5,
-                max_value=50,
+                max_value=60,  # Extended from 50 to 60 for long variant
                 step=1,
                 description="ATR calculation period",
             ),
@@ -126,6 +146,22 @@ class VolatilityBreakoutSignal(Signal):
     """
 
     @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Volatility Breakout: medium-term (10-60 days for MA).
+
+        Breakout detection needs enough history for meaningful bands
+        but not so long that it loses responsiveness.
+        Note: atr_period spec is [5, 30], ma_period spec is [10, 60]
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=10,
+            max_period=30,
+            # medium(20) is within atr_period and ma_period overlapping range
+            supported_variants=["medium"],
+        )
+
+    @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
         return [
             ParameterSpec(
@@ -142,7 +178,7 @@ class VolatilityBreakoutSignal(Signal):
                 default=20,
                 searchable=True,
                 min_value=10,
-                max_value=50,
+                max_value=60,  # Extended from 50 to 60 for long variant
                 step=5,
                 description="Moving average period for center line",
             ),
@@ -236,6 +272,20 @@ class VolatilityRegimeSignal(Signal):
     """
 
     @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Volatility Regime: multi-timeframe (captures annual cycles).
+
+        Regime detection benefits from longer lookbacks to capture
+        full volatility cycles including annual patterns.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MULTI_TIMEFRAME,
+            min_period=5,
+            max_period=252,
+            supported_variants=["short", "medium", "long", "half_year", "yearly"],
+        )
+
+    @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:
         return [
             ParameterSpec(
@@ -243,7 +293,7 @@ class VolatilityRegimeSignal(Signal):
                 default=10,
                 searchable=True,
                 min_value=5,
-                max_value=30,
+                max_value=60,  # Extended for medium-long variants
                 step=5,
                 description="Short-term volatility measurement period",
             ),
@@ -252,7 +302,7 @@ class VolatilityRegimeSignal(Signal):
                 default=60,
                 searchable=True,
                 min_value=30,
-                max_value=120,
+                max_value=252,  # Extended to yearly for regime detection
                 step=10,
                 description="Long-term volatility baseline period",
             ),

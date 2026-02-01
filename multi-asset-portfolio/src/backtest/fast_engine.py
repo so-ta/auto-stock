@@ -42,6 +42,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from src.utils.storage_backend import StorageBackend, StorageConfig
+    from src.allocation.transaction_cost import TransactionCostSchedule
+    from src.data.asset_master import AssetMaster
 
 import numpy as np
 import pandas as pd
@@ -198,8 +200,8 @@ class BacktestConfig:
     slippage_bps: float = 5.0  # スリッページ（bps）- SYNC統一規格対応
     cov_halflife: int = 60
     use_signal_cache: bool = True
-    signal_cache_dir: str = ".cache/signals"
-    cov_cache_dir: str = ".cache/covariance"
+    signal_cache_dir: Optional[str] = None  # Set in __post_init__ from Settings
+    cov_cache_dir: Optional[str] = None  # Set in __post_init__ from Settings
     min_weight: float = 0.0
     max_weight: float = 1.0
     # Numba/GPU設定
@@ -245,6 +247,18 @@ class BacktestConfig:
     withholding_tax_rate: float = 0.0
     # StorageBackend設定 (S3対応)
     storage_config: Optional["StorageConfig"] = None
+    # カテゴリ別取引コスト設定
+    cost_schedule: Optional["TransactionCostSchedule"] = None
+    asset_master: Optional["AssetMaster"] = None
+
+    def __post_init__(self):
+        """Initialize cache paths from Settings if not provided."""
+        from src.config.settings import get_cache_path
+
+        if self.signal_cache_dir is None:
+            self.signal_cache_dir = get_cache_path("signals")
+        if self.cov_cache_dir is None:
+            self.cov_cache_dir = get_cache_path("covariance")
 
     @classmethod
     def from_resource_config(
@@ -534,26 +548,26 @@ class BacktestEngine(BacktestEngineBase):
         self._regime_detector: Optional[Any] = None
         self._current_regime: Optional[str] = None
         self._regime_params: Dict[str, Any] = {}
-        if config.use_regime_detection and REGIME_DETECTOR_AVAILABLE:
+        if fast_config.use_regime_detection and REGIME_DETECTOR_AVAILABLE:
             self._regime_detector = EnhancedRegimeDetector({
-                "lookback": config.regime_lookback,
+                "lookback": fast_config.regime_lookback,
             })
-            logger.info("RegimeDetector enabled with lookback=%d", config.regime_lookback)
+            logger.info("RegimeDetector enabled with lookback=%d", fast_config.regime_lookback)
 
         # DrawdownProtector（SYNC-002）
         self._dd_protector: Optional[Any] = None
-        if config.use_drawdown_protection and DRAWDOWN_PROTECTION_AVAILABLE:
+        if fast_config.use_drawdown_protection and DRAWDOWN_PROTECTION_AVAILABLE:
             dd_config = DrawdownProtectorConfig(
-                dd_levels=config.dd_levels,
-                risk_reductions=config.dd_risk_reductions,
-                recovery_threshold=config.dd_recovery_threshold,
-                emergency_dd_level=config.dd_emergency_level,
-                emergency_cash_ratio=config.dd_emergency_cash_ratio,
+                dd_levels=fast_config.dd_levels,
+                risk_reductions=fast_config.dd_risk_reductions,
+                recovery_threshold=fast_config.dd_recovery_threshold,
+                emergency_dd_level=fast_config.dd_emergency_level,
+                emergency_cash_ratio=fast_config.dd_emergency_cash_ratio,
             )
-            self._dd_protector = DrawdownProtector(dd_config, initial_value=config.initial_capital)
+            self._dd_protector = DrawdownProtector(dd_config, initial_value=fast_config.initial_capital)
             logger.info(
                 "DrawdownProtector enabled: levels=%s, reductions=%s",
-                config.dd_levels, config.dd_risk_reductions,
+                fast_config.dd_levels, fast_config.dd_risk_reductions,
             )
 
         # VIXシグナル（SYNC-004）
@@ -561,9 +575,9 @@ class BacktestEngine(BacktestEngineBase):
         self._vix_data: Optional[np.ndarray] = None
         self._vix_dates: Optional[List[datetime]] = None
         self._last_vix_cash_allocation: float = 0.0
-        if config.vix_cash_enabled and VIX_SIGNAL_AVAILABLE:
-            if config.vix_config_path:
-                self._vix_signal = EnhancedVIXSignal.from_config(config.vix_config_path)
+        if fast_config.vix_cash_enabled and VIX_SIGNAL_AVAILABLE:
+            if fast_config.vix_config_path:
+                self._vix_signal = EnhancedVIXSignal.from_config(fast_config.vix_config_path)
             else:
                 self._vix_signal = EnhancedVIXSignal()
             logger.info("VIX dynamic cash allocation enabled")
@@ -571,40 +585,40 @@ class BacktestEngine(BacktestEngineBase):
         # DynamicWeighter（SYNC-005）
         self._dynamic_weighter: Optional[Any] = None
         self._dynamic_weighting_result: Optional[Dict[str, Any]] = None
-        self._portfolio_peak_value: float = config.initial_capital
-        if config.use_dynamic_weighting and DYNAMIC_WEIGHTER_AVAILABLE:
+        self._portfolio_peak_value: float = fast_config.initial_capital
+        if fast_config.use_dynamic_weighting and DYNAMIC_WEIGHTER_AVAILABLE:
             dw_config = DynamicWeightingConfig(
-                target_volatility=config.target_volatility,
-                max_drawdown_trigger=config.dd_protection_threshold,
-                vol_scaling_enabled=config.vol_scaling_enabled,
-                dd_protection_enabled=config.dd_protection_enabled,
-                regime_weighting_enabled=config.use_regime_detection,
+                target_volatility=fast_config.target_volatility,
+                max_drawdown_trigger=fast_config.dd_protection_threshold,
+                vol_scaling_enabled=fast_config.vol_scaling_enabled,
+                dd_protection_enabled=fast_config.dd_protection_enabled,
+                regime_weighting_enabled=fast_config.use_regime_detection,
             )
             self._dynamic_weighter = DynamicWeighter(dw_config)
             logger.info(
                 "DynamicWeighter enabled: target_vol=%.2f, dd_trigger=%.2f",
-                config.target_volatility, config.dd_protection_threshold,
+                fast_config.target_volatility, fast_config.dd_protection_threshold,
             )
 
         # DividendHandler（SYNC-006）
         self._dividend_handler: Optional[Any] = None
         self._dividend_data: Optional[Dict[str, Any]] = None
-        if config.use_dividends and DIVIDEND_HANDLER_AVAILABLE:
+        if fast_config.use_dividends and DIVIDEND_HANDLER_AVAILABLE:
             div_config = DividendConfig(
-                reinvest_dividends=config.reinvest_dividends,
-                withholding_tax_rate=config.withholding_tax_rate,
+                reinvest_dividends=fast_config.reinvest_dividends,
+                withholding_tax_rate=fast_config.withholding_tax_rate,
             )
             self._dividend_handler = DividendHandler(div_config)
             logger.info(
                 "DividendHandler enabled: reinvest=%s, tax_rate=%.2f%%",
-                config.reinvest_dividends, config.withholding_tax_rate * 100,
+                fast_config.reinvest_dividends, fast_config.withholding_tax_rate * 100,
             )
 
         logger.info(
             "BacktestEngine initialized: %s to %s, freq=%s, backend=%s, regime=%s, dd=%s, vix=%s, dw=%s, div=%s",
-            config.start_date,
-            config.end_date,
-            config.rebalance_frequency,
+            fast_config.start_date,
+            fast_config.end_date,
+            fast_config.rebalance_frequency,
             self._compute_backend,
             "enabled" if self._regime_detector else "disabled",
             "enabled" if self._dd_protector else "disabled",
@@ -654,6 +668,9 @@ class BacktestEngine(BacktestEngineBase):
             vix_cash_enabled=specific.get("vix_cash_enabled", False),
             use_dynamic_weighting=specific.get("use_dynamic_weighting", False),
             use_dividends=specific.get("use_dividend_adjustment", False),
+            # カテゴリ別取引コスト設定
+            cost_schedule=specific.get("cost_schedule"),
+            asset_master=specific.get("asset_master"),
         )
 
     def validate_inputs(
@@ -767,6 +784,75 @@ class BacktestEngine(BacktestEngineBase):
         self._matmul_func = np.dot
         self._compute_backend = "numpy"
         logger.info("Using NumPy compute backend (fallback)")
+
+    def _calculate_per_symbol_costs(
+        self,
+        asset_names: List[str],
+        new_weights: np.ndarray,
+        current_weights: np.ndarray,
+        portfolio_value: float,
+    ) -> float:
+        """カテゴリ別コストで総取引コストを計算
+
+        各銘柄のカテゴリに応じた取引コストを適用して、
+        リバランスの総取引コストを計算する。
+
+        Args:
+            asset_names: 銘柄名リスト
+            new_weights: 新しいウェイト配列
+            current_weights: 現在のウェイト配列
+            portfolio_value: ポートフォリオ総額
+
+        Returns:
+            float: 総取引コスト（金額）
+        """
+        from src.allocation.transaction_cost import (
+            TransactionCostSchedule,
+            load_cost_schedule,
+        )
+        from src.data.asset_master import load_asset_master
+
+        # cost_scheduleが未設定なら自動ロード
+        cost_schedule = self.config.cost_schedule
+        if cost_schedule is None:
+            cost_schedule = load_cost_schedule()
+
+        # asset_masterが未設定なら自動ロード
+        asset_master = self.config.asset_master
+        if asset_master is None:
+            asset_master = load_asset_master()
+
+        # スリッページも加算（cost_scheduleは手数料のみなので）
+        slippage_rate = self.config.slippage_bps / 10000.0
+
+        total_cost = 0.0
+        for i, symbol in enumerate(asset_names):
+            weight_change = abs(new_weights[i] - current_weights[i])
+            if weight_change < 1e-8:
+                continue
+
+            # カテゴリを取得
+            category = None
+            if asset_master is not None:
+                info = asset_master.get(symbol)
+                if info and info.category:
+                    category = info.category
+
+            # カテゴリ別コスト計算（ウェイトベースのコスト率を返す）
+            cost_rate = cost_schedule.calculate_cost(
+                symbol=symbol,
+                weight_change=weight_change,
+                portfolio_value=portfolio_value,
+                category=category,
+            )
+
+            # スリッページを加算
+            slippage_cost = weight_change * slippage_rate
+
+            # 総コスト = (カテゴリ別コスト + スリッページ) × ポートフォリオ価値
+            total_cost += (cost_rate + slippage_cost) * portfolio_value
+
+        return total_cost
 
     def _compute_signals(
         self,
@@ -920,8 +1006,8 @@ class BacktestEngine(BacktestEngineBase):
         # 入力検証
         self.validate_inputs(universe, prices, config)
 
-        # prices DictをDataFrameに変換
-        price_df = self._convert_prices_dict_to_df(prices, universe)
+        # prices DictをDataFrameに変換（Close と Open）
+        close_df, open_df = self._convert_prices_dict_to_df(prices, universe)
 
         # weights_funcをアダプター経由で変換
         # WeightsFuncAdapter: 状態を保持し、外部形式→内部形式の変換を行う
@@ -930,27 +1016,40 @@ class BacktestEngine(BacktestEngineBase):
             adapter = _WeightsFuncAdapter(weights_func, universe, prices)
 
         # 内部run()を呼び出し（アダプター付き）
-        result = self._run_with_weights_adapter(price_df, adapter, universe)
+        result = self._run_with_weights_adapter(close_df, open_df, adapter, universe)
 
         # BacktestResultをUnifiedBacktestResultに変換
         return self._convert_to_unified_result(result, config)
 
     def _run_with_weights_adapter(
         self,
-        prices: pd.DataFrame,
+        close_prices: pd.DataFrame,
+        open_prices: pd.DataFrame,
         adapter: Optional["_WeightsFuncAdapter"],
         universe: List[str],
     ) -> "BacktestResult":
         """
-        weights_funcアダプター付きでバックテストを実行
+        weights_funcアダプター付きでバックテストを実行（翌日初値執行対応）
 
         外部weights_func（WeightsFuncProtocol準拠）を使用する場合、
         各リバランス時に正確な日付と現在ウェイトをアダプターに渡す。
 
+        処理フロー:
+        - Day T (リバランス判定日):
+          - Close[T] でシグナル計算
+          - 新しいウェイトを計算
+          - pending_rebalance = True（翌日執行予約）
+        - Day T+1 (執行日):
+          - Open[T+1] で売買執行
+          - オーバーナイトリターン: Open[T+1] / Close[T] - 1
+          - pending_rebalance = False
+
         Parameters
         ----------
-        prices : pd.DataFrame
-            価格データ
+        close_prices : pd.DataFrame
+            終値データ
+        open_prices : pd.DataFrame
+            始値データ
         adapter : _WeightsFuncAdapter, optional
             weights_funcアダプター
         universe : List[str]
@@ -961,9 +1060,12 @@ class BacktestEngine(BacktestEngineBase):
         BacktestResult
             バックテスト結果
         """
-        # データ準備
-        prices = self._prepare_prices(prices, None)
-        self._asset_names = list(prices.columns)
+        # データ準備（Close価格ベースで期間フィルタなど）
+        close_prices = self._prepare_prices(close_prices, None)
+        # Open価格も同じインデックスに合わせる
+        open_prices = open_prices.reindex(close_prices.index)
+
+        self._asset_names = list(close_prices.columns)
         self._n_assets = len(self._asset_names)
 
         # 共分散推定器を初期化
@@ -974,9 +1076,9 @@ class BacktestEngine(BacktestEngineBase):
         )
 
         # リバランス日を計算
-        self._rebalance_dates = self._get_rebalance_dates(prices.index)
+        self._rebalance_dates = self._get_rebalance_dates(close_prices.index)
 
-        n_days = len(prices)
+        n_days = len(close_prices)
         n_assets = self._n_assets
 
         # 配列を事前確保
@@ -990,37 +1092,125 @@ class BacktestEngine(BacktestEngineBase):
         weights_history[0] = current_weights
 
         # 価格をNumPy配列に変換
-        price_matrix = prices.values
-        dates = prices.index.tolist()
+        close_matrix = close_prices.values
+        open_matrix = open_prices.values
+        dates = close_prices.index.tolist()
 
         # リバランス日をセットに変換
         rebalance_set = set(self._rebalance_dates)
 
-        # 取引コスト
-        cost_rate = self.config.transaction_cost_bps / 10000.0
+        # 取引コスト設定
+        # cost_scheduleが設定されている場合はカテゴリ別コスト、そうでなければ一律コスト
+        use_category_costs = self.config.cost_schedule is not None or self.config.asset_master is not None
+        cost_rate = (self.config.transaction_cost_bps + self.config.slippage_bps) / 10000.0
         total_costs = 0.0
         actual_rebalance_dates = []
 
+        # 保留リバランス状態（翌日初値執行用）
+        pending_rebalance = False
+        pending_weights = None
+        cost = 0.0  # 当日の取引コスト
+
         for i in range(1, n_days):
             current_date = dates[i]
-            prev_prices = price_matrix[i - 1]
-            curr_prices = price_matrix[i]
+            prev_close = close_matrix[i - 1]
+            curr_close = close_matrix[i]
+            curr_open = open_matrix[i]
+            cost = 0.0  # 当日の取引コストをリセット
 
-            # 日次リターンを計算
-            price_returns = np.where(
-                prev_prices > 0,
-                curr_prices / prev_prices - 1,
-                0.0
-            )
-            asset_returns = price_returns
+            # Step 1: 保留中のリバランスを今日の初値で執行
+            if pending_rebalance and pending_weights is not None:
+                # Openが NaN の場合は Close を使用
+                execution_prices = np.where(
+                    np.isnan(curr_open) | (curr_open <= 0),
+                    curr_close,
+                    curr_open
+                )
 
-            # 共分散推定器を更新
-            self.cov_estimator.update(asset_returns)
+                # オーバーナイトリターン（前日Close → 当日Open）
+                valid_mask = (prev_close > 0) & ~np.isnan(execution_prices)
+                overnight_returns = np.where(
+                    valid_mask,
+                    execution_prices / prev_close - 1,
+                    0.0
+                )
 
-            # リバランス判定
+                # オーバーナイトリターンを現在ウェイトで計算
+                overnight_portfolio_return = np.dot(current_weights, overnight_returns)
+
+                # 寄り付き時点のポートフォリオ価値
+                open_value = portfolio_values[i - 1] * (1 + overnight_portfolio_return)
+
+                # 売買コスト計算・執行
+                if use_category_costs:
+                    cost = self._calculate_per_symbol_costs(
+                        self._asset_names, pending_weights, current_weights, open_value
+                    )
+                else:
+                    turnover = np.sum(np.abs(pending_weights - current_weights))
+                    cost = turnover * cost_rate * open_value
+                total_costs += cost
+
+                # リバランス執行日: 正確な2段階計算
+                # オーバーナイトリターン(旧ウェイト) + イントラデイリターン(新ウェイト)
+
+                # イントラデイリターン計算（Open[i] → Close[i]）
+                valid_intraday = (curr_open > 0) & ~np.isnan(curr_close) & ~np.isnan(curr_open)
+                intraday_returns = np.where(
+                    valid_intraday,
+                    curr_close / curr_open - 1,
+                    0.0
+                )
+
+                # ウェイトを更新（イントラデイリターン計算後）
+                current_weights = pending_weights
+                actual_rebalance_dates.append(current_date)  # 執行日を記録
+
+                # イントラデイポートフォリオリターン（新ウェイトで）
+                intraday_portfolio_return = np.dot(current_weights, intraday_returns)
+
+                # ポートフォリオ価値計算: Open価値 × (1 + イントラデイリターン) - コスト
+                portfolio_values[i] = open_value * (1 + intraday_portfolio_return) - cost
+
+                # 日次リターンを記録（終値ベース）
+                if portfolio_values[i - 1] > 0:
+                    daily_returns[i] = portfolio_values[i] / portfolio_values[i - 1] - 1
+                else:
+                    daily_returns[i] = 0.0
+
+                # 保留状態をリセット
+                pending_rebalance = False
+                pending_weights = None
+
+                # 共分散推定器を更新（Close-to-Closeリターンで）
+                valid_mask = (prev_close > 0) & ~np.isnan(curr_close)
+                price_returns = np.where(valid_mask, curr_close / prev_close - 1, 0.0)
+                self.cov_estimator.update(price_returns)
+            else:
+                # 非リバランス日: 通常のClose-to-Close計算
+                # Step 2: 日次リターン計算（Close to Close）
+                valid_mask = (prev_close > 0) & ~np.isnan(curr_close)
+                price_returns = np.where(
+                    valid_mask,
+                    curr_close / prev_close - 1,
+                    0.0
+                )
+                asset_returns = price_returns
+
+                # 共分散推定器を更新
+                self.cov_estimator.update(asset_returns)
+
+                # ポートフォリオリターンを計算
+                portfolio_return = np.dot(current_weights, asset_returns)
+                daily_returns[i] = portfolio_return
+
+                # ポートフォリオ価値を更新
+                portfolio_values[i] = portfolio_values[i - 1] * (1 + portfolio_return)
+
+            # Step 3: リバランスシグナル確認（翌日執行を予約）
             should_rebalance = current_date in rebalance_set
 
-            if should_rebalance and i > 0:
+            if should_rebalance and i < n_days - 1:  # 最終日はリバランスしない（翌日がない）
                 # 新しいウェイトを計算
                 if adapter is not None:
                     # アダプター状態を更新（正確な日付と現在ウェイト）
@@ -1041,20 +1231,9 @@ class BacktestEngine(BacktestEngineBase):
                 # ウェイト制約を適用
                 new_weights = self._apply_weight_constraints(new_weights)
 
-                # 取引コストを計算
-                turnover = np.sum(np.abs(new_weights - current_weights))
-                cost = turnover * cost_rate * portfolio_values[i - 1]
-                total_costs += cost
-
-                current_weights = new_weights
-                actual_rebalance_dates.append(current_date)
-
-            # ポートフォリオリターンを計算
-            portfolio_return = np.dot(current_weights, asset_returns)
-            daily_returns[i] = portfolio_return
-
-            # ポートフォリオ価値を更新
-            portfolio_values[i] = portfolio_values[i - 1] * (1 + portfolio_return)
+                # 翌日執行を予約
+                pending_rebalance = True
+                pending_weights = new_weights
 
             # ウェイト履歴を保存
             weights_history[i] = current_weights
@@ -1069,30 +1248,34 @@ class BacktestEngine(BacktestEngineBase):
         )
 
         # BacktestResultに変換
-        return self._convert_to_backtest_result(prices, sim_result)
+        return self._convert_to_backtest_result(close_prices, sim_result)
 
     def _convert_prices_dict_to_df(
         self,
         prices: Dict[str, pd.DataFrame],
         universe: List[str],
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        価格辞書をDataFrameに変換
+        価格辞書をDataFrameに変換（Close と Open の両方を抽出）
+
+        途中上場/廃止銘柄をサポートするため、全銘柄の日付をunionで結合し、
+        データがない期間はNaNとする。
 
         Parameters
         ----------
         prices : Dict[str, pd.DataFrame]
-            価格データ（{symbol: DataFrame with Close column}）
+            価格データ（{symbol: DataFrame with Close/Open columns}）
         universe : List[str]
             ユニバース
 
         Returns
         -------
-        pd.DataFrame
-            価格DataFrame（列=シンボル）
+        Tuple[pd.DataFrame, pd.DataFrame]
+            (close_df, open_df) - 価格DataFrame（列=シンボル）、データがない期間はNaN
         """
-        result = {}
-        common_index = None
+        close_result = {}
+        open_result = {}
+        union_index = None
 
         for symbol in universe:
             if symbol not in prices:
@@ -1100,32 +1283,55 @@ class BacktestEngine(BacktestEngineBase):
                 continue
 
             df = prices[symbol]
+
+            # Close価格を抽出
             if "Close" in df.columns:
-                series = df["Close"]
+                close_series = df["Close"]
             elif "close" in df.columns:
-                series = df["close"]
+                close_series = df["close"]
             elif "Adj Close" in df.columns:
-                series = df["Adj Close"]
+                close_series = df["Adj Close"]
             else:
-                series = df.iloc[:, 0]
+                close_series = df.iloc[:, 0]
 
-            result[symbol] = series
+            close_result[symbol] = close_series
 
-            if common_index is None:
-                common_index = series.index
+            # Open価格を抽出（なければCloseをフォールバック）
+            if "Open" in df.columns:
+                open_series = df["Open"]
+            elif "open" in df.columns:
+                open_series = df["open"]
             else:
-                common_index = common_index.intersection(series.index)
+                # Open価格がない場合はClose価格を使用
+                logger.debug("No Open price for %s, using Close as fallback", symbol)
+                open_series = close_series
 
-        if common_index is None or len(common_index) == 0:
-            raise ValueError("No common dates found in price data")
+            open_result[symbol] = open_series
 
-        # 共通インデックスでDataFrameを作成
-        price_df = pd.DataFrame({
-            symbol: result[symbol].reindex(common_index)
-            for symbol in result
+            if union_index is None:
+                union_index = close_series.index
+            else:
+                # intersection → union に変更（途中上場/廃止銘柄サポート）
+                union_index = union_index.union(close_series.index)
+
+        if union_index is None or len(union_index) == 0:
+            raise ValueError("No dates found in price data")
+
+        # unionインデックスでDataFrameを作成（データがない期間はNaN）
+        close_df = pd.DataFrame({
+            symbol: close_result[symbol].reindex(union_index)
+            for symbol in close_result
+        })
+        open_df = pd.DataFrame({
+            symbol: open_result[symbol].reindex(union_index)
+            for symbol in open_result
         })
 
-        return price_df
+        # 日付順にソート
+        close_df = close_df.sort_index()
+        open_df = open_df.sort_index()
+
+        return close_df, open_df
 
     def _convert_to_unified_result(
         self,
@@ -1161,19 +1367,37 @@ class BacktestEngine(BacktestEngineBase):
 
         # リバランス記録
         rebalances = []
+        use_category_costs = self.config.cost_schedule is not None or self.config.asset_master is not None
+        cost_rate = (self.config.transaction_cost_bps + self.config.slippage_bps) / 10000.0
         for i, snapshot in enumerate(result.snapshots):
             if i > 0:
                 prev_weights = result.snapshots[i - 1].weights
                 if snapshot.weights != prev_weights:
+                    # ウェイト変化量を計算
+                    all_symbols = list(set(snapshot.weights) | set(prev_weights))
+                    turnover = sum(
+                        abs(snapshot.weights.get(k, 0) - prev_weights.get(k, 0))
+                        for k in all_symbols
+                    ) / 2
+
+                    # 取引コスト計算
+                    if use_category_costs:
+                        # カテゴリ別コストを使用
+                        new_w = np.array([snapshot.weights.get(s, 0.0) for s in all_symbols])
+                        prev_w = np.array([prev_weights.get(s, 0.0) for s in all_symbols])
+                        transaction_cost = self._calculate_per_symbol_costs(
+                            all_symbols, new_w, prev_w, snapshot.portfolio_value
+                        )
+                    else:
+                        # 一律コスト
+                        transaction_cost = turnover * cost_rate * snapshot.portfolio_value
+
                     rebalances.append(BaseRebalanceRecord(
                         date=snapshot.date,
                         weights_before=prev_weights,
                         weights_after=snapshot.weights,
-                        turnover=sum(
-                            abs(snapshot.weights.get(k, 0) - prev_weights.get(k, 0))
-                            for k in set(snapshot.weights) | set(prev_weights)
-                        ) / 2,
-                        transaction_cost=0.0,  # 個別取引コストは不明
+                        turnover=turnover,
+                        transaction_cost=transaction_cost,
                         portfolio_value=snapshot.portfolio_value,
                     ))
 
@@ -1208,14 +1432,15 @@ class BacktestEngine(BacktestEngineBase):
         weights_func: Optional[callable] = None,
         vix_data: Optional[pd.DataFrame | pl.DataFrame] = None,
         dividend_data: Optional[Union[pd.DataFrame, pl.DataFrame, Dict[str, Any]]] = None,
+        open_prices: Optional[pd.DataFrame | pl.DataFrame] = None,
     ) -> BacktestResult:
         """
-        バックテストを実行（Polars/Pandas両対応）
+        バックテストを実行（Polars/Pandas両対応、翌日初値執行対応）
 
         Parameters
         ----------
         prices : pd.DataFrame | pl.DataFrame
-            価格データ。Polars: timestamp列 + アセット列、Pandas: インデックスはDatetime、列はアセット名。
+            終値データ。Polars: timestamp列 + アセット列、Pandas: インデックスはDatetime、列はアセット名。
         asset_names : List[str], optional
             アセット名。Noneの場合はpricesの列名を使用。
         weights_func : callable, optional
@@ -1225,16 +1450,28 @@ class BacktestEngine(BacktestEngineBase):
             VIXデータ（close列を含む）。VIX動的キャッシュ配分に使用。
         dividend_data : pd.DataFrame | pl.DataFrame | Dict, optional
             配当データ。配当込みトータルリターン計算に使用。(SYNC-006)
+        open_prices : pd.DataFrame | pl.DataFrame, optional
+            始値データ（翌日初値執行用）。Noneの場合は終値を使用。
 
         Returns
         -------
         BacktestResult
             バックテスト結果
         """
-        # データ準備
-        prices = self._prepare_prices(prices, asset_names)
-        self._asset_names = list(prices.columns)
+        # データ準備（Close価格）
+        close_prices = self._prepare_prices(prices, asset_names)
+        self._asset_names = list(close_prices.columns)
         self._n_assets = len(self._asset_names)
+
+        # Open価格を準備（翌日初値執行用）
+        if open_prices is not None:
+            open_prices_df = self._prepare_prices(open_prices, asset_names)
+            # Close価格と同じインデックスに揃える
+            open_prices_df = open_prices_df.reindex(close_prices.index)
+        else:
+            # Open価格がない場合はClose価格を使用（フォールバック）
+            logger.debug("No open_prices provided, using close_prices for execution")
+            open_prices_df = close_prices.copy()
 
         # 共分散推定器を初期化
         self.cov_estimator = IncrementalCovarianceEstimator(
@@ -1245,7 +1482,7 @@ class BacktestEngine(BacktestEngineBase):
 
         # VIXデータを準備（SYNC-004）
         if vix_data is not None and self._vix_signal is not None:
-            self._prepare_vix_data(vix_data, prices.index)
+            self._prepare_vix_data(vix_data, close_prices.index)
         else:
             self._vix_data = None
             self._vix_dates = None
@@ -1258,23 +1495,27 @@ class BacktestEngine(BacktestEngineBase):
             self._dividend_data = None
 
         # リバランス日を計算
-        self._rebalance_dates = self._get_rebalance_dates(prices.index)
+        self._rebalance_dates = self._get_rebalance_dates(close_prices.index)
 
         logger.info(
-            "Starting fast backtest: %d assets, %d days, %d rebalances",
+            "Starting fast backtest: %d assets, %d days, %d rebalances (next-day open execution)",
             self._n_assets,
-            len(prices),
+            len(close_prices),
             len(self._rebalance_dates),
         )
 
-        # 高速シミュレーション実行
+        # 部分期間カバレッジのアセットをログに出力
+        self._log_partial_coverage_assets()
+
+        # 高速シミュレーション実行（翌日初値執行）
         sim_result = self._run_fast_simulation(
-            prices=prices,
+            close_prices=close_prices,
+            open_prices=open_prices_df,
             weights_func=weights_func,
         )
 
         # BacktestResultに変換
-        result = self._convert_to_backtest_result(prices, sim_result)
+        result = self._convert_to_backtest_result(close_prices, sim_result)
 
         return result
 
@@ -1325,10 +1566,89 @@ class BacktestEngine(BacktestEngineBase):
         )
         prices = prices.loc[mask]
 
-        # 欠損値を前方補完
-        prices = prices.ffill().bfill()
+        # 部分期間アセット情報を計算（ffill/bfill前に計算）
+        self._asset_coverage = self._compute_asset_coverage(prices)
+
+        # 欠損値を前方補完（各アセットのデータ範囲内のみ）
+        # 注意: 上場前/廃止後のNaNは保持し、途中の欠損のみ補完
+        for col in prices.columns:
+            series = prices[col]
+            first_valid = series.first_valid_index()
+            last_valid = series.last_valid_index()
+            if first_valid is not None and last_valid is not None:
+                # データ範囲内のみffill
+                mask = (prices.index >= first_valid) & (prices.index <= last_valid)
+                prices.loc[mask, col] = prices.loc[mask, col].ffill()
 
         return prices
+
+    def _compute_asset_coverage(
+        self,
+        prices: pd.DataFrame,
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        各アセットのデータカバレッジ情報を計算
+
+        Parameters
+        ----------
+        prices : pd.DataFrame
+            価格データ（NaNを含む可能性あり）
+
+        Returns
+        -------
+        Dict[str, Dict[str, Any]]
+            アセットごとのカバレッジ情報
+            - first_date: 最初の有効データ日
+            - last_date: 最後の有効データ日
+            - coverage_days: 有効データ日数
+            - total_days: 全期間の日数
+            - coverage_ratio: カバレッジ比率
+        """
+        total_days = len(prices)
+        coverage = {}
+
+        for col in prices.columns:
+            series = prices[col]
+            valid_mask = series.notna()
+            valid_count = valid_mask.sum()
+
+            first_valid = series.first_valid_index()
+            last_valid = series.last_valid_index()
+
+            coverage[col] = {
+                "first_date": first_valid,
+                "last_date": last_valid,
+                "coverage_days": int(valid_count),
+                "total_days": total_days,
+                "coverage_ratio": valid_count / total_days if total_days > 0 else 0.0,
+            }
+
+        return coverage
+
+    def _log_partial_coverage_assets(self) -> None:
+        """
+        部分期間カバレッジを持つアセットをログに出力
+        """
+        if not hasattr(self, "_asset_coverage") or self._asset_coverage is None:
+            return
+
+        partial_assets = []
+        for asset, info in self._asset_coverage.items():
+            if info["coverage_ratio"] < 1.0:
+                partial_assets.append((asset, info))
+
+        if partial_assets:
+            logger.info("Partial coverage detected for %d assets:", len(partial_assets))
+            for asset, info in partial_assets:
+                first_str = info["first_date"].strftime("%Y-%m-%d") if info["first_date"] else "N/A"
+                last_str = info["last_date"].strftime("%Y-%m-%d") if info["last_date"] else "N/A"
+                logger.info(
+                    "  %s: %s to %s (%.1f%% coverage)",
+                    asset,
+                    first_str,
+                    last_str,
+                    info["coverage_ratio"] * 100,
+                )
 
     def _prepare_vix_data(
         self,
@@ -1484,16 +1804,29 @@ class BacktestEngine(BacktestEngineBase):
 
     def _run_fast_simulation(
         self,
-        prices: pd.DataFrame,
+        close_prices: pd.DataFrame,
+        open_prices: pd.DataFrame,
         weights_func: Optional[callable] = None,
     ) -> SimulationResult:
         """
-        高速シミュレーションを実行
+        高速シミュレーションを実行（翌日初値執行対応）
+
+        処理フロー:
+        - Day T (リバランス判定日):
+          - Close[T] でシグナル計算
+          - 新しいウェイトを計算
+          - pending_rebalance = True（翌日執行予約）
+        - Day T+1 (執行日):
+          - Open[T+1] で売買執行
+          - オーバーナイトリターン反映
+          - pending_rebalance = False
 
         Parameters
         ----------
-        prices : pd.DataFrame
-            価格データ
+        close_prices : pd.DataFrame
+            終値データ
+        open_prices : pd.DataFrame
+            始値データ
         weights_func : callable, optional
             ウェイト計算関数
 
@@ -1502,7 +1835,7 @@ class BacktestEngine(BacktestEngineBase):
         SimulationResult
             シミュレーション結果
         """
-        n_days = len(prices)
+        n_days = len(close_prices)
         n_assets = self._n_assets
 
         # 配列を事前確保
@@ -1516,44 +1849,192 @@ class BacktestEngine(BacktestEngineBase):
         weights_history[0] = current_weights
 
         # 価格をNumPy配列に変換
-        price_matrix = prices.values
-        dates = prices.index.tolist()
+        close_matrix = close_prices.values
+        open_matrix = open_prices.values
+        dates = close_prices.index.tolist()
 
         # リバランス日をセットに変換（高速検索）
         rebalance_set = set(self._rebalance_dates)
 
-        # 取引コスト
-        cost_rate = self.config.transaction_cost_bps / 10000.0
+        # 取引コスト設定
+        # cost_scheduleが設定されている場合はカテゴリ別コスト、そうでなければ一律コスト
+        use_category_costs = self.config.cost_schedule is not None or self.config.asset_master is not None
+        cost_rate = (self.config.transaction_cost_bps + self.config.slippage_bps) / 10000.0
         total_costs = 0.0
         actual_rebalance_dates = []
 
+        # 保留リバランス状態（翌日初値執行用）
+        pending_rebalance = False
+        pending_weights = None
+        today_cost = 0.0  # 当日発生したコスト
+
         for i in range(1, n_days):
             current_date = dates[i]
-            prev_prices = price_matrix[i - 1]
-            curr_prices = price_matrix[i]
+            prev_close = close_matrix[i - 1]
+            curr_close = close_matrix[i]
+            curr_open = open_matrix[i]
+            today_cost = 0.0
 
-            # 日次リターンを計算（価格リターン）
-            price_returns = np.where(
-                prev_prices > 0,
-                curr_prices / prev_prices - 1,
-                0.0
-            )
+            # Step 1: 保留中のリバランスを今日の初値で執行
+            if pending_rebalance and pending_weights is not None:
+                # Openが NaN または 0以下の場合は Close を使用
+                execution_prices = np.where(
+                    np.isnan(curr_open) | (curr_open <= 0),
+                    curr_close,
+                    curr_open
+                )
 
-            # 配当リターンを加算（SYNC-006）
-            dividend_returns = self._get_dividend_returns(
-                current_date, prev_prices, i
-            )
-            asset_returns = price_returns + dividend_returns
+                # オーバーナイトリターン（前日Close → 当日Open）
+                valid_overnight = (prev_close > 0) & ~np.isnan(execution_prices) & (execution_prices > 0)
+                overnight_returns = np.where(
+                    valid_overnight,
+                    execution_prices / prev_close - 1,
+                    0.0
+                )
 
-            # 共分散推定器を更新
-            self.cov_estimator.update(asset_returns)
+                # オーバーナイトリターンを現在ウェイトで計算
+                overnight_portfolio_return = np.dot(current_weights, overnight_returns)
 
-            # リバランス判定
+                # 寄り付き時点のポートフォリオ価値
+                open_value = portfolio_values[i - 1] * (1 + overnight_portfolio_return)
+
+                # 売買コスト計算
+                if use_category_costs:
+                    today_cost = self._calculate_per_symbol_costs(
+                        self._asset_names, pending_weights, current_weights, open_value
+                    )
+                else:
+                    turnover = np.sum(np.abs(pending_weights - current_weights))
+                    today_cost = turnover * cost_rate * open_value
+                total_costs += today_cost
+
+                # リバランス執行日: 正確な2段階計算
+                # オーバーナイトリターン(旧ウェイト) + イントラデイリターン(新ウェイト)
+
+                # イントラデイリターン計算（Open[i] → Close[i]）
+                valid_intraday = (
+                    ~np.isnan(curr_open) &
+                    ~np.isnan(curr_close) &
+                    (curr_open > 0)
+                )
+                intraday_returns = np.where(
+                    valid_intraday,
+                    curr_close / curr_open - 1,
+                    0.0
+                )
+
+                # 配当リターンを加算（SYNC-006）- イントラデイ部分に加算
+                dividend_returns = self._get_dividend_returns(
+                    current_date, curr_open, i
+                )
+                intraday_returns = np.where(
+                    valid_intraday,
+                    intraday_returns + dividend_returns,
+                    intraday_returns
+                )
+
+                # ウェイトを更新（イントラデイリターン計算後）
+                current_weights = pending_weights
+                actual_rebalance_dates.append(current_date)  # 執行日を記録
+
+                # イントラデイポートフォリオリターン（新ウェイトで、NaN対応）
+                available_mask = ~np.isnan(intraday_returns) & valid_intraday
+                available_weights = np.where(available_mask, current_weights, 0.0)
+                weight_sum = np.sum(available_weights)
+
+                if weight_sum > 0:
+                    normalized_weights = available_weights / weight_sum
+                    safe_returns = np.where(available_mask, intraday_returns, 0.0)
+                    intraday_portfolio_return = np.dot(normalized_weights, safe_returns)
+                else:
+                    intraday_portfolio_return = 0.0
+
+                # ポートフォリオ価値計算: Open価値 × (1 + イントラデイリターン) - コスト
+                portfolio_values[i] = open_value * (1 + intraday_portfolio_return) - today_cost
+
+                # 日次リターンを記録（終値ベース）
+                if portfolio_values[i - 1] > 0:
+                    daily_returns[i] = portfolio_values[i] / portfolio_values[i - 1] - 1
+                else:
+                    daily_returns[i] = 0.0
+
+                # 保留状態をリセット
+                pending_rebalance = False
+                pending_weights = None
+
+                # 共分散推定器を更新（Close-to-Closeリターンで）
+                valid_mask = (prev_close > 0) & ~np.isnan(curr_close)
+                price_returns_for_cov = np.where(valid_mask, curr_close / prev_close - 1, 0.0)
+                self._update_covariance_with_nan(price_returns_for_cov, valid_mask)
+
+                # DrawdownProtector更新 (SYNC-002)
+                if self._dd_protector is not None:
+                    self._dd_protector.update(portfolio_values[i])
+            else:
+                # 非リバランス日: 通常のClose-to-Close計算
+                # Step 2: アセット可用性マスク（NaNでない & 価格が正）
+                valid_mask = (
+                    ~np.isnan(prev_close) &
+                    ~np.isnan(curr_close) &
+                    (prev_close > 0)
+                )
+
+                # 日次リターンを計算（Close to Close）- NaN対応
+                price_returns = np.where(
+                    valid_mask,
+                    curr_close / prev_close - 1,
+                    np.nan  # 利用不可アセットはNaN
+                )
+
+                # 配当リターンを加算（SYNC-006）
+                dividend_returns = self._get_dividend_returns(
+                    current_date, prev_close, i
+                )
+                # NaNアセットには配当を加算しない
+                asset_returns = np.where(
+                    valid_mask,
+                    price_returns + dividend_returns,
+                    np.nan
+                )
+
+                # 共分散推定器を更新（NaN対応版）
+                self._update_covariance_with_nan(asset_returns, valid_mask)
+
+                # ポートフォリオリターンを計算（NaN対応）
+                # 利用可能なアセットのみでウェイトを再配分
+                available_mask = ~np.isnan(asset_returns)
+                available_weights = np.where(available_mask, current_weights, 0.0)
+                weight_sum = np.sum(available_weights)
+
+                if weight_sum > 0:
+                    # 利用可能アセットでウェイトを正規化
+                    normalized_weights = available_weights / weight_sum
+                    # NaNリターンを0として扱い、正規化ウェイトで計算
+                    safe_returns = np.where(available_mask, asset_returns, 0.0)
+                    portfolio_return = np.dot(normalized_weights, safe_returns)
+                else:
+                    # 全アセットが利用不可の場合はリターン0
+                    portfolio_return = 0.0
+
+                daily_returns[i] = portfolio_return
+
+                # ポートフォリオ価値を更新
+                portfolio_values[i] = portfolio_values[i - 1] * (1 + portfolio_return)
+
+                # DrawdownProtector更新 (SYNC-002)
+                if self._dd_protector is not None:
+                    self._dd_protector.update(portfolio_values[i])
+
+            # Step 3: リバランスシグナル確認（翌日執行を予約）
             should_rebalance = current_date in rebalance_set
 
-            if should_rebalance and i > 0:
+            if should_rebalance and i < n_days - 1:  # 最終日はリバランスしない（翌日がない）
                 # レジーム検出（有効な場合）
-                regime_params = self._detect_and_get_regime_params(prices, i)
+                regime_params = self._detect_and_get_regime_params(close_prices, i)
+
+                # リバランス時のアセット可用性マスクを計算
+                # 当日の価格がNaNでないアセットが利用可能
+                rebalance_available_mask = ~np.isnan(curr_close)
 
                 # 新しいウェイトを計算
                 if weights_func is not None:
@@ -1561,8 +2042,16 @@ class BacktestEngine(BacktestEngineBase):
                     signals = self._get_current_signals(current_date)
                     new_weights = weights_func(signals, cov)
                 else:
-                    # 等ウェイト
-                    new_weights = np.ones(n_assets) / n_assets
+                    # 等ウェイト（利用可能アセットのみ）
+                    if np.any(rebalance_available_mask):
+                        n_available = np.sum(rebalance_available_mask)
+                        new_weights = np.where(
+                            rebalance_available_mask,
+                            1.0 / n_available,
+                            0.0
+                        )
+                    else:
+                        new_weights = np.ones(n_assets) / n_assets
 
                 # レジームに応じたリスク調整
                 if regime_params and self.config.regime_risk_scaling:
@@ -1574,15 +2063,17 @@ class BacktestEngine(BacktestEngineBase):
                     if cash_allocation > 0:
                         new_weights = new_weights * (1 - cash_allocation)
 
-                # ウェイト制約を適用
-                new_weights = self._apply_weight_constraints(new_weights)
+                # ウェイト制約を適用（利用可能マスクを渡す）
+                new_weights = self._apply_weight_constraints(
+                    new_weights, rebalance_available_mask
+                )
 
                 # TransactionCostOptimizer適用 (SYNC-001)
                 if self.config.use_cost_optimizer and TRANSACTION_COST_OPTIMIZER_AVAILABLE:
                     new_weights = self._apply_cost_optimizer(
                         new_weights,
                         current_weights,
-                        prices,
+                        close_prices,
                         i,
                     )
 
@@ -1602,29 +2093,14 @@ class BacktestEngine(BacktestEngineBase):
                 if self._dynamic_weighter is not None:
                     new_weights = self._apply_dynamic_weighting(
                         new_weights,
-                        prices,
+                        close_prices,
                         i,
-                        portfolio_values[i - 1],
+                        portfolio_values[i],
                     )
 
-                # 取引コストを計算
-                turnover = np.sum(np.abs(new_weights - current_weights))
-                cost = turnover * cost_rate * portfolio_values[i - 1]
-                total_costs += cost
-
-                current_weights = new_weights
-                actual_rebalance_dates.append(current_date)
-
-            # ポートフォリオリターンを計算
-            portfolio_return = np.dot(current_weights, asset_returns)
-            daily_returns[i] = portfolio_return
-
-            # ポートフォリオ価値を更新
-            portfolio_values[i] = portfolio_values[i - 1] * (1 + portfolio_return)
-
-            # DrawdownProtector更新 (SYNC-002)
-            if self._dd_protector is not None:
-                self._dd_protector.update(portfolio_values[i])
+                # 翌日執行を予約
+                pending_rebalance = True
+                pending_weights = new_weights
 
             # ウェイト履歴を保存
             weights_history[i] = current_weights
@@ -1862,7 +2338,39 @@ class BacktestEngine(BacktestEngineBase):
         # デフォルト: 空のシグナル
         return {}
 
-    def _apply_weight_constraints(self, weights: np.ndarray) -> np.ndarray:
+    def _update_covariance_with_nan(
+        self,
+        returns: np.ndarray,
+        valid_mask: np.ndarray,
+    ) -> None:
+        """
+        NaNを含むリターンで共分散推定器を更新
+
+        利用可能なアセットのみで更新し、利用不可アセットの
+        共分散/平均は前回値を維持する。
+
+        Parameters
+        ----------
+        returns : np.ndarray
+            1日分のリターン（NaNを含む可能性あり）
+        valid_mask : np.ndarray
+            有効なアセットのマスク
+        """
+        if np.all(valid_mask):
+            # 全アセットが有効な場合は通常の更新
+            self.cov_estimator.update(returns)
+        elif np.any(valid_mask):
+            # 一部のアセットのみ有効な場合
+            # NaNを0に置き換えて更新（ただしマスクを使用）
+            safe_returns = np.where(valid_mask, returns, 0.0)
+            self.cov_estimator.update_with_mask(safe_returns, valid_mask)
+        # 全アセットが利用不可の場合は更新しない
+
+    def _apply_weight_constraints(
+        self,
+        weights: np.ndarray,
+        available_mask: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
         """
         ウェイト制約を適用
 
@@ -1870,21 +2378,38 @@ class BacktestEngine(BacktestEngineBase):
         ----------
         weights : np.ndarray
             元のウェイト
+        available_mask : np.ndarray, optional
+            利用可能なアセットのマスク。Noneの場合は全アセット利用可能とみなす。
 
         Returns
         -------
         np.ndarray
             制約適用後のウェイト
         """
+        weights = weights.copy()
+
+        # 利用不可アセットのウェイトを0に設定
+        if available_mask is not None:
+            weights = np.where(available_mask, weights, 0.0)
+
         # 最小・最大制約
         weights = np.clip(weights, self.config.min_weight, self.config.max_weight)
+
+        # 利用不可アセットは再度0に（clipで復活しないように）
+        if available_mask is not None:
+            weights = np.where(available_mask, weights, 0.0)
 
         # 正規化（合計を1に）
         total = np.sum(weights)
         if total > 0:
             weights = weights / total
         else:
-            weights = np.ones(len(weights)) / len(weights)
+            # 全アセットが利用不可の場合、利用可能なアセットで等ウェイト
+            if available_mask is not None and np.any(available_mask):
+                n_available = np.sum(available_mask)
+                weights = np.where(available_mask, 1.0 / n_available, 0.0)
+            else:
+                weights = np.ones(len(weights)) / len(weights)
 
         return weights
 
@@ -2198,14 +2723,15 @@ def run_fast_backtest(
     use_gpu: bool = False,
     vix_cash_enabled: bool = True,
     vix_data: Optional[pd.DataFrame | pl.DataFrame] = None,
+    open_prices: Optional[pd.DataFrame | pl.DataFrame] = None,
 ) -> BacktestResult:
     """
-    高速バックテストを実行するショートカット関数（Polars/Pandas両対応）
+    高速バックテストを実行するショートカット関数（Polars/Pandas両対応、翌日初値執行対応）
 
     Parameters
     ----------
     prices : pd.DataFrame | pl.DataFrame
-        価格データ（Polars or Pandas）
+        終値データ（Polars or Pandas）
     start_date : datetime
         開始日
     end_date : datetime
@@ -2226,6 +2752,8 @@ def run_fast_backtest(
         VIX動的キャッシュ配分を有効化（デフォルトTrue）
     vix_data : pd.DataFrame | pl.DataFrame, optional
         VIXデータ（close列を含む）
+    open_prices : pd.DataFrame | pl.DataFrame, optional
+        始値データ（翌日初値執行用）。Noneの場合は終値を使用。
 
     Returns
     -------
@@ -2244,7 +2772,12 @@ def run_fast_backtest(
     )
 
     engine = BacktestEngine(config)
-    return engine.run(prices, weights_func=weights_func, vix_data=vix_data)
+    return engine.run(
+        prices,
+        weights_func=weights_func,
+        vix_data=vix_data,
+        open_prices=open_prices,
+    )
 
 
 # ==============================================================================

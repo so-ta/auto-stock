@@ -212,6 +212,7 @@ class RiskEstimator:
         self,
         raw_data: dict[str, "pl.DataFrame"],
         excluded_assets: list[str],
+        alpha_scores: dict[str, float] | None = None,
     ) -> RiskEstimationResult:
         """
         Estimate risk metrics.
@@ -219,6 +220,7 @@ class RiskEstimator:
         Args:
             raw_data: Dictionary mapping symbol to DataFrame
             excluded_assets: List of assets to exclude
+            alpha_scores: Optional alpha scores for each asset (affects expected returns)
 
         Returns:
             RiskEstimationResult with risk metrics and covariance
@@ -312,16 +314,34 @@ class RiskEstimator:
         covariance = cov_result.covariance
         correlation = cov_result.correlation
 
-        # Step 3: Estimate expected returns for each asset
+        # Step 3: Estimate expected returns for each asset (with alpha integration)
         expected_returns: dict[str, float] = {}
+        alpha_annual_scale = 0.15  # アルファの年率スケール（15%）
+        historical_weight = 0.3  # 過去リターンの重み
+        alpha_weight = 0.7  # アルファ成分の重み
+
         for symbol in returns_df.columns:
             returns_series = returns_df[symbol]
-            # Use historical mean as expected return (annualized)
-            # Apply shrinkage toward zero for robustness
+            # Historical mean (annualized with shrinkage)
             shrinkage_factor = 0.5
             raw_mean = returns_series.mean() * 252  # Annualize
-            shrunk_mean = raw_mean * (1 - shrinkage_factor)
-            expected_returns[symbol] = float(shrunk_mean)
+            historical_mean = raw_mean * (1 - shrinkage_factor)
+
+            # Alpha-adjusted expected return
+            if alpha_scores and symbol in alpha_scores:
+                alpha = alpha_scores[symbol]
+                # アルファを年率リターンに変換（-1~+1を-15%~+15%にスケール）
+                alpha_return = alpha * alpha_annual_scale
+                # 過去リターンとアルファの加重平均
+                expected_return = (
+                    historical_weight * historical_mean +
+                    alpha_weight * alpha_return
+                )
+            else:
+                # アルファスコアがない場合は従来の計算
+                expected_return = historical_mean
+
+            expected_returns[symbol] = float(expected_return)
 
         # Step 4: Calculate portfolio risk metrics
         n_assets = len(returns_df.columns)

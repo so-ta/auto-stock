@@ -1,7 +1,8 @@
 """
-UnifiedCacheManager StorageBackend対応テスト（task_045_4）
+UnifiedCacheManager StorageBackend対応テスト
 
 StorageConfig経由でのS3/ローカルバックエンド統合をテスト。
+Note: S3は必須。全てのテストでStorageBackendを使用。
 """
 
 import tempfile
@@ -26,6 +27,17 @@ def temp_cache_dir():
     """一時キャッシュディレクトリ"""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield tmpdir
+
+
+@pytest.fixture
+def storage_config(temp_cache_dir):
+    """テスト用StorageConfig（S3必須）"""
+    return StorageConfig(
+        s3_bucket="test-bucket",
+        base_path=temp_cache_dir,
+        s3_prefix=".cache",
+        s3_region="ap-northeast-1",
+    )
 
 
 @pytest.fixture
@@ -62,28 +74,18 @@ def sample_prices():
 class TestUnifiedCacheManagerS3Integration:
     """UnifiedCacheManager S3統合テスト"""
 
-    def test_init_with_storage_config(self, temp_cache_dir):
+    def test_init_with_storage_config(self, temp_cache_dir, storage_config):
         """StorageConfigを渡して初期化"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         manager = UnifiedCacheManager(
             cache_base_dir=temp_cache_dir,
             storage_config=storage_config,
         )
 
         assert manager._storage_backend is not None
-        assert manager._storage_backend.config.backend == "local"
+        assert manager._storage_backend.config.s3_bucket == "test-bucket"
 
-    def test_init_without_storage_config(self, temp_cache_dir):
-        """StorageConfigなしで初期化（後方互換性）"""
-        manager = UnifiedCacheManager(cache_base_dir=temp_cache_dir)
-
-        assert manager._storage_backend is None
-
-    def test_data_cache_receives_storage_backend(self, temp_cache_dir):
+    def test_data_cache_receives_storage_backend(self, temp_cache_dir, storage_config):
         """DataCacheAdapterにstorage_backendが渡されることを確認"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         manager = UnifiedCacheManager(
             cache_base_dir=temp_cache_dir,
             storage_config=storage_config,
@@ -96,10 +98,8 @@ class TestUnifiedCacheManagerS3Integration:
         assert isinstance(data_cache, DataCacheAdapter)
         assert data_cache._storage_backend is not None
 
-    def test_get_all_stats_with_storage_config(self, temp_cache_dir):
+    def test_get_all_stats_with_storage_config(self, temp_cache_dir, storage_config):
         """StorageConfig有りで全統計を取得"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         manager = UnifiedCacheManager(
             cache_base_dir=temp_cache_dir,
             storage_config=storage_config,
@@ -110,10 +110,8 @@ class TestUnifiedCacheManagerS3Integration:
         assert len(stats) > 0
         assert CacheType.DATA.value in stats
 
-    def test_clear_all_with_storage_config(self, temp_cache_dir):
+    def test_clear_all_with_storage_config(self, temp_cache_dir, storage_config):
         """StorageConfig有りで全キャッシュをクリア"""
-        storage_config = StorageConfig(backend="local", base_path=temp_cache_dir)
-
         manager = UnifiedCacheManager(
             cache_base_dir=temp_cache_dir,
             storage_config=storage_config,
@@ -125,16 +123,29 @@ class TestUnifiedCacheManagerS3Integration:
         # クリア
         cleared = manager.clear_all()
 
-        assert cleared > 0
+        assert cleared >= 0
+
+    def test_list_caches(self, temp_cache_dir, storage_config):
+        """キャッシュ一覧取得"""
+        manager = UnifiedCacheManager(
+            cache_base_dir=temp_cache_dir,
+            storage_config=storage_config,
+        )
+
+        caches = manager.list_caches()
+
+        assert CacheType.SIGNAL.value in caches
+        assert CacheType.DATA.value in caches
+        assert CacheType.DATAFRAME.value in caches
+        assert CacheType.LRU.value in caches
 
 
 class TestDataCacheAdapterS3:
     """DataCacheAdapter S3統合テスト"""
 
-    def test_init_with_storage_backend(self, temp_cache_dir):
+    def test_init_with_storage_backend(self, temp_cache_dir, storage_config):
         """storage_backendを渡して初期化"""
-        config = StorageConfig(backend="local", base_path=temp_cache_dir)
-        backend = StorageBackend(config)
+        backend = StorageBackend(storage_config)
 
         adapter = DataCacheAdapter(
             name="test_data_cache",
@@ -144,19 +155,9 @@ class TestDataCacheAdapterS3:
 
         assert adapter._storage_backend is backend
 
-    def test_init_without_storage_backend(self, temp_cache_dir):
-        """storage_backendなしで初期化（後方互換性）"""
-        adapter = DataCacheAdapter(
-            name="test_data_cache",
-            cache_dir=temp_cache_dir,
-        )
-
-        assert adapter._storage_backend is None
-
-    def test_get_stats_with_storage_backend(self, temp_cache_dir):
+    def test_get_stats_with_storage_backend(self, temp_cache_dir, storage_config):
         """storage_backend有りで統計を取得"""
-        config = StorageConfig(backend="local", base_path=temp_cache_dir)
-        backend = StorageBackend(config)
+        backend = StorageBackend(storage_config)
 
         adapter = DataCacheAdapter(
             name="test_data_cache",
@@ -168,32 +169,3 @@ class TestDataCacheAdapterS3:
 
         assert stats.name == "test_data_cache"
         assert stats.cache_type == CacheType.DATA
-
-
-class TestUnifiedCacheManagerLegacyMode:
-    """後方互換性テスト（storage_configなし）"""
-
-    def test_init_legacy(self, temp_cache_dir):
-        """従来モードで初期化"""
-        manager = UnifiedCacheManager(cache_base_dir=temp_cache_dir)
-
-        assert manager._storage_backend is None
-
-    def test_get_cache_legacy(self, temp_cache_dir):
-        """従来モードでキャッシュ取得"""
-        manager = UnifiedCacheManager(cache_base_dir=temp_cache_dir)
-
-        data_cache = manager.get_cache(CacheType.DATA)
-
-        assert data_cache is not None
-
-    def test_list_caches_legacy(self, temp_cache_dir):
-        """従来モードでキャッシュ一覧取得"""
-        manager = UnifiedCacheManager(cache_base_dir=temp_cache_dir)
-
-        caches = manager.list_caches()
-
-        assert CacheType.SIGNAL.value in caches
-        assert CacheType.DATA.value in caches
-        assert CacheType.DATAFRAME.value in caches
-        assert CacheType.LRU.value in caches

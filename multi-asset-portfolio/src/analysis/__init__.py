@@ -48,6 +48,16 @@ from .report_generator import (
     ComparisonResult,
     ReportGenerator,
 )
+from .backtest_archive import (
+    BacktestArchive,
+    ReproducibilityReport,
+    generate_config_hash,
+    generate_universe_hash,
+    generate_archive_id,
+    get_code_version,
+)
+from .result_store import BacktestResultStore
+from .backtest_comparator import BacktestComparator, DiffReport
 # Static charts (requires matplotlib)
 try:
     from .static_charts import StaticChartGenerator
@@ -121,4 +131,14 @@ __all__ = [
     # Interactive charts (Plotly)
     "ChartGenerator",
     "ChartGeneratorError",
+    # Backtest archive and comparison
+    "BacktestArchive",
+    "ReproducibilityReport",
+    "BacktestResultStore",
+    "BacktestComparator",
+    "DiffReport",
+    "generate_config_hash",
+    "generate_universe_hash",
+    "generate_archive_id",
+    "get_code_version",
 ]

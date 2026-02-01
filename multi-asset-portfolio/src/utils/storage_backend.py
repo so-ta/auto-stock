@@ -1,22 +1,19 @@
 """
-Storage Backend - ローカル/S3を透過的に扱うストレージ抽象化レイヤー
+Storage Backend - S3必須のストレージ抽象化レイヤー
 
 fsspecを使用してローカルファイルシステムとS3を統一インターフェースで操作。
-ローカルキャッシュ付きS3モードでは、S3をバックエンドとしつつローカルにキャッシュを保持。
+常にhybridモードで動作: ローカルをプライマリ、S3をセカンダリ（write-through）として使用。
+
+IMPORTANT: S3は必須。ローカルのみモードは廃止済み。
 
 Usage:
     from src.utils.storage_backend import get_storage_backend, StorageConfig
 
-    # ローカルモード
-    backend = get_storage_backend(StorageConfig(backend="local", base_path=".cache"))
-
-    # S3モード（ローカルキャッシュ付き）
+    # S3バケット指定が必須
     backend = get_storage_backend(StorageConfig(
-        backend="s3",
-        s3_bucket="my-bucket",
+        s3_bucket="my-bucket",        # 必須
         s3_prefix=".cache",
-        local_cache_path="/tmp/.cache",
-        local_cache_ttl_hours=24,
+        base_path=".cache",           # ローカルキャッシュパス
     ))
 
     # 透過的に操作
@@ -75,34 +72,52 @@ except ImportError:
 
 @dataclass
 class StorageConfig:
-    """ストレージ設定"""
+    """ストレージ設定
 
-    backend: str = "local"  # "local" or "s3"
-    base_path: str = ".cache"  # ローカルモード時のベースパス
+    S3 Required Mode:
+        S3バケットの設定は必須。常にhybridモードで動作:
+        - READ: Local first → S3 fallback → FileNotFoundError
+        - WRITE: Local save → S3 sync (write-through)
 
-    # S3設定
-    s3_bucket: str = ""
+        This ensures fast local access while maintaining S3 as durable storage.
+
+    Raises:
+        ValueError: s3_bucket が空の場合
+    """
+
+    # S3設定（必須）
+    s3_bucket: str  # 必須（デフォルトなし）
     s3_prefix: str = ".cache"
     s3_region: str = "ap-northeast-1"
+
+    # ローカルキャッシュパス（常に使用）
+    base_path: str = ".cache"
 
     # 認証情報（環境変数からも取得可能）
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
 
-    # ローカルキャッシュ設定（S3モード時）
-    local_cache_enabled: bool = True
-    local_cache_path: str = "/tmp/.backtest_cache"
+    # ローカルキャッシュTTL（S3からフェッチしたファイルの有効期限）
     local_cache_ttl_hours: int = 24
 
     # パフォーマンス設定
     use_parquet_optimization: bool = True  # fsspec.parquet最適化
 
     def __post_init__(self):
-        """環境変数から認証情報を取得"""
+        """環境変数から認証情報を取得し、S3バケットの必須チェック"""
+        # S3バケット必須チェック
+        if not self.s3_bucket:
+            raise ValueError(
+                "s3_bucket is required. Local-only mode is not supported. "
+                "Set S3_BUCKET environment variable or provide s3_bucket parameter."
+            )
+
         if self.aws_access_key_id is None:
             self.aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
         if self.aws_secret_access_key is None:
             self.aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+
+        logger.info(f"Storage config: s3_bucket={self.s3_bucket}, base_path={self.base_path}")
 
 
 class StorageBackend:
@@ -131,164 +146,176 @@ class StorageBackend:
         self._init_filesystem()
 
     def _init_filesystem(self) -> None:
-        """ファイルシステムを初期化"""
-        if self.config.backend == "local":
-            self._fs = fsspec.filesystem("file")
-            self._base_path = self.config.base_path
-            Path(self._base_path).mkdir(parents=True, exist_ok=True)
-            logger.info(f"Storage backend: local ({self._base_path})")
+        """ファイルシステムを初期化（常にhybridモード）
 
-        elif self.config.backend == "s3":
-            if not HAS_S3FS:
-                raise ImportError("s3fs is required for S3 backend. Install with: pip install s3fs")
+        Hybrid mode: local primary + S3 write-through
+        - READ: Local first → S3 fallback
+        - WRITE: Local save → S3 sync
+        """
+        if not HAS_S3FS:
+            raise ImportError("s3fs is required. Install with: pip install s3fs")
 
-            # S3ファイルシステム
-            s3_options = {
-                "anon": False,
-            }
-            if self.config.aws_access_key_id and self.config.aws_secret_access_key:
-                s3_options["key"] = self.config.aws_access_key_id
-                s3_options["secret"] = self.config.aws_secret_access_key
+        # Local filesystem (primary)
+        self._fs = fsspec.filesystem("file")
+        self._base_path = self.config.base_path
+        Path(self._base_path).mkdir(parents=True, exist_ok=True)
 
-            self._fs = fsspec.filesystem("s3", **s3_options)
-            self._base_path = f"{self.config.s3_bucket}/{self.config.s3_prefix}"
+        # S3 filesystem (secondary, required)
+        s3_options = {"anon": False}
+        if self.config.aws_access_key_id and self.config.aws_secret_access_key:
+            s3_options["key"] = self.config.aws_access_key_id
+            s3_options["secret"] = self.config.aws_secret_access_key
 
-            # ローカルキャッシュ用ファイルシステム
-            if self.config.local_cache_enabled:
-                self._local_cache_fs = fsspec.filesystem("file")
-                Path(self.config.local_cache_path).mkdir(parents=True, exist_ok=True)
-                self._load_cache_metadata()
+        # Set region for proper signature (default us-east-1 causes Access Denied on other regions)
+        if self.config.s3_region:
+            s3_options["client_kwargs"] = {"region_name": self.config.s3_region}
 
-            logger.info(f"Storage backend: s3 (s3://{self._base_path})")
-            if self.config.local_cache_enabled:
-                logger.info(f"Local cache: {self.config.local_cache_path}")
-        else:
-            raise ValueError(f"Unknown backend: {self.config.backend}")
+        self._s3_fs = fsspec.filesystem("s3", **s3_options)
+        self._s3_base_path = f"{self.config.s3_bucket}/{self.config.s3_prefix}"
+
+        logger.info(f"Storage backend: hybrid (local={self._base_path}, s3=s3://{self._s3_base_path})")
 
     def _get_full_path(self, path: str) -> str:
-        """フルパスを取得"""
-        if self.config.backend == "s3":
-            return f"{self._base_path}/{path}"
+        """ローカルフルパスを取得"""
         return str(Path(self._base_path) / path)
 
-    def _get_local_cache_path(self, path: str) -> Path:
-        """ローカルキャッシュパスを取得"""
-        return Path(self.config.local_cache_path) / path
+    def _get_s3_full_path(self, path: str) -> str:
+        """S3フルパスを取得（hybridモード用）"""
+        return f"{self._s3_base_path}/{path}"
 
-    def _is_cache_valid(self, path: str) -> bool:
-        """ローカルキャッシュが有効か確認"""
-        if not self.config.local_cache_enabled:
+    def _local_exists(self, path: str) -> bool:
+        """ローカルにファイルが存在するか確認"""
+        local_path = Path(self._base_path) / path
+        return local_path.exists()
+
+    def _s3_exists(self, path: str) -> bool:
+        """S3にファイルが存在するか確認"""
+        if self._s3_fs is None:
+            return False
+        s3_path = self._get_s3_full_path(path)
+        try:
+            return self._s3_fs.exists(s3_path)
+        except Exception as e:
+            logger.debug(f"S3 exists check failed for {path}: {e}")
             return False
 
-        local_path = self._get_local_cache_path(path)
+    def _sync_to_s3(self, path: str) -> bool:
+        """ローカルファイルをS3に同期（hybridモード用）"""
+        if self._s3_fs is None:
+            return False
+        local_path = Path(self._base_path) / path
         if not local_path.exists():
             return False
-
-        # メタデータでTTLチェック
-        meta = self._cache_metadata.get(path)
-        if meta:
-            cached_at = datetime.fromisoformat(meta.get("cached_at", "2000-01-01"))
-            ttl = timedelta(hours=self.config.local_cache_ttl_hours)
-            if datetime.now() - cached_at > ttl:
-                logger.debug(f"Cache expired: {path}")
-                return False
-
-        return True
-
-    def _update_cache_metadata(self, path: str, s3_etag: Optional[str] = None) -> None:
-        """キャッシュメタデータを更新"""
-        self._cache_metadata[path] = {
-            "cached_at": datetime.now().isoformat(),
-            "s3_etag": s3_etag,
-        }
-        self._save_cache_metadata()
-
-    def _load_cache_metadata(self) -> None:
-        """キャッシュメタデータを読み込み"""
-        meta_path = Path(self.config.local_cache_path) / ".cache_metadata.json"
-        if meta_path.exists():
-            try:
-                with open(meta_path, "r") as f:
-                    self._cache_metadata = json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load cache metadata: {e}")
-                self._cache_metadata = {}
-
-    def _save_cache_metadata(self) -> None:
-        """キャッシュメタデータを保存"""
-        meta_path = Path(self.config.local_cache_path) / ".cache_metadata.json"
+        s3_path = self._get_s3_full_path(path)
         try:
-            with open(meta_path, "w") as f:
-                json.dump(self._cache_metadata, f, indent=2)
+            with open(local_path, "rb") as src:
+                with self._s3_fs.open(s3_path, "wb") as dst:
+                    dst.write(src.read())
+            logger.debug(f"Synced to S3: {path}")
+            return True
         except Exception as e:
-            logger.warning(f"Failed to save cache metadata: {e}")
+            logger.warning(f"Failed to sync to S3 {path}: {e}")
+            return False
+
+    def _fetch_from_s3_to_local(self, path: str) -> bool:
+        """S3からローカルにファイルをダウンロード（hybridモード用）"""
+        if self._s3_fs is None:
+            return False
+        local_path = Path(self._base_path) / path
+        s3_path = self._get_s3_full_path(path)
+        try:
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._s3_fs.open(s3_path, "rb") as src:
+                with open(local_path, "wb") as dst:
+                    dst.write(src.read())
+            logger.debug(f"Fetched from S3 to local: {path}")
+            return True
+        except Exception as e:
+            logger.debug(f"Failed to fetch from S3 {path}: {e}")
+            return False
+
 
     # =========================================================================
     # 基本操作
     # =========================================================================
 
     def exists(self, path: str) -> bool:
-        """ファイル/ディレクトリの存在確認"""
-        # ローカルキャッシュをまず確認
-        if self._is_cache_valid(path):
-            return True
+        """ファイル/ディレクトリの存在確認
 
-        full_path = self._get_full_path(path)
-        try:
-            return self._fs.exists(full_path)
-        except Exception as e:
-            logger.warning(f"Failed to check existence: {path}, {e}")
-            return False
+        Check order: Local first → S3 fallback
+        """
+        if self._local_exists(path):
+            return True
+        return self._s3_exists(path)
 
     def makedirs(self, path: str, exist_ok: bool = True) -> None:
-        """ディレクトリ作成"""
+        """ディレクトリ作成（ローカルとS3両方）"""
+        # Create in local
         full_path = self._get_full_path(path)
         try:
             self._fs.makedirs(full_path, exist_ok=exist_ok)
-        except Exception:
-            pass  # S3ではディレクトリは自動作成される
+        except Exception as e:
+            logger.debug(f"Local makedirs failed for {path}: {e}")
 
-        # ローカルキャッシュにも作成
-        if self.config.backend == "s3" and self.config.local_cache_enabled:
-            local_path = self._get_local_cache_path(path)
-            local_path.mkdir(parents=True, exist_ok=True)
+        # Create in S3 (virtual directories)
+        if self._s3_fs is not None:
+            try:
+                s3_path = self._get_s3_full_path(path)
+                self._s3_fs.makedirs(s3_path, exist_ok=exist_ok)
+            except Exception as e:
+                logger.debug(f"S3 makedirs failed for {path}: {e}")  # S3 directories are virtual
 
     def list_files(self, path: str = "", pattern: str = "*") -> List[str]:
-        """ファイル一覧を取得"""
+        """ファイル一覧を取得（ローカルとS3をマージ）"""
         full_path = self._get_full_path(path)
         try:
-            if self.config.backend == "s3":
-                files = self._fs.glob(f"{full_path}/{pattern}")
-                # プレフィックスを除去
-                prefix = f"{self._base_path}/"
-                return [f.replace(prefix, "") for f in files]
-            else:
-                files = self._fs.glob(f"{full_path}/{pattern}")
-                prefix = f"{self._base_path}/"
-                return [f.replace(prefix, "") for f in files]
+            local_files = set()
+            s3_files = set()
+
+            # Local files
+            local_glob = self._fs.glob(f"{full_path}/{pattern}")
+            prefix = f"{self._base_path}/"
+            local_files = {f.replace(prefix, "") for f in local_glob}
+
+            # S3 files
+            if self._s3_fs is not None:
+                s3_full_path = self._get_s3_full_path(path)
+                try:
+                    s3_glob = self._s3_fs.glob(f"{s3_full_path}/{pattern}")
+                    s3_prefix = f"{self._s3_base_path}/"
+                    s3_files = {f.replace(s3_prefix, "") for f in s3_glob}
+                except Exception as e:
+                    logger.debug(f"S3 glob failed for {path}/{pattern}: {e}")
+
+            return sorted(local_files | s3_files)
         except Exception as e:
             logger.warning(f"Failed to list files: {path}, {e}")
             return []
 
     def delete(self, path: str) -> bool:
-        """ファイル削除"""
-        full_path = self._get_full_path(path)
-        try:
-            self._fs.rm(full_path)
+        """ファイル削除（ローカルとS3両方から）"""
+        success = False
 
-            # ローカルキャッシュも削除
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                if local_path.exists():
-                    local_path.unlink()
-                if path in self._cache_metadata:
-                    del self._cache_metadata[path]
-                    self._save_cache_metadata()
+        # Delete from local
+        local_path = Path(self._base_path) / path
+        if local_path.exists():
+            try:
+                local_path.unlink()
+                success = True
+            except Exception as e:
+                logger.warning(f"Failed to delete local {path}: {e}")
 
-            return True
-        except Exception as e:
-            logger.warning(f"Failed to delete: {path}, {e}")
-            return False
+        # Delete from S3
+        if self._s3_fs is not None:
+            s3_path = self._get_s3_full_path(path)
+            try:
+                if self._s3_fs.exists(s3_path):
+                    self._s3_fs.rm(s3_path)
+                    success = True
+            except Exception as e:
+                logger.warning(f"Failed to delete S3 {path}: {e}")
+
+        return success
 
     # =========================================================================
     # Parquet操作
@@ -298,94 +325,63 @@ class StorageBackend:
         """
         Parquetファイルを読み込み
 
+        Workflow:
+            1. Check local first
+            2. If not local, fetch from S3 → save to local
+            3. If not in S3, raise FileNotFoundError
+
         Returns:
             polars.DataFrame (polars available) or pandas.DataFrame
         """
-        # ローカルキャッシュから読み込み
-        if self._is_cache_valid(path):
-            local_path = self._get_local_cache_path(path)
-            logger.debug(f"Reading from local cache: {path}")
+        local_path = Path(self._base_path) / path
+
+        # 1. Try local
+        if local_path.exists():
+            logger.debug(f"Reading from local: {path}")
             if HAS_POLARS:
                 return pl.read_parquet(local_path)
             elif HAS_PANDAS:
                 return pd.read_parquet(local_path)
 
-        # S3/ローカルから読み込み
-        full_path = self._get_full_path(path)
-        try:
-            if self.config.backend == "s3":
-                with self._fs.open(full_path, "rb") as f:
-                    if HAS_POLARS:
-                        df = pl.read_parquet(f)
-                    elif HAS_PANDAS:
-                        df = pd.read_parquet(f)
-                    else:
-                        raise ImportError("polars or pandas required")
-
-                # ローカルキャッシュに保存
-                if self.config.local_cache_enabled:
-                    local_path = self._get_local_cache_path(path)
-                    local_path.parent.mkdir(parents=True, exist_ok=True)
-                    if HAS_POLARS:
-                        df.write_parquet(local_path)
-                    elif HAS_PANDAS:
-                        df.to_parquet(local_path)
-                    self._update_cache_metadata(path)
-
-                return df
-            else:
+        # 2. Try S3 → cache to local
+        if self._s3_exists(path):
+            logger.debug(f"Fetching from S3: {path}")
+            if self._fetch_from_s3_to_local(path):
                 if HAS_POLARS:
-                    return pl.read_parquet(full_path)
+                    return pl.read_parquet(local_path)
                 elif HAS_PANDAS:
-                    return pd.read_parquet(full_path)
-        except Exception as e:
-            logger.error(f"Failed to read parquet: {path}, {e}")
-            raise
+                    return pd.read_parquet(local_path)
+
+        # 3. Not found
+        raise FileNotFoundError(f"File not found in local or S3: {path}")
 
     def write_parquet(self, df: Any, path: str) -> None:
         """
         Parquetファイルを書き込み
 
+        Workflow:
+            1. Write to local
+            2. Sync to S3 (write-through)
+
         Args:
             df: polars.DataFrame or pandas.DataFrame
             path: 保存パス
         """
-        full_path = self._get_full_path(path)
+        local_path = Path(self._base_path) / path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            if self.config.backend == "s3":
-                # S3に書き込み
-                with self._fs.open(full_path, "wb") as f:
-                    if HAS_POLARS and hasattr(df, "write_parquet"):
-                        df.write_parquet(f)
-                    elif HAS_PANDAS and hasattr(df, "to_parquet"):
-                        df.to_parquet(f)
-                    else:
-                        raise ValueError("Unknown dataframe type")
+        # 1. Write to local
+        if HAS_POLARS and hasattr(df, "write_parquet"):
+            df.write_parquet(local_path)
+        elif HAS_PANDAS and hasattr(df, "to_parquet"):
+            df.to_parquet(local_path)
+        else:
+            raise ValueError("Unknown dataframe type")
 
-                # ローカルキャッシュにも保存
-                if self.config.local_cache_enabled:
-                    local_path = self._get_local_cache_path(path)
-                    local_path.parent.mkdir(parents=True, exist_ok=True)
-                    if HAS_POLARS and hasattr(df, "write_parquet"):
-                        df.write_parquet(local_path)
-                    elif HAS_PANDAS and hasattr(df, "to_parquet"):
-                        df.to_parquet(local_path)
-                    self._update_cache_metadata(path)
-            else:
-                # ローカルに書き込み
-                Path(full_path).parent.mkdir(parents=True, exist_ok=True)
-                if HAS_POLARS and hasattr(df, "write_parquet"):
-                    df.write_parquet(full_path)
-                elif HAS_PANDAS and hasattr(df, "to_parquet"):
-                    df.to_parquet(full_path)
-                else:
-                    raise ValueError("Unknown dataframe type")
+        # 2. Sync to S3 (write-through)
+        self._sync_to_s3(path)
 
-            logger.debug(f"Wrote parquet: {path}")
-        except Exception as e:
-            logger.error(f"Failed to write parquet: {path}, {e}")
-            raise
+        logger.debug(f"Wrote parquet: {path}")
 
     # =========================================================================
     # Pickle操作（共分散キャッシュ等）
@@ -393,51 +389,23 @@ class StorageBackend:
 
     def read_pickle(self, path: str) -> Any:
         """Pickleファイルを読み込み"""
-        # ローカルキャッシュから読み込み
-        if self._is_cache_valid(path):
-            local_path = self._get_local_cache_path(path)
-            logger.debug(f"Reading pickle from local cache: {path}")
+        local_path = Path(self._base_path) / path
+        if local_path.exists():
             with open(local_path, "rb") as f:
                 return pickle.load(f)
-
-        full_path = self._get_full_path(path)
-        try:
-            with self._fs.open(full_path, "rb") as f:
-                data = pickle.load(f)
-
-            # ローカルキャッシュに保存
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(local_path, "wb") as f:
-                    pickle.dump(data, f)
-                self._update_cache_metadata(path)
-
-            return data
-        except Exception as e:
-            logger.error(f"Failed to read pickle: {path}, {e}")
-            raise
+        if self._s3_exists(path) and self._fetch_from_s3_to_local(path):
+            with open(local_path, "rb") as f:
+                return pickle.load(f)
+        raise FileNotFoundError(f"Pickle not found: {path}")
 
     def write_pickle(self, data: Any, path: str) -> None:
         """Pickleファイルを書き込み"""
-        full_path = self._get_full_path(path)
-
-        try:
-            with self._fs.open(full_path, "wb") as f:
-                pickle.dump(data, f)
-
-            # ローカルキャッシュにも保存
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(local_path, "wb") as f:
-                    pickle.dump(data, f)
-                self._update_cache_metadata(path)
-
-            logger.debug(f"Wrote pickle: {path}")
-        except Exception as e:
-            logger.error(f"Failed to write pickle: {path}, {e}")
-            raise
+        local_path = Path(self._base_path) / path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(local_path, "wb") as f:
+            pickle.dump(data, f)
+        self._sync_to_s3(path)
+        logger.debug(f"Wrote pickle: {path}")
 
     # =========================================================================
     # JSON操作（メタデータ等）
@@ -445,47 +413,23 @@ class StorageBackend:
 
     def read_json(self, path: str) -> Dict[str, Any]:
         """JSONファイルを読み込み"""
-        if self._is_cache_valid(path):
-            local_path = self._get_local_cache_path(path)
+        local_path = Path(self._base_path) / path
+        if local_path.exists():
             with open(local_path, "r") as f:
                 return json.load(f)
-
-        full_path = self._get_full_path(path)
-        try:
-            with self._fs.open(full_path, "r") as f:
-                data = json.load(f)
-
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(local_path, "w") as f:
-                    json.dump(data, f)
-                self._update_cache_metadata(path)
-
-            return data
-        except Exception as e:
-            logger.error(f"Failed to read json: {path}, {e}")
-            raise
+        if self._s3_exists(path) and self._fetch_from_s3_to_local(path):
+            with open(local_path, "r") as f:
+                return json.load(f)
+        raise FileNotFoundError(f"JSON not found: {path}")
 
     def write_json(self, data: Dict[str, Any], path: str) -> None:
         """JSONファイルを書き込み"""
-        full_path = self._get_full_path(path)
-
-        try:
-            with self._fs.open(full_path, "w") as f:
-                json.dump(data, f, indent=2, default=str)
-
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(local_path, "w") as f:
-                    json.dump(data, f, indent=2, default=str)
-                self._update_cache_metadata(path)
-
-            logger.debug(f"Wrote json: {path}")
-        except Exception as e:
-            logger.error(f"Failed to write json: {path}, {e}")
-            raise
+        local_path = Path(self._base_path) / path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(local_path, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+        self._sync_to_s3(path)
+        logger.debug(f"Wrote json: {path}")
 
     # =========================================================================
     # NumPy操作
@@ -493,44 +437,102 @@ class StorageBackend:
 
     def read_numpy(self, path: str) -> np.ndarray:
         """NumPy配列を読み込み"""
-        if self._is_cache_valid(path):
-            local_path = self._get_local_cache_path(path)
+        local_path = Path(self._base_path) / path
+        if local_path.exists():
             return np.load(local_path)
-
-        full_path = self._get_full_path(path)
-        try:
-            with self._fs.open(full_path, "rb") as f:
-                data = np.load(f)
-
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                np.save(local_path, data)
-                self._update_cache_metadata(path)
-
-            return data
-        except Exception as e:
-            logger.error(f"Failed to read numpy: {path}, {e}")
-            raise
+        if self._s3_exists(path) and self._fetch_from_s3_to_local(path):
+            return np.load(local_path)
+        raise FileNotFoundError(f"NumPy not found: {path}")
 
     def write_numpy(self, data: np.ndarray, path: str) -> None:
         """NumPy配列を書き込み"""
-        full_path = self._get_full_path(path)
+        local_path = Path(self._base_path) / path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(local_path, data)
+        self._sync_to_s3(path)
+        logger.debug(f"Wrote numpy: {path}")
 
-        try:
-            with self._fs.open(full_path, "wb") as f:
-                np.save(f, data)
+    # =========================================================================
+    # テキスト・YAML操作
+    # =========================================================================
 
-            if self.config.backend == "s3" and self.config.local_cache_enabled:
-                local_path = self._get_local_cache_path(path)
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                np.save(local_path, data)
-                self._update_cache_metadata(path)
+    def read_text(self, path: str, encoding: str = "utf-8") -> str:
+        """テキストファイル読み込み
 
-            logger.debug(f"Wrote numpy: {path}")
-        except Exception as e:
-            logger.error(f"Failed to write numpy: {path}, {e}")
-            raise
+        Args:
+            path: 読み込むパス
+            encoding: エンコーディング（デフォルト: utf-8）
+
+        Returns:
+            ファイル内容の文字列
+        """
+        local_path = Path(self._base_path) / path
+        if local_path.exists():
+            return local_path.read_text(encoding=encoding)
+        if self._s3_exists(path) and self._fetch_from_s3_to_local(path):
+            return local_path.read_text(encoding=encoding)
+        raise FileNotFoundError(f"Text file not found: {path}")
+
+    def write_text(self, content: str, path: str, encoding: str = "utf-8") -> None:
+        """テキストファイル書き込み
+
+        Args:
+            content: 書き込む内容
+            path: 書き込むパス
+            encoding: エンコーディング（デフォルト: utf-8）
+        """
+        local_path = Path(self._base_path) / path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        local_path.write_text(content, encoding=encoding)
+        self._sync_to_s3(path)
+        logger.debug(f"Wrote text: {path}")
+
+    def read_yaml(self, path: str) -> Dict[str, Any]:
+        """YAML読み込み
+
+        Args:
+            path: 読み込むパス
+
+        Returns:
+            YAML内容の辞書
+        """
+        import yaml
+        content = self.read_text(path)
+        return yaml.safe_load(content) or {}
+
+    def write_yaml(self, data: Dict[str, Any], path: str) -> None:
+        """YAML書き込み
+
+        Args:
+            data: 書き込むデータ
+            path: 書き込むパス
+        """
+        import yaml
+        content = yaml.dump(data, default_flow_style=False, allow_unicode=True)
+        self.write_text(content, path)
+
+    def delete_directory(self, path: str, recursive: bool = True) -> bool:
+        """ディレクトリ削除（ローカルとS3両方から）
+
+        Args:
+            path: 削除するパス
+            recursive: 再帰的に削除するか
+
+        Returns:
+            成功したかどうか
+        """
+        local_path = Path(self._base_path) / path
+        if local_path.exists():
+            if recursive:
+                shutil.rmtree(local_path)
+            else:
+                local_path.rmdir()
+        if self._s3_fs:
+            try:
+                self._s3_fs.rm(self._get_s3_full_path(path), recursive=recursive)
+            except Exception as e:
+                logger.debug(f"S3 delete failed (may not exist): {e}")
+        return True
 
     # =========================================================================
     # ユーティリティ
@@ -538,10 +540,7 @@ class StorageBackend:
 
     def clear_local_cache(self) -> int:
         """ローカルキャッシュをクリア"""
-        if not self.config.local_cache_enabled:
-            return 0
-
-        cache_path = Path(self.config.local_cache_path)
+        cache_path = Path(self._base_path)
         if not cache_path.exists():
             return 0
 
@@ -551,27 +550,20 @@ class StorageBackend:
                 item.unlink()
                 count += 1
 
-        self._cache_metadata = {}
-        self._save_cache_metadata()
-
         logger.info(f"Cleared {count} files from local cache")
         return count
 
-    def sync_to_remote(self, local_path: str) -> int:
+    def sync_to_remote(self, local_path: str | None = None) -> int:
         """
-        ローカルキャッシュをリモートに同期
+        ローカルキャッシュをS3に同期
 
         Args:
-            local_path: 同期するローカルパス
+            local_path: 同期するローカルパス（省略時はbase_path）
 
         Returns:
             同期したファイル数
         """
-        if self.config.backend != "s3":
-            logger.warning("sync_to_remote is only for S3 backend")
-            return 0
-
-        local_base = Path(local_path)
+        local_base = Path(local_path) if local_path else Path(self._base_path)
         if not local_base.exists():
             return 0
 
@@ -579,16 +571,8 @@ class StorageBackend:
         for item in local_base.rglob("*"):
             if item.is_file():
                 rel_path = str(item.relative_to(local_base))
-                full_path = self._get_full_path(rel_path)
-
-                try:
-                    with open(item, "rb") as src:
-                        with self._fs.open(full_path, "wb") as dst:
-                            dst.write(src.read())
+                if self._sync_to_s3(rel_path):
                     count += 1
-                    logger.debug(f"Synced: {rel_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to sync {rel_path}: {e}")
 
         logger.info(f"Synced {count} files to S3")
         return count
@@ -596,20 +580,27 @@ class StorageBackend:
     def get_stats(self) -> Dict[str, Any]:
         """ストレージ統計を取得"""
         stats = {
-            "backend": self.config.backend,
+            "backend": "hybrid",
             "base_path": self._base_path,
-            "local_cache_enabled": self.config.local_cache_enabled,
+            "s3_base_path": self._s3_base_path,
         }
 
-        if self.config.local_cache_enabled:
-            cache_path = Path(self.config.local_cache_path)
-            if cache_path.exists():
-                files = list(cache_path.rglob("*"))
-                file_count = sum(1 for f in files if f.is_file())
-                total_size = sum(f.stat().st_size for f in files if f.is_file())
-                stats["local_cache_files"] = file_count
-                stats["local_cache_size_mb"] = round(total_size / (1024 * 1024), 2)
-                stats["cached_items"] = len(self._cache_metadata)
+        # Local stats
+        local_path = Path(self._base_path)
+        if local_path.exists():
+            files = list(local_path.rglob("*"))
+            file_count = sum(1 for f in files if f.is_file())
+            total_size = sum(f.stat().st_size for f in files if f.is_file())
+            stats["local_files"] = file_count
+            stats["local_size_mb"] = round(total_size / (1024 * 1024), 2)
+
+        # S3 stats
+        if self._s3_fs is not None:
+            try:
+                s3_files = self._s3_fs.glob(f"{self._s3_base_path}/**/*")
+                stats["s3_files"] = len([f for f in s3_files if not f.endswith("/")])
+            except Exception:
+                stats["s3_files"] = "unknown"
 
         return stats
 
@@ -626,16 +617,26 @@ def get_storage_backend(config: Optional[StorageConfig] = None) -> StorageBacken
     ストレージバックエンドを取得（シングルトン）
 
     Args:
-        config: 初回呼び出し時の設定（省略時はローカルモード）
+        config: 初回呼び出し時の設定（s3_bucket必須）
 
     Returns:
         StorageBackend インスタンス
+
+    Raises:
+        ValueError: config が None で s3_bucket 環境変数もない場合
     """
     global _storage_backend
 
     if _storage_backend is None:
         if config is None:
-            config = StorageConfig()
+            # 環境変数からS3バケットを取得
+            s3_bucket = os.environ.get("S3_BUCKET")
+            if not s3_bucket:
+                raise ValueError(
+                    "S3_BUCKET environment variable is required. "
+                    "Local-only mode is not supported."
+                )
+            config = StorageConfig(s3_bucket=s3_bucket)
         _storage_backend = StorageBackend(config)
 
     return _storage_backend
@@ -647,36 +648,34 @@ def reset_storage_backend() -> None:
     _storage_backend = None
 
 
-def init_s3_backend(
-    bucket: str,
-    prefix: str = ".cache",
+def init_storage_backend(
+    s3_bucket: str,
+    s3_prefix: str = ".cache",
+    base_path: str = ".cache",
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
-    local_cache_path: str = "/tmp/.backtest_cache",
     local_cache_ttl_hours: int = 24,
 ) -> StorageBackend:
     """
-    S3バックエンドを初期化するヘルパー関数
+    ストレージバックエンドを初期化するヘルパー関数
 
     Args:
-        bucket: S3バケット名
-        prefix: S3プレフィックス
+        s3_bucket: S3バケット名（必須）
+        s3_prefix: S3プレフィックス
+        base_path: ローカルキャッシュパス
         aws_access_key_id: AWSアクセスキーID
         aws_secret_access_key: AWSシークレットアクセスキー
-        local_cache_path: ローカルキャッシュパス
         local_cache_ttl_hours: ローカルキャッシュTTL（時間）
 
     Returns:
         StorageBackend インスタンス
     """
     config = StorageConfig(
-        backend="s3",
-        s3_bucket=bucket,
-        s3_prefix=prefix,
+        s3_bucket=s3_bucket,
+        s3_prefix=s3_prefix,
+        base_path=base_path,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
-        local_cache_enabled=True,
-        local_cache_path=local_cache_path,
         local_cache_ttl_hours=local_cache_ttl_hours,
     )
 

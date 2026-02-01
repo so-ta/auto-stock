@@ -39,8 +39,8 @@ class MockStorageBackend:
 
     def __init__(self, config: Any = None):
         self.config = config or MagicMock()
-        self.config.backend = "s3"
-        self.config.base_path = ".cache"
+        self.config.s3_bucket = getattr(config, "s3_bucket", "test-bucket")
+        self.config.base_path = getattr(config, "base_path", ".cache")
         self._storage: Dict[str, Any] = {}
         self._metadata: Dict[str, Dict[str, Any]] = {}
 
@@ -369,10 +369,6 @@ class TestS3CacheIntegrationReal:
         settings = load_settings_from_yaml()
         config = settings.storage.to_storage_config()
 
-        # Only run if S3 mode is configured
-        if config.backend != "s3":
-            pytest.skip("S3 backend not configured in settings")
-
         return StorageBackend(config)
 
     def test_s3_write_read_parquet(self, s3_backend):
@@ -470,23 +466,26 @@ class TestStorageBackendInitialization:
         settings = load_settings_from_yaml()
 
         assert hasattr(settings, "storage")
-        assert settings.storage.backend in ("local", "s3")
+        # S3 is required
+        assert settings.storage.s3_bucket is not None
 
         # Test conversion
         config = settings.storage.to_storage_config()
-        assert config.backend == settings.storage.backend
+        assert config.s3_bucket == settings.storage.s3_bucket
 
-    def test_backend_creation_local_mode(self, tmp_path):
-        """Test StorageBackend creation in local mode."""
+    def test_backend_creation_with_s3_config(self, tmp_path):
+        """Test StorageBackend creation with S3 config."""
         from src.utils.storage_backend import StorageBackend, StorageConfig
 
         config = StorageConfig(
-            backend="local",
+            s3_bucket="test-bucket",
             base_path=str(tmp_path),
+            s3_prefix=".cache",
+            s3_region="ap-northeast-1",
         )
 
         backend = StorageBackend(config)
-        assert backend.config.backend == "local"
+        assert backend.config.s3_bucket == "test-bucket"
 
         # Test basic operation
         test_data = {"test": "data"}

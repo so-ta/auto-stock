@@ -31,9 +31,135 @@ from typing import Any, Generic, TypeVar
 import numpy as np
 import pandas as pd
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.utils.storage_backend import StorageBackend
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+class DiskCacheCleanupMixin:
+    """Mixin for disk cache cleanup functionality.
+
+    Provides cleanup_expired, _enforce_size_limit, force_cleanup, and _maybe_cleanup methods.
+
+    Required attributes on the using class:
+    - _enable_disk: bool (optional, defaults to True if not present)
+    - _cache_dir: Path
+    - _max_age_seconds: int
+    - _max_disk_cache_bytes: int
+    - _cleanup_interval: int
+    - _last_cleanup: float
+    - _lock: threading.RLock
+    """
+
+    _enable_disk: bool
+    _cache_dir: "Path"
+    _max_age_seconds: int
+    _max_disk_cache_bytes: int
+    _cleanup_interval: int
+    _last_cleanup: float
+    _lock: "threading.RLock"
+
+    def _maybe_cleanup(self) -> None:
+        """Check if cleanup is needed and perform if so."""
+        current_time = time.time()
+        if current_time - self._last_cleanup > self._cleanup_interval:
+            self.cleanup_expired()
+            self._enforce_size_limit()
+            self._last_cleanup = current_time
+
+    def cleanup_expired(self) -> int:
+        """Remove expired cache entries from disk.
+
+        Returns:
+            Number of entries removed
+        """
+        enable_disk = getattr(self, "_enable_disk", True)
+        if not enable_disk or not self._cache_dir.exists():
+            return 0
+
+        removed = 0
+        current_time = time.time()
+
+        with self._lock:
+            for f in self._cache_dir.glob("*.parquet"):
+                try:
+                    if current_time - f.stat().st_mtime > self._max_age_seconds:
+                        f.unlink()
+                        removed += 1
+                        logger.debug(f"Removed expired cache file: {f.name}")
+                except OSError as e:
+                    logger.debug(f"Failed to remove cache file {f}: {e}")
+
+        if removed > 0:
+            logger.info(f"Cleaned up {removed} expired cache entries")
+        return removed
+
+    def _enforce_size_limit(self) -> int:
+        """Enforce disk cache size limit by removing oldest entries.
+
+        Returns:
+            Number of entries removed
+        """
+        enable_disk = getattr(self, "_enable_disk", True)
+        if not enable_disk or not self._cache_dir.exists():
+            return 0
+
+        removed = 0
+
+        with self._lock:
+            files_with_stats = []
+            total_size = 0
+
+            for f in self._cache_dir.glob("*.parquet"):
+                try:
+                    stat = f.stat()
+                    files_with_stats.append((f, stat.st_mtime, stat.st_size))
+                    total_size += stat.st_size
+                except OSError:
+                    continue
+
+            if total_size <= self._max_disk_cache_bytes:
+                return 0
+
+            files_with_stats.sort(key=lambda x: x[1])
+
+            for f, mtime, size in files_with_stats:
+                if total_size <= self._max_disk_cache_bytes:
+                    break
+                try:
+                    f.unlink()
+                    total_size -= size
+                    removed += 1
+                    logger.debug(f"Removed cache file for size limit: {f.name}")
+                except OSError as e:
+                    logger.debug(f"Failed to remove cache file {f}: {e}")
+
+        if removed > 0:
+            logger.info(
+                f"Removed {removed} cache entries to enforce size limit "
+                f"({self._max_disk_cache_bytes / (1024 * 1024):.1f} MB)"
+            )
+        return removed
+
+    def force_cleanup(self) -> dict[str, int]:
+        """Force immediate cleanup (expired + size limit).
+
+        Returns:
+            Dictionary with cleanup statistics
+        """
+        expired = self.cleanup_expired()
+        size_limited = self._enforce_size_limit()
+        self._last_cleanup = time.time()
+        return {
+            "expired_removed": expired,
+            "size_limited_removed": size_limited,
+            "total_removed": expired + size_limited,
+        }
 
 
 @dataclass
@@ -229,7 +355,7 @@ def generate_cache_key(
     return hashlib.md5(key_string.encode()).hexdigest()
 
 
-class SignalCache:
+class SignalCache(DiskCacheCleanupMixin):
     """
     Two-level cache for signal computation results.
 
@@ -254,6 +380,7 @@ class SignalCache:
     def __init__(
         self,
         cache_dir: str | Path | None = None,
+        storage_backend: "StorageBackend | None" = None,
         max_memory_entries: int = 500,
         max_memory_mb: int = 256,
         enable_disk_cache: bool = True,
@@ -266,6 +393,7 @@ class SignalCache:
 
         Args:
             cache_dir: Directory for disk cache (default: ./cache/signals)
+            storage_backend: Optional StorageBackend for S3 support
             max_memory_entries: Max entries in memory cache
             max_memory_mb: Max memory usage in MB
             enable_disk_cache: Whether to use disk caching
@@ -278,12 +406,16 @@ class SignalCache:
             max_memory_mb=max_memory_mb,
         )
         self._enable_disk = enable_disk_cache
+        self._storage_backend = storage_backend
+        self._use_backend = storage_backend is not None
 
         if cache_dir is None:
-            cache_dir = Path("./cache/signals")
+            from src.config.settings import get_cache_path
+            cache_dir = get_cache_path("signals")
         self._cache_dir = Path(cache_dir)
 
-        if self._enable_disk:
+        # Only create local directory if not using storage backend
+        if self._enable_disk and not self._use_backend:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Auto-cleanup settings
@@ -301,8 +433,9 @@ class SignalCache:
         self._disk_hits = 0
         self._log_interval = 100  # Log every N requests
 
+        backend_info = "S3" if self._use_backend else f"local ({self._cache_dir})"
         logger.debug(
-            f"SignalCache initialized: dir={self._cache_dir}, disk={self._enable_disk}, "
+            f"SignalCache initialized: backend={backend_info}, disk={self._enable_disk}, "
             f"max_disk_mb={max_disk_cache_mb}, cleanup_interval={cleanup_interval_seconds}s"
         )
 
@@ -418,28 +551,53 @@ class SignalCache:
             self._write_to_disk(key, scores)
 
     def _read_from_disk(self, key: str) -> pd.Series | None:
-        """Read from disk cache."""
-        file_path = self._cache_dir / f"{key}.parquet"
-        if not file_path.exists():
-            return None
+        """Read from disk cache (local or S3 via storage backend)."""
+        if self._use_backend:
+            # Use storage backend (S3)
+            path = f"signals/{key}.parquet"
+            try:
+                if not self._storage_backend.exists(path):
+                    return None
+                df = self._storage_backend.read_parquet(path)
+                if df is not None and "scores" in df.columns:
+                    return df["scores"]
+                return None
+            except Exception as e:
+                logger.debug(f"Failed to read cache from backend {path}: {e}")
+                return None
+        else:
+            # Use local disk
+            file_path = self._cache_dir / f"{key}.parquet"
+            if not file_path.exists():
+                return None
 
-        try:
-            df = pd.read_parquet(file_path)
-            if "scores" in df.columns:
-                return df["scores"]
-            return None
-        except Exception as e:
-            logger.debug(f"Failed to read cache file {file_path}: {e}")
-            return None
+            try:
+                df = pd.read_parquet(file_path)
+                if "scores" in df.columns:
+                    return df["scores"]
+                return None
+            except Exception as e:
+                logger.debug(f"Failed to read cache file {file_path}: {e}")
+                return None
 
     def _write_to_disk(self, key: str, scores: pd.Series) -> None:
-        """Write to disk cache."""
-        file_path = self._cache_dir / f"{key}.parquet"
-        try:
-            df = pd.DataFrame({"scores": scores})
-            df.to_parquet(file_path, compression="snappy")
-        except Exception as e:
-            logger.debug(f"Failed to write cache file {file_path}: {e}")
+        """Write to disk cache (local or S3 via storage backend)."""
+        df = pd.DataFrame({"scores": scores})
+
+        if self._use_backend:
+            # Use storage backend (S3)
+            path = f"signals/{key}.parquet"
+            try:
+                self._storage_backend.write_parquet(df, path)
+            except Exception as e:
+                logger.debug(f"Failed to write cache to backend {path}: {e}")
+        else:
+            # Use local disk
+            file_path = self._cache_dir / f"{key}.parquet"
+            try:
+                df.to_parquet(file_path, compression="snappy")
+            except Exception as e:
+                logger.debug(f"Failed to write cache file {file_path}: {e}")
 
     def clear_memory(self) -> None:
         """Clear memory cache only."""
@@ -472,126 +630,11 @@ class SignalCache:
             "max_disk_size_mb": self._max_disk_cache_bytes / (1024 * 1024),
         }
 
-    def _maybe_cleanup(self) -> None:
-        """
-        Check if cleanup is needed and perform if so.
-
-        Called automatically on get() operations.
-        Cleanup is performed if:
-        - Time since last cleanup exceeds cleanup_interval
-        """
-        current_time = time.time()
-        if current_time - self._last_cleanup > self._cleanup_interval:
-            self.cleanup_expired()
-            self._enforce_size_limit()
-            self._last_cleanup = current_time
-
-    def cleanup_expired(self) -> int:
-        """
-        Remove expired cache entries from disk.
-
-        Entries older than max_age_days are removed.
-
-        Returns:
-            Number of entries removed
-        """
-        if not self._enable_disk or not self._cache_dir.exists():
-            return 0
-
-        removed = 0
-        current_time = time.time()
-
-        with self._lock:
-            for f in self._cache_dir.glob("*.parquet"):
-                try:
-                    # Check file age
-                    file_mtime = f.stat().st_mtime
-                    age_seconds = current_time - file_mtime
-
-                    if age_seconds > self._max_age_seconds:
-                        f.unlink()
-                        removed += 1
-                        logger.debug(f"Removed expired cache file: {f.name}")
-                except OSError as e:
-                    logger.debug(f"Failed to remove cache file {f}: {e}")
-
-        if removed > 0:
-            logger.info(f"Cleaned up {removed} expired cache entries")
-
-        return removed
-
-    def _enforce_size_limit(self) -> int:
-        """
-        Enforce disk cache size limit by removing oldest entries.
-
-        Returns:
-            Number of entries removed
-        """
-        if not self._enable_disk or not self._cache_dir.exists():
-            return 0
-
-        removed = 0
-
-        with self._lock:
-            # Get all cache files with their stats
-            files_with_stats = []
-            total_size = 0
-
-            for f in self._cache_dir.glob("*.parquet"):
-                try:
-                    stat = f.stat()
-                    files_with_stats.append((f, stat.st_mtime, stat.st_size))
-                    total_size += stat.st_size
-                except OSError:
-                    continue
-
-            # Check if over limit
-            if total_size <= self._max_disk_cache_bytes:
-                return 0
-
-            # Sort by modification time (oldest first)
-            files_with_stats.sort(key=lambda x: x[1])
-
-            # Remove oldest files until under limit
-            for f, mtime, size in files_with_stats:
-                if total_size <= self._max_disk_cache_bytes:
-                    break
-
-                try:
-                    f.unlink()
-                    total_size -= size
-                    removed += 1
-                    logger.debug(f"Removed cache file for size limit: {f.name}")
-                except OSError as e:
-                    logger.debug(f"Failed to remove cache file {f}: {e}")
-
-        if removed > 0:
-            logger.info(
-                f"Removed {removed} cache entries to enforce size limit "
-                f"({self._max_disk_cache_bytes / (1024 * 1024):.1f} MB)"
-            )
-
-        return removed
-
-    def force_cleanup(self) -> dict[str, int]:
-        """
-        Force immediate cleanup (expired + size limit).
-
-        Returns:
-            Dictionary with cleanup statistics
-        """
-        expired = self.cleanup_expired()
-        size_limited = self._enforce_size_limit()
-        self._last_cleanup = time.time()
-
-        return {
-            "expired_removed": expired,
-            "size_limited_removed": size_limited,
-            "total_removed": expired + size_limited,
-        }
+    # Cleanup methods (_maybe_cleanup, cleanup_expired, _enforce_size_limit, force_cleanup)
+    # are inherited from DiskCacheCleanupMixin
 
 
-class DataFrameCache:
+class DataFrameCache(DiskCacheCleanupMixin):
     """
     Cache for DataFrames (price data, intermediate results).
 
@@ -600,11 +643,13 @@ class DataFrameCache:
     Features:
     - Automatic cleanup: Periodically removes expired entries
     - Size limit: Removes oldest entries when disk cache exceeds max size
+    - StorageBackend support: Optional S3 integration via StorageBackend
     """
 
     def __init__(
         self,
         cache_dir: str | Path | None = None,
+        storage_backend: "StorageBackend | None" = None,
         max_memory_entries: int = 100,
         max_memory_mb: int = 512,
         max_disk_cache_mb: int = 500,
@@ -615,7 +660,8 @@ class DataFrameCache:
         Initialize DataFrame cache.
 
         Args:
-            cache_dir: Directory for disk cache
+            cache_dir: Directory for disk cache (default: ./cache/dataframes)
+            storage_backend: Optional StorageBackend for S3 support
             max_memory_entries: Max entries in memory
             max_memory_mb: Max memory usage
             max_disk_cache_mb: Max disk cache size in MB (default: 500)
@@ -627,10 +673,17 @@ class DataFrameCache:
             max_memory_mb=max_memory_mb,
         )
 
+        self._storage_backend = storage_backend
+        self._use_backend = storage_backend is not None
+
         if cache_dir is None:
-            cache_dir = Path("./cache/dataframes")
+            from src.config.settings import get_cache_path
+            cache_dir = get_cache_path("dataframes")
         self._cache_dir = Path(cache_dir)
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Only create local directory if not using storage backend
+        if not self._use_backend:
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Auto-cleanup settings
         self._max_disk_cache_bytes = max_disk_cache_mb * 1024 * 1024
@@ -638,6 +691,9 @@ class DataFrameCache:
         self._max_age_seconds = max_age_days * 24 * 3600
         self._last_cleanup = time.time()
         self._lock = threading.RLock()
+
+        backend_info = "S3" if self._use_backend else f"local ({self._cache_dir})"
+        logger.debug(f"DataFrameCache initialized: backend={backend_info}")
 
     def get(self, key: str) -> pd.DataFrame | None:
         """Get cached DataFrame."""
@@ -649,7 +705,25 @@ class DataFrameCache:
         if result is not None:
             return result
 
-        # Try disk
+        # Try disk (via storage backend or local)
+        rel_path = f"dataframes/{key}.parquet"
+
+        if self._use_backend:
+            try:
+                if not self._storage_backend.exists(rel_path):
+                    return None
+                df = self._storage_backend.read_parquet(rel_path)
+                # Convert polars to pandas if needed
+                if hasattr(df, "to_pandas"):
+                    df = df.to_pandas()
+                size_bytes = df.memory_usage(deep=True).sum()
+                self._memory_cache.put(key, df, size_bytes)
+                return df
+            except Exception as e:
+                logger.debug(f"Failed to read from backend {rel_path}: {e}")
+                return None
+
+        # Local file system
         file_path = self._cache_dir / f"{key}.parquet"
         if file_path.exists():
             try:
@@ -662,76 +736,8 @@ class DataFrameCache:
 
         return None
 
-    def _maybe_cleanup(self) -> None:
-        """Check if cleanup is needed and perform if so."""
-        current_time = time.time()
-        if current_time - self._last_cleanup > self._cleanup_interval:
-            self.cleanup_expired()
-            self._enforce_size_limit()
-            self._last_cleanup = current_time
-
-    def cleanup_expired(self) -> int:
-        """Remove expired cache entries from disk."""
-        removed = 0
-        current_time = time.time()
-
-        with self._lock:
-            for f in self._cache_dir.glob("*.parquet"):
-                try:
-                    file_mtime = f.stat().st_mtime
-                    age_seconds = current_time - file_mtime
-
-                    if age_seconds > self._max_age_seconds:
-                        f.unlink()
-                        removed += 1
-                except OSError:
-                    pass
-
-        return removed
-
-    def _enforce_size_limit(self) -> int:
-        """Enforce disk cache size limit by removing oldest entries."""
-        removed = 0
-
-        with self._lock:
-            files_with_stats = []
-            total_size = 0
-
-            for f in self._cache_dir.glob("*.parquet"):
-                try:
-                    stat = f.stat()
-                    files_with_stats.append((f, stat.st_mtime, stat.st_size))
-                    total_size += stat.st_size
-                except OSError:
-                    continue
-
-            if total_size <= self._max_disk_cache_bytes:
-                return 0
-
-            files_with_stats.sort(key=lambda x: x[1])
-
-            for f, mtime, size in files_with_stats:
-                if total_size <= self._max_disk_cache_bytes:
-                    break
-                try:
-                    f.unlink()
-                    total_size -= size
-                    removed += 1
-                except OSError:
-                    pass
-
-        return removed
-
-    def force_cleanup(self) -> dict[str, int]:
-        """Force immediate cleanup."""
-        expired = self.cleanup_expired()
-        size_limited = self._enforce_size_limit()
-        self._last_cleanup = time.time()
-        return {
-            "expired_removed": expired,
-            "size_limited_removed": size_limited,
-            "total_removed": expired + size_limited,
-        }
+    # Cleanup methods (_maybe_cleanup, cleanup_expired, _enforce_size_limit, force_cleanup)
+    # are inherited from DiskCacheCleanupMixin
 
     def put(self, key: str, df: pd.DataFrame, persist: bool = True) -> None:
         """Store DataFrame in cache."""
@@ -739,6 +745,15 @@ class DataFrameCache:
         self._memory_cache.put(key, df, size_bytes)
 
         if persist:
+            rel_path = f"dataframes/{key}.parquet"
+
+            if self._use_backend:
+                try:
+                    self._storage_backend.write_parquet(df, rel_path)
+                except Exception as e:
+                    logger.debug(f"Failed to write to backend {rel_path}: {e}")
+                return
+
             file_path = self._cache_dir / f"{key}.parquet"
             try:
                 df.to_parquet(file_path, compression="snappy")
@@ -752,17 +767,22 @@ class IncrementalCache:
 
     Instead of recomputing entire history, only computes new data
     and appends to cached results.
+
+    StorageBackend is required (S3 mandatory).
     """
 
     def __init__(
         self,
-        cache_dir: str | Path | None = None,
+        storage_backend: "StorageBackend",
     ) -> None:
-        """Initialize incremental cache."""
-        if cache_dir is None:
-            cache_dir = Path("./cache/incremental")
-        self._cache_dir = Path(cache_dir)
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        """
+        Initialize incremental cache.
+
+        Args:
+            storage_backend: StorageBackend for S3/local operations (required)
+        """
+        self._backend = storage_backend
+        self._cache_subdir = "incremental"
         self._metadata: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
 
@@ -773,25 +793,24 @@ class IncrementalCache:
         Returns:
             (start_date, end_date) tuple, or (None, None) if not cached
         """
-        meta_path = self._cache_dir / f"{key}.meta"
-        if not meta_path.exists():
+        meta_path = f"{self._cache_subdir}/{key}.meta.pkl"
+        if not self._backend.exists(meta_path):
             return None, None
 
         try:
-            with open(meta_path, "rb") as f:
-                meta = pickle.load(f)
+            meta = self._backend.read_pickle(meta_path)
             return meta.get("start_date"), meta.get("end_date")
         except Exception:
             return None, None
 
     def get_cached_data(self, key: str) -> pd.Series | None:
         """Get cached data if available."""
-        data_path = self._cache_dir / f"{key}.parquet"
-        if not data_path.exists():
+        data_path = f"{self._cache_subdir}/{key}.parquet"
+        if not self._backend.exists(data_path):
             return None
 
         try:
-            df = pd.read_parquet(data_path)
+            df = self._backend.read_parquet(data_path)
             return df["data"]
         except Exception:
             return None
@@ -820,20 +839,19 @@ class IncrementalCache:
             else:
                 final_data = new_data
 
-            # Save data
-            data_path = self._cache_dir / f"{key}.parquet"
+            # Save data via StorageBackend
+            data_path = f"{self._cache_subdir}/{key}.parquet"
             df = pd.DataFrame({"data": final_data})
-            df.to_parquet(data_path, compression="snappy")
+            self._backend.write_parquet(df, data_path)
 
-            # Save metadata
-            meta_path = self._cache_dir / f"{key}.meta"
+            # Save metadata via StorageBackend
+            meta_path = f"{self._cache_subdir}/{key}.meta.pkl"
             meta = {
                 "start_date": final_data.index.min(),
                 "end_date": final_data.index.max(),
                 "updated_at": datetime.now(),
             }
-            with open(meta_path, "wb") as f:
-                pickle.dump(meta, f)
+            self._backend.write_pickle(meta, meta_path)
 
 
 # Vectorized computation helpers
@@ -899,40 +917,6 @@ def vectorized_volatility(
         mean = s1 / window
         var = s2 / window - mean**2
         result[i] = np.sqrt(max(0, var))
-
-    return result
-
-
-def vectorized_sharpe(
-    returns: np.ndarray,
-    window: int,
-    annualize: int = 252,
-) -> np.ndarray:
-    """
-    Vectorized rolling Sharpe ratio calculation.
-
-    Args:
-        returns: Return array
-        window: Rolling window
-        annualize: Annualization factor
-
-    Returns:
-        Rolling Sharpe ratio
-    """
-    n = len(returns)
-    result = np.empty(n)
-    result[:window] = np.nan
-
-    sqrt_ann = np.sqrt(annualize)
-
-    for i in range(window, n):
-        window_returns = returns[i - window:i]
-        mean_ret = np.mean(window_returns)
-        std_ret = np.std(window_returns, ddof=1)
-        if std_ret > 0:
-            result[i] = mean_ret / std_ret * sqrt_ann
-        else:
-            result[i] = 0.0
 
     return result
 

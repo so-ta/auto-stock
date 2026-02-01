@@ -1,0 +1,1977 @@
+{% extends "base.html" %}
+
+{% block title %}ユニバース管理 - Backtest Result Viewer{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ヘッダーバー */
+    .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .save-btn {
+        background: var(--secondary-color);
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .save-btn:hover {
+        background: #27ae60;
+    }
+
+    .unsaved-indicator {
+        display: none;
+        width: 8px;
+        height: 8px;
+        background: var(--danger-color);
+        border-radius: 50%;
+    }
+
+    .unsaved-indicator.show {
+        display: inline-block;
+    }
+
+    /* タブナビゲーション */
+    .editor-tabs {
+        display: flex;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 0.75rem;
+        gap: 0.25rem;
+    }
+
+    .editor-tab {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #666;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+
+    .editor-tab:hover {
+        color: var(--primary-color);
+        background: #f8f9fa;
+    }
+
+    .editor-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* シンボルテーブル */
+    .toolbar {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-group {
+        display: flex;
+        gap: 0.25rem;
+        flex: 1;
+        min-width: 200px;
+        max-width: 300px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .filter-select {
+        padding: 0.4rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.8rem;
+        min-width: 90px;
+    }
+
+    .data-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        padding: 0.4rem 0.5rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: var(--dark-color);
+        border-bottom: 2px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 0.3rem 0.5rem;
+        border-bottom: 1px solid #eee;
+        vertical-align: middle;
+        font-size: 0.8rem;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .data-table .ticker-cell {
+        font-weight: 600;
+        font-family: monospace;
+        font-size: 0.85rem;
+    }
+
+    .data-table .name-cell {
+        color: #666;
+        font-size: 0.8rem;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .tag-list {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0.15rem;
+        overflow: hidden;
+    }
+
+    .tag-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 0.1rem 0.35rem;
+        border-radius: 2px;
+        font-size: 0.65rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .action-btn {
+        padding: 0.2rem 0.4rem;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 0.7rem;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        background: var(--light-color);
+    }
+
+    .action-btn.edit {
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .action-btn.delete {
+        color: var(--danger-color);
+        border-color: var(--danger-color);
+    }
+
+    /* Cache status indicators */
+    .cache-status {
+        display: flex;
+        gap: 0.25rem;
+        align-items: center;
+    }
+
+    .cache-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .cache-dot.cached {
+        background: var(--secondary-color);
+    }
+
+    .cache-dot.not-cached {
+        background: #ddd;
+    }
+
+    /* Signal badge */
+    .signal-badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 500;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        min-width: 28px;
+        text-align: center;
+    }
+
+    .signal-badge.cached {
+        background: #c8e6c9;
+        color: #2e7d32;
+    }
+
+    .signal-badge.partial {
+        background: #fff3e0;
+        color: #e65100;
+    }
+
+    .signal-badge.not-cached {
+        background: #f5f5f5;
+        color: #9e9e9e;
+    }
+
+    /* Page size selector */
+    .page-size-select {
+        padding: 0.3rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+    }
+
+    /* Cache summary bar */
+    .cache-summary {
+        display: flex;
+        gap: 1.5rem;
+        background: #f8f9fa;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+        font-size: 0.85rem;
+        align-items: center;
+    }
+
+    .cache-summary-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .cache-summary-label {
+        color: #666;
+    }
+
+    .cache-summary-value {
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .cache-progress {
+        width: 100px;
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .cache-progress-bar {
+        height: 100%;
+        background: var(--secondary-color);
+        transition: width 0.3s;
+    }
+
+    /* バルク操作バー */
+    .bulk-bar {
+        background: #e3f2fd;
+        border: 1px solid var(--primary-color);
+        border-radius: 4px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        display: none;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .bulk-bar.show {
+        display: flex;
+    }
+
+    .bulk-count {
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    /* ページネーション */
+    .pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: #f8f9fa;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .pagination-info {
+        color: #666;
+        font-size: 0.8rem;
+    }
+
+    .pagination-buttons {
+        display: flex;
+        gap: 0.25rem;
+        align-items: center;
+    }
+
+    .pagination-btn {
+        padding: 0.3rem 0.6rem;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: var(--light-color);
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* 新規追加フォーム */
+    .add-form {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .add-form h3 {
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        color: var(--dark-color);
+    }
+
+    .form-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .form-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #666;
+    }
+
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.95rem;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    /* サブセット・タクソノミータブ用 */
+    .two-column {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 1.5rem;
+        min-height: 500px;
+    }
+
+    .list-panel {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1rem;
+    }
+
+    .list-panel h3 {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .list-item {
+        padding: 0.75rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+        transition: background 0.2s;
+    }
+
+    .list-item:hover {
+        background: #f8f9fa;
+    }
+
+    .list-item.selected {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .list-item.selected .item-count {
+        background: rgba(255,255,255,0.3);
+        color: white;
+    }
+
+    .item-name {
+        font-weight: 500;
+    }
+
+    .item-count {
+        background: var(--light-color);
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .editor-panel {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #888;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    /* フィルターセクション */
+    .filter-section {
+        background: #f8f9fa;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .filter-section h4 {
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+        color: var(--dark-color);
+    }
+
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        min-height: 36px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+    }
+
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        background: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.6rem;
+        border-radius: 3px;
+        font-size: 0.85rem;
+    }
+
+    .tag-chip.exclude {
+        background: var(--danger-color);
+    }
+
+    .tag-chip .remove-tag {
+        margin-left: 0.5rem;
+        cursor: pointer;
+        opacity: 0.7;
+    }
+
+    .tag-chip .remove-tag:hover {
+        opacity: 1;
+    }
+
+    .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.5rem;
+        max-height: 120px;
+        overflow-y: auto;
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .checkbox-item label {
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+
+    /* プレビューボックス */
+    .preview-box {
+        background: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .preview-count {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--secondary-color);
+    }
+
+    .preview-symbols {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.5rem;
+        max-height: 80px;
+        overflow-y: auto;
+    }
+
+    /* アクションボタン */
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-danger {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+
+    .btn-success {
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #27ae60;
+    }
+
+    /* タクソノミー値一覧 */
+    .taxonomy-values {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    .taxonomy-row {
+        display: grid;
+        grid-template-columns: 120px 1fr auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .taxonomy-row:last-child {
+        border-bottom: none;
+    }
+
+    .taxonomy-code {
+        font-family: monospace;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--dark-color);
+    }
+
+    /* モーダル */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        line-height: 1;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        background: #f8f9fa;
+    }
+
+    /* トースト */
+    .toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 1rem 1.5rem;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 1100;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s;
+    }
+
+    .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    .toast.success {
+        background: var(--secondary-color);
+    }
+
+    .toast.error {
+        background: var(--danger-color);
+    }
+
+    /* テーブルスクロール */
+    .table-scroll {
+        max-height: calc(100vh - 380px);
+        min-height: 400px;
+        overflow-y: auto;
+    }
+
+    @media (max-width: 900px) {
+        .two-column {
+            grid-template-columns: 1fr;
+        }
+
+        .toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-group {
+            min-width: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header-bar">
+    <h1 class="page-title">ユニバース管理</h1>
+    <div class="header-actions">
+        <button class="btn btn-secondary" onclick="reloadData()">再読み込み</button>
+        <button class="save-btn" onclick="saveAll()">
+            <span class="unsaved-indicator" id="unsavedIndicator"></span>
+            変更を保存
+        </button>
+    </div>
+</div>
+
+<div class="editor-tabs">
+    <button class="editor-tab active" onclick="switchTab('symbols')">銘柄一覧</button>
+    <button class="editor-tab" onclick="switchTab('subsets')">サブセット</button>
+    <button class="editor-tab" onclick="switchTab('taxonomy')">タクソノミー</button>
+</div>
+
+<!-- 銘柄一覧タブ（初期表示） -->
+<div id="symbols-tab" class="tab-content active">
+    <!-- Cache Summary Bar -->
+    <div class="cache-summary" id="cacheSummary">
+        <div class="cache-summary-item">
+            <span class="cache-summary-label">全銘柄:</span>
+            <span class="cache-summary-value" id="totalSymbols">-</span>
+        </div>
+        <div class="cache-summary-item">
+            <span class="cache-summary-label">価格:</span>
+            <span class="cache-summary-value" id="cachedSymbols">-</span>
+            <div class="cache-progress">
+                <div class="cache-progress-bar" id="cacheProgressBar" style="width: 0%"></div>
+            </div>
+            <span class="cache-summary-value" id="cachePercent">-</span>
+        </div>
+        <div class="cache-summary-item">
+            <span class="cache-summary-label">シグナル:</span>
+            <span class="cache-summary-value" id="signalCaches">-</span>
+            <span class="cache-summary-label" id="signalTotal" style="margin-left: 0.25rem;"></span>
+            <span class="cache-summary-label" style="margin-left: 0.5rem;" id="signalList" title=""></span>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search-group">
+            <input type="text" class="search-input" id="symbolSearch"
+                   placeholder="ティッカーで検索..." onkeyup="debounceSearch()">
+            <button class="btn btn-primary" onclick="loadSymbols()">検索</button>
+        </div>
+        <select class="filter-select" id="marketFilter" onchange="resetPageAndLoad()" style="min-width: 100px;">
+            <option value="">全マーケット</option>
+            {% for code, label in taxonomy.get('market', {}).items() %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="assetFilter" onchange="resetPageAndLoad()" style="min-width: 100px;">
+            <option value="">全資産</option>
+            {% for code, label in taxonomy.get('asset_class', {}).items() %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="tagFilter" onchange="resetPageAndLoad()" style="min-width: 90px;">
+            <option value="">全タグ</option>
+            {% for tag in all_tags %}
+            <option value="{{ tag }}">{{ tag }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="cacheFilter" onchange="resetPageAndLoad()" style="min-width: 80px;">
+            <option value="">価格</option>
+            <option value="cached">価格有</option>
+            <option value="not_cached">価格無</option>
+        </select>
+        <select class="filter-select" id="signalFilter" onchange="resetPageAndLoad()" style="min-width: 90px;">
+            <option value="">シグナル</option>
+            <option value="has_signals">シグナル有</option>
+            <option value="no_signals">シグナル無</option>
+        </select>
+        <select class="page-size-select" id="pageSizeSelect" onchange="changePageSize()">
+            <option value="50">50件</option>
+            <option value="100" selected>100件</option>
+            <option value="200">200件</option>
+            <option value="500">500件</option>
+        </select>
+    </div>
+
+    <div class="bulk-bar" id="bulkBar">
+        <span class="bulk-count"><span id="selectedCount">0</span>件選択中</span>
+        <input type="text" class="form-input" id="bulkAddTag" placeholder="追加するタグ" style="width: 140px;">
+        <button class="btn btn-sm btn-primary" onclick="bulkAddTag()">タグ追加</button>
+        <select class="filter-select" id="bulkRemoveTag" style="width: 140px;">
+            <option value="">削除するタグ...</option>
+            {% for tag in all_tags %}
+            <option value="{{ tag }}">{{ tag }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-danger" onclick="bulkRemoveTag()">タグ削除</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSelected()">選択を削除</button>
+        <button class="btn btn-sm btn-secondary" onclick="clearSelection()">選択解除</button>
+    </div>
+
+    <div class="data-table-container">
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 28px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                        <th style="width: 80px;">ティッカー</th>
+                        <th style="width: 35px;">市場</th>
+                        <th style="width: 35px;">資産</th>
+                        <th style="width: 60px;">セクター</th>
+                        <th style="width: 30px;" title="価格キャッシュ">価格</th>
+                        <th style="width: 55px;" title="シグナルキャッシュ">シグナル</th>
+                        <th>タグ</th>
+                        <th style="width: 55px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="symbolsTableBody">
+                    <tr><td colspan="9" class="text-center">読み込み中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <div class="add-form">
+        <h3>新規銘柄を追加</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">ティッカー *</label>
+                <input type="text" class="form-input" id="newTicker" placeholder="例: AAPL, 7203.T">
+            </div>
+            <div class="form-group">
+                <label class="form-label">銘柄名</label>
+                <input type="text" class="form-input" id="newName" placeholder="例: Apple Inc.">
+            </div>
+            <div class="form-group">
+                <label class="form-label">マーケット *</label>
+                <select class="form-select" id="newMarket">
+                    {% for code, label in taxonomy.get('market', {}).items() %}
+                    <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">資産クラス *</label>
+                <select class="form-select" id="newAsset">
+                    {% for code, label in taxonomy.get('asset_class', {}).items() %}
+                    <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">タグ（カンマ区切り）</label>
+                <input type="text" class="form-input" id="newTags" placeholder="例: quality, sbi">
+            </div>
+            <div class="form-group" style="min-width: auto;">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-success" onclick="addSymbol()">追加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- サブセットタブ -->
+<div id="subsets-tab" class="tab-content">
+    <div class="two-column">
+        <div class="list-panel">
+            <h3>サブセット一覧</h3>
+            <div id="subsetsList">
+                {% for name, subset in subsets.items() %}
+                <div class="list-item" onclick="selectSubset('{{ name }}')">
+                    <span class="item-name">{{ name }}</span>
+                    <span class="item-count">{{ universe_counts.get(name, 0) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="newSubset()">
+                + 新規サブセット
+            </button>
+        </div>
+
+        <div class="editor-panel">
+            <div id="subsetEditor" class="empty-state">
+                <h3>サブセットを選択してください</h3>
+                <p>左のリストから編集するサブセットを選択するか、<br>新規作成ボタンで新しいサブセットを作成します</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- タクソノミータブ -->
+<div id="taxonomy-tab" class="tab-content">
+    <div class="two-column">
+        <div class="list-panel">
+            <h3>タクソノミーキー</h3>
+            <div id="taxonomyList">
+                {% for key in taxonomy.keys() %}
+                <div class="list-item" onclick="selectTaxonomyKey('{{ key }}')">
+                    <span class="item-name">{{ key }}</span>
+                    <span class="item-count">{{ taxonomy[key]|length }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="newTaxonomyKey()">
+                + 新規キー
+            </button>
+        </div>
+
+        <div class="editor-panel">
+            <div id="taxonomyEditor" class="empty-state">
+                <h3>タクソノミーキーを選択してください</h3>
+                <p>左のリストから編集するキーを選択するか、<br>新規作成ボタンで新しいキーを作成します</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 編集モーダル -->
+<div id="editModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 class="modal-title" id="editModalTitle">銘柄を編集</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="editModalBody"></div>
+        <div class="modal-footer" id="editModalFooter"></div>
+    </div>
+</div>
+
+<!-- トースト -->
+<div id="toast" class="toast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 状態管理
+    let currentTab = 'symbols';
+    let selectedSubset = null;
+    let selectedTaxonomy = null;
+    let symbolPage = 1;
+    let symbolPageSize = 100;
+    let selectedSymbols = new Set();
+    let searchTimeout = null;
+    let hasUnsavedChanges = false;
+
+    // サーバーから渡されたデータ
+    const allTags = {{ all_tags | tojson }};
+    const taxonomy = {{ taxonomy | tojson }};
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCacheSummary();
+        loadSymbols();
+        checkUnsavedChanges();
+    });
+
+    // キャッシュサマリーを読み込み
+    function loadCacheSummary() {
+        fetch('/config/api/cache-summary')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('totalSymbols').textContent = data.total_symbols.toLocaleString();
+                document.getElementById('cachedSymbols').textContent = data.price_cache_count.toLocaleString();
+                document.getElementById('cachePercent').textContent = data.price_cache_coverage + '%';
+                document.getElementById('cacheProgressBar').style.width = data.price_cache_coverage + '%';
+
+                // Signal cache display: cached/total format
+                const cached = data.cached_signal_types || 0;
+                const total = data.total_signal_types || 0;
+                document.getElementById('signalCaches').textContent = `${cached}/${total}種類`;
+                document.getElementById('signalTotal').textContent = 'キャッシュ済';
+
+                // Show signal details on hover
+                if (data.signal_details && data.signal_details.length > 0) {
+                    const signalInfo = data.signal_details.map(s => `${s.name}: ${s.ticker_count.toLocaleString()}銘柄`).join('\n');
+                    const signalList = document.getElementById('signalList');
+                    signalList.textContent = '(詳細)';
+                    signalList.title = signalInfo;
+                    signalList.style.cursor = 'help';
+                    signalList.style.textDecoration = 'underline dotted';
+                }
+            })
+            .catch(err => console.error('Failed to load cache summary:', err));
+    }
+
+    // ページをリセットしてロード
+    function resetPageAndLoad() {
+        symbolPage = 1;
+        loadSymbols();
+    }
+
+    // ページサイズ変更
+    function changePageSize() {
+        symbolPageSize = parseInt(document.getElementById('pageSizeSelect').value);
+        symbolPage = 1;
+        loadSymbols();
+    }
+
+    // ========================================
+    // タブ切り替え
+    // ========================================
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+        const tabIndex = tab === 'symbols' ? 0 : tab === 'subsets' ? 1 : 2;
+        document.querySelectorAll('.editor-tab')[tabIndex].classList.add('active');
+        document.getElementById(`${tab}-tab`).classList.add('active');
+
+        if (tab === 'symbols') {
+            loadSymbols();
+        }
+    }
+
+    // ========================================
+    // 銘柄一覧
+    // ========================================
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadSymbols, 300);
+    }
+
+    function loadSymbols() {
+        const search = document.getElementById('symbolSearch').value;
+        const market = document.getElementById('marketFilter').value;
+        const asset = document.getElementById('assetFilter').value;
+        const tag = document.getElementById('tagFilter').value;
+        const cacheFilter = document.getElementById('cacheFilter').value;
+        const signalFilter = document.getElementById('signalFilter').value;
+
+        let url = `/config/api/symbols?page=${symbolPage}&size=${symbolPageSize}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (market) url += `&market=${market}`;
+        if (asset) url += `&asset_class=${asset}`;
+        if (tag) url += `&tags=${tag}`;
+        if (cacheFilter) url += `&cache_filter=${cacheFilter}`;
+        if (signalFilter) url += `&signal_filter=${signalFilter}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                renderSymbolTable(data);
+                renderPagination(data);
+            })
+            .catch(err => {
+                document.getElementById('symbolsTableBody').innerHTML =
+                    '<tr><td colspan="9" class="text-center" style="color: var(--danger-color);">読み込みに失敗しました</td></tr>';
+            });
+    }
+
+    function renderSymbolTable(data) {
+        const tbody = document.getElementById('symbolsTableBody');
+
+        if (data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">該当する銘柄がありません</td></tr>';
+            return;
+        }
+
+        // Market/Asset short labels
+        const marketShort = {'us': 'US', 'japan': 'JP', 'hong_kong': 'HK', 'korea': 'KR', 'global': 'GL'};
+        const assetShort = {'equity': '株', 'etf': 'ETF', 'bond': '債券', 'commodity': '商品', 'forex': 'FX', 'crypto': '暗号'};
+        const totalSignalTypes = data.total_signal_types || 0;
+
+        tbody.innerHTML = data.items.map(sym => {
+            const tax = sym.taxonomy || {};
+            const tags = sym.tags || [];
+            const isSelected = selectedSymbols.has(sym.ticker);
+            const hasCache = sym.has_price_cache;
+            const signalCount = sym.signal_count || 0;
+            const signalPercent = totalSignalTypes > 0 ? Math.round(signalCount / totalSignalTypes * 100) : 0;
+
+            // Signal status indicator
+            let signalClass = 'not-cached';
+            let signalText = '0';
+            if (signalCount > 0) {
+                signalClass = signalPercent >= 80 ? 'cached' : 'partial';
+                signalText = `${signalCount}/${totalSignalTypes}`;
+            }
+
+            return `
+                <tr>
+                    <td><input type="checkbox" value="${sym.ticker}" ${isSelected ? 'checked' : ''} onchange="toggleSymbolSelect('${sym.ticker}')"></td>
+                    <td class="ticker-cell">${sym.ticker}</td>
+                    <td>${marketShort[tax.market] || tax.market || '-'}</td>
+                    <td>${assetShort[tax.asset_class] || tax.asset_class || '-'}</td>
+                    <td style="font-size: 0.7rem;">${tax.sector ? (taxonomy.sector?.[tax.sector] || tax.sector).substring(0, 6) : '-'}</td>
+                    <td><span class="cache-dot ${hasCache ? 'cached' : 'not-cached'}" title="${hasCache ? '価格キャッシュ有' : '価格キャッシュ無'}"></span></td>
+                    <td>
+                        <span class="signal-badge ${signalClass}" title="${signalCount}/${totalSignalTypes} シグナル">${signalText}</span>
+                    </td>
+                    <td>
+                        <div class="tag-list">
+                            ${tags.slice(0, 3).map(t => `<span class="tag-badge">${t}</span>`).join('')}
+                            ${tags.length > 3 ? `<span class="tag-badge" style="background:#ddd;color:#666;">+${tags.length - 3}</span>` : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <button class="action-btn edit" onclick="editSymbol('${sym.ticker}')" title="編集">✎</button>
+                        <button class="action-btn delete" onclick="deleteSymbol('${sym.ticker}')" title="削除">✕</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderPagination(data) {
+        const container = document.getElementById('pagination');
+        const start = (data.page - 1) * data.size + 1;
+        const end = Math.min(data.page * data.size, data.total);
+        const cachedInfo = data.cached_count !== undefined ? ` (${data.cached_count.toLocaleString()}件キャッシュ済)` : '';
+
+        container.innerHTML = `
+            <div class="pagination-info">
+                ${data.total.toLocaleString()}件中 ${start.toLocaleString()}〜${end.toLocaleString()}件${cachedInfo}
+            </div>
+            <div class="pagination-buttons">
+                <button class="pagination-btn" onclick="goToPage(1)" ${data.page <= 1 ? 'disabled' : ''}>«</button>
+                <button class="pagination-btn" onclick="goToPage(${data.page - 1})" ${!data.has_prev ? 'disabled' : ''}>‹</button>
+                <span style="padding: 0 0.75rem; font-size: 0.9rem;">${data.page} / ${data.total_pages}</span>
+                <button class="pagination-btn" onclick="goToPage(${data.page + 1})" ${!data.has_next ? 'disabled' : ''}>›</button>
+                <button class="pagination-btn" onclick="goToPage(${data.total_pages})" ${data.page >= data.total_pages ? 'disabled' : ''}>»</button>
+            </div>
+        `;
+    }
+
+    function goToPage(page) {
+        symbolPage = page;
+        loadSymbols();
+    }
+
+    function toggleSelectAll() {
+        const checked = document.getElementById('selectAll').checked;
+        document.querySelectorAll('#symbolsTableBody input[type="checkbox"]').forEach(cb => {
+            cb.checked = checked;
+            if (checked) {
+                selectedSymbols.add(cb.value);
+            } else {
+                selectedSymbols.delete(cb.value);
+            }
+        });
+        updateBulkBar();
+    }
+
+    function toggleSymbolSelect(ticker) {
+        if (selectedSymbols.has(ticker)) {
+            selectedSymbols.delete(ticker);
+        } else {
+            selectedSymbols.add(ticker);
+        }
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const count = selectedSymbols.size;
+        document.getElementById('selectedCount').textContent = count;
+        document.getElementById('bulkBar').classList.toggle('show', count > 0);
+    }
+
+    function clearSelection() {
+        selectedSymbols.clear();
+        document.querySelectorAll('#symbolsTableBody input[type="checkbox"]').forEach(cb => cb.checked = false);
+        document.getElementById('selectAll').checked = false;
+        updateBulkBar();
+    }
+
+    function bulkAddTag() {
+        const tag = document.getElementById('bulkAddTag').value.trim();
+        if (!tag || selectedSymbols.size === 0) {
+            showToast('タグと銘柄を選択してください', 'error');
+            return;
+        }
+
+        fetch('/config/api/symbols/bulk-tag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tickers: Array.from(selectedSymbols),
+                add_tags: [tag],
+                remove_tags: []
+            })
+        })
+        .then(r => r.json())
+        .then(result => {
+            showToast(`${result.updated}件の銘柄にタグを追加しました`, 'success');
+            document.getElementById('bulkAddTag').value = '';
+            loadSymbols();
+            markUnsaved();
+        })
+        .catch(err => showToast('タグの追加に失敗しました', 'error'));
+    }
+
+    function bulkRemoveTag() {
+        const tag = document.getElementById('bulkRemoveTag').value;
+        if (!tag || selectedSymbols.size === 0) {
+            showToast('タグと銘柄を選択してください', 'error');
+            return;
+        }
+
+        fetch('/config/api/symbols/bulk-tag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tickers: Array.from(selectedSymbols),
+                add_tags: [],
+                remove_tags: [tag]
+            })
+        })
+        .then(r => r.json())
+        .then(result => {
+            showToast(`${result.updated}件の銘柄からタグを削除しました`, 'success');
+            document.getElementById('bulkRemoveTag').value = '';
+            loadSymbols();
+            markUnsaved();
+        })
+        .catch(err => showToast('タグの削除に失敗しました', 'error'));
+    }
+
+    function deleteSelected() {
+        if (!confirm(`選択した${selectedSymbols.size}件の銘柄を削除しますか？この操作は取り消せません。`)) return;
+
+        const promises = Array.from(selectedSymbols).map(ticker =>
+            fetch(`/config/api/symbols/${ticker}`, { method: 'DELETE' })
+        );
+
+        Promise.all(promises)
+            .then(() => {
+                showToast(`${selectedSymbols.size}件の銘柄を削除しました`, 'success');
+                selectedSymbols.clear();
+                updateBulkBar();
+                loadSymbols();
+                markUnsaved();
+            })
+            .catch(err => showToast('一部の銘柄の削除に失敗しました', 'error'));
+    }
+
+    function addSymbol() {
+        const ticker = document.getElementById('newTicker').value.trim().toUpperCase();
+        const name = document.getElementById('newName').value.trim();
+        const market = document.getElementById('newMarket').value;
+        const asset = document.getElementById('newAsset').value;
+        const tags = document.getElementById('newTags').value.split(',').map(t => t.trim()).filter(t => t);
+
+        if (!ticker) {
+            showToast('ティッカーは必須です', 'error');
+            return;
+        }
+
+        fetch('/config/api/symbols', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticker,
+                name,
+                taxonomy: { market, asset_class: asset },
+                tags
+            })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('追加に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('銘柄を追加しました', 'success');
+            document.getElementById('newTicker').value = '';
+            document.getElementById('newName').value = '';
+            document.getElementById('newTags').value = '';
+            loadSymbols();
+            markUnsaved();
+        })
+        .catch(err => showToast('銘柄の追加に失敗しました（既に存在する可能性があります）', 'error'));
+    }
+
+    function editSymbol(ticker) {
+        fetch(`/config/api/symbols/${ticker}`)
+            .then(r => r.json())
+            .then(sym => {
+                const tax = sym.taxonomy || {};
+                document.getElementById('editModalTitle').textContent = `銘柄を編集: ${ticker}`;
+                document.getElementById('editModalBody').innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">ティッカー</label>
+                        <input type="text" class="form-input" value="${sym.ticker}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">銘柄名</label>
+                        <input type="text" class="form-input" id="editName" value="${sym.name || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">マーケット</label>
+                        <select class="form-select" id="editMarket">
+                            ${Object.entries(taxonomy.market || {}).map(([code, label]) =>
+                                `<option value="${code}" ${tax.market === code ? 'selected' : ''}>${label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">資産クラス</label>
+                        <select class="form-select" id="editAsset">
+                            ${Object.entries(taxonomy.asset_class || {}).map(([code, label]) =>
+                                `<option value="${code}" ${tax.asset_class === code ? 'selected' : ''}>${label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">セクター</label>
+                        <select class="form-select" id="editSector">
+                            <option value="">なし</option>
+                            ${Object.entries(taxonomy.sector || {}).map(([code, label]) =>
+                                `<option value="${code}" ${tax.sector === code ? 'selected' : ''}>${label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">タグ（カンマ区切り）</label>
+                        <input type="text" class="form-input" id="editTags" value="${(sym.tags || []).join(', ')}">
+                    </div>
+                `;
+                document.getElementById('editModalFooter').innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                    <button class="btn btn-primary" onclick="saveSymbolEdit('${ticker}')">保存</button>
+                `;
+                document.getElementById('editModal').classList.add('show');
+            })
+            .catch(err => showToast('銘柄の読み込みに失敗しました', 'error'));
+    }
+
+    function saveSymbolEdit(ticker) {
+        const name = document.getElementById('editName').value.trim();
+        const market = document.getElementById('editMarket').value;
+        const asset = document.getElementById('editAsset').value;
+        const sector = document.getElementById('editSector').value;
+        const tags = document.getElementById('editTags').value.split(',').map(t => t.trim()).filter(t => t);
+
+        const taxonomy_update = { market, asset_class: asset };
+        if (sector) taxonomy_update.sector = sector;
+
+        fetch(`/config/api/symbols/${ticker}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                taxonomy: taxonomy_update,
+                tags
+            })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('保存に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('銘柄を更新しました', 'success');
+            closeModal();
+            loadSymbols();
+            markUnsaved();
+        })
+        .catch(err => showToast('銘柄の更新に失敗しました', 'error'));
+    }
+
+    function deleteSymbol(ticker) {
+        if (!confirm(`銘柄「${ticker}」を削除しますか？`)) return;
+
+        fetch(`/config/api/symbols/${ticker}`, { method: 'DELETE' })
+            .then(r => {
+                if (!r.ok) throw new Error('削除に失敗しました');
+                return r.json();
+            })
+            .then(() => {
+                showToast('銘柄を削除しました', 'success');
+                loadSymbols();
+                markUnsaved();
+            })
+            .catch(err => showToast('銘柄の削除に失敗しました', 'error'));
+    }
+
+    // ========================================
+    // サブセット
+    // ========================================
+    function selectSubset(name) {
+        selectedSubset = name;
+        document.querySelectorAll('#subsetsList .list-item').forEach(item => {
+            item.classList.toggle('selected', item.querySelector('.item-name').textContent === name);
+        });
+
+        fetch(`/config/api/subsets/${name}`)
+            .then(r => r.json())
+            .then(subset => renderSubsetEditor(name, subset))
+            .catch(err => showToast('サブセットの読み込みに失敗しました', 'error'));
+    }
+
+    function renderSubsetEditor(name, subset) {
+        const filters = subset.filters || {};
+        const tags = filters.tags || [];
+        const excludeTags = filters.exclude_tags || [];
+        const taxonomyFilters = filters.taxonomy || {};
+        const manualInclude = subset.manual_include || [];
+        const manualExclude = subset.manual_exclude || [];
+
+        document.getElementById('subsetEditor').innerHTML = `
+            <h3 style="margin-bottom: 1.5rem;">サブセットを編集: ${name}</h3>
+
+            <div class="form-group">
+                <label class="form-label">表示名</label>
+                <input type="text" class="form-input" id="subsetName" value="${subset.name || ''}" onchange="markUnsaved()">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">説明</label>
+                <textarea class="form-input" id="subsetDesc" rows="2" onchange="markUnsaved()">${subset.description || ''}</textarea>
+            </div>
+
+            <div class="filter-section">
+                <h4>タグでフィルター（含む）</h4>
+                <div class="tag-container" id="includeTags">
+                    ${tags.map(t => `<span class="tag-chip">${t}<span class="remove-tag" onclick="removeIncludeTag('${t}')">&times;</span></span>`).join('')}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <select class="form-select" id="addIncludeTag" style="flex: 1;">
+                        <option value="">タグを追加...</option>
+                        ${allTags.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="addIncludeTag()">追加</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h4>タグでフィルター（除外）</h4>
+                <div class="tag-container" id="excludeTags">
+                    ${excludeTags.map(t => `<span class="tag-chip exclude">${t}<span class="remove-tag" onclick="removeExcludeTag('${t}')">&times;</span></span>`).join('')}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <select class="form-select" id="addExcludeTag" style="flex: 1;">
+                        <option value="">タグを追加...</option>
+                        ${allTags.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-sm btn-danger" onclick="addExcludeTag()">追加</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h4>タクソノミーでフィルター</h4>
+                ${Object.entries(taxonomy).map(([key, values]) => `
+                    <div style="margin-bottom: 0.75rem;">
+                        <label class="form-label">${key}</label>
+                        <div class="checkbox-grid">
+                            ${Object.entries(values).map(([code, label]) => `
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="tax_${key}_${code}"
+                                           ${(taxonomyFilters[key] || []).includes(code) ? 'checked' : ''}
+                                           onchange="markUnsaved()">
+                                    <label for="tax_${key}_${code}">${label}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="filter-section">
+                <h4>手動で追加（フィルタに関係なく含める）</h4>
+                <div class="tag-container" id="manualInclude">
+                    ${manualInclude.map(t => `<span class="tag-chip">${t}<span class="remove-tag" onclick="removeManualInclude('${t}')">&times;</span></span>`).join('')}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <input type="text" class="form-input" id="addManualIncludeTicker" placeholder="ティッカー..." style="flex: 1;">
+                    <button class="btn btn-sm btn-primary" onclick="addManualInclude()">追加</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h4>手動で除外（フィルタに該当しても除外）</h4>
+                <div class="tag-container" id="manualExclude">
+                    ${manualExclude.map(t => `<span class="tag-chip exclude">${t}<span class="remove-tag" onclick="removeManualExclude('${t}')">&times;</span></span>`).join('')}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <input type="text" class="form-input" id="addManualExcludeTicker" placeholder="ティッカー..." style="flex: 1;">
+                    <button class="btn btn-sm btn-danger" onclick="addManualExclude()">追加</button>
+                </div>
+            </div>
+
+            <div class="preview-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span>プレビュー</span>
+                    <button class="btn btn-sm btn-secondary" onclick="previewSubset()">更新</button>
+                </div>
+                <div id="previewContent">
+                    <span class="preview-count">-</span> 銘柄
+                    <div class="preview-symbols" id="previewSymbols">「更新」をクリックしてプレビュー</div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveSubset('${name}')">保存</button>
+                <button class="btn btn-secondary" onclick="selectSubset('${name}')">リセット</button>
+                <button class="btn btn-danger" onclick="deleteSubset('${name}')">削除</button>
+            </div>
+        `;
+    }
+
+    function getSubsetFilters() {
+        const tags = Array.from(document.querySelectorAll('#includeTags .tag-chip')).map(c => c.textContent.replace('×', '').trim());
+        const excludeTags = Array.from(document.querySelectorAll('#excludeTags .tag-chip')).map(c => c.textContent.replace('×', '').trim());
+        const manualInclude = Array.from(document.querySelectorAll('#manualInclude .tag-chip')).map(c => c.textContent.replace('×', '').trim());
+        const manualExclude = Array.from(document.querySelectorAll('#manualExclude .tag-chip')).map(c => c.textContent.replace('×', '').trim());
+
+        const taxonomyFilters = {};
+        Object.keys(taxonomy).forEach(key => {
+            const checked = Array.from(document.querySelectorAll(`input[id^="tax_${key}_"]:checked`))
+                .map(cb => cb.id.replace(`tax_${key}_`, ''));
+            if (checked.length > 0) {
+                taxonomyFilters[key] = checked;
+            }
+        });
+
+        return { tags, excludeTags, taxonomyFilters, manualInclude, manualExclude };
+    }
+
+    function previewSubset() {
+        const { tags, excludeTags, taxonomyFilters, manualInclude, manualExclude } = getSubsetFilters();
+
+        fetch('/config/api/subsets/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tags,
+                exclude_tags: excludeTags,
+                taxonomy: taxonomyFilters,
+                manual_include: manualInclude,
+                manual_exclude: manualExclude
+            })
+        })
+        .then(r => r.json())
+        .then(result => {
+            document.querySelector('#previewContent .preview-count').textContent = result.count;
+            const symbolsText = result.symbols.join(', ') + (result.has_more ? ' ...' : '');
+            document.getElementById('previewSymbols').textContent = symbolsText;
+        })
+        .catch(err => showToast('プレビューに失敗しました', 'error'));
+    }
+
+    function saveSubset(name) {
+        const { tags, excludeTags, taxonomyFilters, manualInclude, manualExclude } = getSubsetFilters();
+
+        const filters = {};
+        if (tags.length > 0) filters.tags = tags;
+        if (excludeTags.length > 0) filters.exclude_tags = excludeTags;
+        if (Object.keys(taxonomyFilters).length > 0) filters.taxonomy = taxonomyFilters;
+
+        const body = {
+            name: document.getElementById('subsetName').value,
+            description: document.getElementById('subsetDesc').value,
+            filters,
+            manual_include: manualInclude,
+            manual_exclude: manualExclude
+        };
+
+        fetch(`/config/api/subsets/${name}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('保存に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('サブセットを保存しました', 'success');
+            markUnsaved();
+        })
+        .catch(err => showToast('サブセットの保存に失敗しました', 'error'));
+    }
+
+    function deleteSubset(name) {
+        if (!confirm(`サブセット「${name}」を削除しますか？この操作は取り消せません。`)) return;
+
+        fetch(`/config/api/subsets/${name}`, { method: 'DELETE' })
+            .then(r => {
+                if (!r.ok) throw new Error('削除に失敗しました');
+                return r.json();
+            })
+            .then(() => {
+                showToast('サブセットを削除しました', 'success');
+                location.reload();
+            })
+            .catch(err => showToast('サブセットの削除に失敗しました', 'error'));
+    }
+
+    function newSubset() {
+        const name = prompt('新しいサブセットの識別子を入力してください（例: my_stocks）:');
+        if (!name) return;
+
+        fetch(`/config/api/subsets?name=${encodeURIComponent(name)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                description: '',
+                filters: {}
+            })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('作成に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('サブセットを作成しました', 'success');
+            location.reload();
+        })
+        .catch(err => showToast('サブセットの作成に失敗しました', 'error'));
+    }
+
+    // タグ操作ヘルパー
+    function addIncludeTag() {
+        const select = document.getElementById('addIncludeTag');
+        const tag = select.value;
+        if (!tag) return;
+        const container = document.getElementById('includeTags');
+        if (!container.innerHTML.includes(`>${tag}<`)) {
+            container.innerHTML += `<span class="tag-chip">${tag}<span class="remove-tag" onclick="removeIncludeTag('${tag}')">&times;</span></span>`;
+            markUnsaved();
+        }
+        select.value = '';
+    }
+
+    function removeIncludeTag(tag) {
+        document.querySelectorAll('#includeTags .tag-chip').forEach(c => {
+            if (c.textContent.replace('×', '').trim() === tag) c.remove();
+        });
+        markUnsaved();
+    }
+
+    function addExcludeTag() {
+        const select = document.getElementById('addExcludeTag');
+        const tag = select.value;
+        if (!tag) return;
+        const container = document.getElementById('excludeTags');
+        if (!container.innerHTML.includes(`>${tag}<`)) {
+            container.innerHTML += `<span class="tag-chip exclude">${tag}<span class="remove-tag" onclick="removeExcludeTag('${tag}')">&times;</span></span>`;
+            markUnsaved();
+        }
+        select.value = '';
+    }
+
+    function removeExcludeTag(tag) {
+        document.querySelectorAll('#excludeTags .tag-chip').forEach(c => {
+            if (c.textContent.replace('×', '').trim() === tag) c.remove();
+        });
+        markUnsaved();
+    }
+
+    function addManualInclude() {
+        const input = document.getElementById('addManualIncludeTicker');
+        const ticker = input.value.trim().toUpperCase();
+        if (!ticker) return;
+        const container = document.getElementById('manualInclude');
+        if (!container.innerHTML.includes(`>${ticker}<`)) {
+            container.innerHTML += `<span class="tag-chip">${ticker}<span class="remove-tag" onclick="removeManualInclude('${ticker}')">&times;</span></span>`;
+            markUnsaved();
+        }
+        input.value = '';
+    }
+
+    function removeManualInclude(ticker) {
+        document.querySelectorAll('#manualInclude .tag-chip').forEach(c => {
+            if (c.textContent.replace('×', '').trim() === ticker) c.remove();
+        });
+        markUnsaved();
+    }
+
+    function addManualExclude() {
+        const input = document.getElementById('addManualExcludeTicker');
+        const ticker = input.value.trim().toUpperCase();
+        if (!ticker) return;
+        const container = document.getElementById('manualExclude');
+        if (!container.innerHTML.includes(`>${ticker}<`)) {
+            container.innerHTML += `<span class="tag-chip exclude">${ticker}<span class="remove-tag" onclick="removeManualExclude('${ticker}')">&times;</span></span>`;
+            markUnsaved();
+        }
+        input.value = '';
+    }
+
+    function removeManualExclude(ticker) {
+        document.querySelectorAll('#manualExclude .tag-chip').forEach(c => {
+            if (c.textContent.replace('×', '').trim() === ticker) c.remove();
+        });
+        markUnsaved();
+    }
+
+    // ========================================
+    // タクソノミー
+    // ========================================
+    function selectTaxonomyKey(key) {
+        selectedTaxonomy = key;
+        document.querySelectorAll('#taxonomyList .list-item').forEach(item => {
+            item.classList.toggle('selected', item.querySelector('.item-name').textContent === key);
+        });
+
+        fetch(`/config/api/taxonomy/${key}`)
+            .then(r => r.json())
+            .then(values => renderTaxonomyEditor(key, values))
+            .catch(err => showToast('タクソノミーの読み込みに失敗しました', 'error'));
+    }
+
+    function renderTaxonomyEditor(key, values) {
+        document.getElementById('taxonomyEditor').innerHTML = `
+            <h3 style="margin-bottom: 1.5rem;">タクソノミーを編集: ${key}</h3>
+
+            <div class="form-group">
+                <label class="form-label">キー名</label>
+                <input type="text" class="form-input" value="${key}" disabled>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">値一覧</label>
+                <div class="taxonomy-values" id="taxonomyValues">
+                    ${Object.entries(values).map(([code, label]) => `
+                        <div class="taxonomy-row">
+                            <span class="taxonomy-code">${code}</span>
+                            <input type="text" class="form-input" value="${label}" id="tax_val_${code}" onchange="markUnsaved()">
+                            <button class="action-btn delete" onclick="removeTaxonomyValue('${code}')">&times;</button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                <input type="text" class="form-input" id="newValueCode" placeholder="コード（例: new_sector）" style="width: 150px;">
+                <input type="text" class="form-input" id="newValueLabel" placeholder="ラベル（例: 新セクター）" style="flex: 1;">
+                <button class="btn btn-primary" onclick="addTaxonomyValue('${key}')">追加</button>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveTaxonomy('${key}')">保存</button>
+                <button class="btn btn-secondary" onclick="selectTaxonomyKey('${key}')">リセット</button>
+                <button class="btn btn-danger" onclick="deleteTaxonomyKey('${key}')">削除</button>
+            </div>
+        `;
+    }
+
+    function addTaxonomyValue(key) {
+        const code = document.getElementById('newValueCode').value.trim().toLowerCase().replace(/\s+/g, '_');
+        const label = document.getElementById('newValueLabel').value.trim();
+
+        if (!code || !label) {
+            showToast('コードとラベルは必須です', 'error');
+            return;
+        }
+
+        fetch(`/config/api/taxonomy/${key}/values`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, label })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('追加に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('値を追加しました', 'success');
+            selectTaxonomyKey(key);
+            markUnsaved();
+        })
+        .catch(err => showToast('値の追加に失敗しました（既に存在する可能性があります）', 'error'));
+    }
+
+    function removeTaxonomyValue(code) {
+        const row = document.getElementById(`tax_val_${code}`).closest('.taxonomy-row');
+        row.remove();
+        markUnsaved();
+    }
+
+    function saveTaxonomy(key) {
+        const values = {};
+        document.querySelectorAll('#taxonomyValues .taxonomy-row').forEach(row => {
+            const code = row.querySelector('.taxonomy-code').textContent;
+            const label = row.querySelector('.form-input').value;
+            values[code] = label;
+        });
+
+        fetch(`/config/api/taxonomy/${key}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('保存に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('タクソノミーを保存しました', 'success');
+            markUnsaved();
+        })
+        .catch(err => showToast('タクソノミーの保存に失敗しました', 'error'));
+    }
+
+    function deleteTaxonomyKey(key) {
+        if (!confirm(`タクソノミーキー「${key}」を削除しますか？使用中の銘柄がある場合は削除できません。`)) return;
+
+        fetch(`/config/api/taxonomy/${key}`, { method: 'DELETE' })
+            .then(r => {
+                if (!r.ok) return r.json().then(d => { throw new Error(d.detail); });
+                return r.json();
+            })
+            .then(() => {
+                showToast('タクソノミーキーを削除しました', 'success');
+                location.reload();
+            })
+            .catch(err => showToast(err.message || '削除に失敗しました', 'error'));
+    }
+
+    function newTaxonomyKey() {
+        const key = prompt('新しいタクソノミーキーを入力してください（例: industry）:');
+        if (!key) return;
+
+        const cleanKey = key.toLowerCase().replace(/\s+/g, '_');
+
+        fetch(`/config/api/taxonomy/${cleanKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: {} })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('作成に失敗しました');
+            return r.json();
+        })
+        .then(() => {
+            showToast('タクソノミーキーを作成しました', 'success');
+            location.reload();
+        })
+        .catch(err => showToast('タクソノミーキーの作成に失敗しました', 'error'));
+    }
+
+    // ========================================
+    // 保存・ユーティリティ
+    // ========================================
+    function saveAll() {
+        fetch('/config/api/save', { method: 'POST' })
+            .then(r => {
+                if (!r.ok) throw new Error('保存に失敗しました');
+                return r.json();
+            })
+            .then(() => {
+                showToast('すべての変更をファイルに保存しました', 'success');
+                hasUnsavedChanges = false;
+                document.getElementById('unsavedIndicator').classList.remove('show');
+            })
+            .catch(err => showToast('保存に失敗しました', 'error'));
+    }
+
+    function reloadData() {
+        if (hasUnsavedChanges && !confirm('未保存の変更があります。破棄してリロードしますか？')) return;
+
+        fetch('/config/api/reload', { method: 'POST' })
+            .then(r => r.json())
+            .then(() => {
+                showToast('データをリロードしました', 'success');
+                location.reload();
+            })
+            .catch(err => showToast('リロードに失敗しました', 'error'));
+    }
+
+    function markUnsaved() {
+        hasUnsavedChanges = true;
+        document.getElementById('unsavedIndicator').classList.add('show');
+    }
+
+    function checkUnsavedChanges() {
+        fetch('/config/api/status')
+            .then(r => r.json())
+            .then(status => {
+                if (status.has_unsaved_changes) {
+                    markUnsaved();
+                }
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').classList.remove('show');
+    }
+
+    function closeModalOnOverlay(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            closeModal();
+        }
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast ${type} show`;
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    // キーボードショートカット
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveAll();
+        }
+    });
+
+    // ページ離脱時の警告
+    window.addEventListener('beforeunload', function(e) {
+        if (hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+</script>
+{% endblock %}

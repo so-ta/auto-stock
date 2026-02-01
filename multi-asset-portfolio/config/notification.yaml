@@ -1,0 +1,34 @@
+# 通知設定
+#
+# Discord Webhookを使用した通知の共通設定。
+# 各ポートフォリオで個別設定がない場合、ここの設定が使用されます。
+
+# Discord Webhook URL
+# ポートフォリオごとに個別設定も可能
+discord:
+  webhook_url: "https://discord.com/api/webhooks/1467320349657137295/arA58zHH_nhOUJWkwOMrfEFqBkh3EkQxCHoXYazg29Sh_43oF7BcQppgqtDFt-9JJbsf"
+
+  # 通知のデフォルト設定
+  defaults:
+    on_rebalance: true           # リバランス時に通知
+    on_no_rebalance: false       # リバランス不要時は通知しない
+    include_order_details: true  # 発注詳細を含める
+
+  # エラー通知
+  on_error: true                 # エラー発生時に通知
+
+  # 起動通知
+  on_startup: true               # スケジューラ起動時に通知
+
+# 通知のフォーマット設定
+format:
+  # 通貨表示
+  currency_format:
+    JPY: "¥{:,.0f}"      # ¥1,000,000
+    USD: "${:,.2f}"      # $10,000.00
+
+  # パーセント小数点以下桁数
+  percentage_decimals: 1
+
+  # 銘柄表示最大数（省略する場合）
+  max_symbols_display: 20

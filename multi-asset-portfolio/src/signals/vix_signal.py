@@ -34,7 +34,11 @@ from typing import Any, List, Optional
 
 import numpy as np
 import pandas as pd
-import yaml
+
+try:
+    import yaml
+except ImportError:
+    yaml = None  # type: ignore
 
 from .base import ParameterSpec, Signal, SignalResult
 
@@ -112,6 +116,10 @@ class VIXSignalConfig:
     @classmethod
     def from_yaml(cls, path: str | Path) -> "VIXSignalConfig":
         """Load configuration from YAML file."""
+        if yaml is None:
+            logger.warning("PyYAML not installed, using default VIX config")
+            return cls.default()
+
         path = Path(path)
         if not path.exists():
             logger.warning(f"Config file not found: {path}, using defaults")

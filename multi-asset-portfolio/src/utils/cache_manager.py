@@ -54,6 +54,8 @@ class CacheType(Enum):
     DATA = "data"               # OHLCVデータキャッシュ
     LRU = "lru"                 # 汎用LRUキャッシュ
     INCREMENTAL = "incremental" # インクリメンタル計算キャッシュ
+    COVARIANCE = "covariance"   # 共分散行列キャッシュ
+    SUBSET_COVARIANCE = "subset_covariance"  # サブセット共分散キャッシュ
 
 
 @dataclass
@@ -398,8 +400,11 @@ class DataCacheAdapter(CacheInterface[Any]):
 
         from src.data.cache import CacheBackend, DataCache
         backend_enum = CacheBackend.PARQUET if backend == "parquet" else CacheBackend.DUCKDB
+        if cache_dir is None:
+            from src.config.settings import get_cache_path
+            cache_dir = get_cache_path("data")
         self._cache = DataCache(
-            cache_dir=cache_dir or ".cache/data",
+            cache_dir=cache_dir,
             backend=backend_enum,
             max_age_days=policy.max_age_days,
             storage_backend=storage_backend,
@@ -440,6 +445,205 @@ class DataCacheAdapter(CacheInterface[Any]):
 
     def cleanup(self) -> int:
         return self._cache.cleanup_expired()
+
+
+class CovarianceCacheAdapter(CacheInterface[Any]):
+    """
+    CovarianceCacheのアダプター
+
+    src.backtest.covariance_cache.CovarianceCache を統一インターフェースに適合させる。
+
+    Key format: "date:YYYYMMDD"
+    get() returns None on cache miss.
+
+    Note:
+        This adapter wraps the date-based covariance cache which stores
+        IncrementalCovarianceEstimator states.
+    """
+
+    def __init__(
+        self,
+        name: str = "covariance_cache",
+        storage_backend: Optional["StorageBackend"] = None,
+    ):
+        """
+        Initialize covariance cache adapter.
+
+        Args:
+            name: Cache name for identification
+            storage_backend: StorageBackend for S3/local operations (required)
+        """
+        self._name = name
+        self._storage_backend = storage_backend
+        self._hits = 0
+        self._misses = 0
+
+        # Lazy import to avoid circular dependencies
+        from src.backtest.covariance_cache import CovarianceCache
+        self._cache = CovarianceCache(storage_backend=storage_backend)
+
+    @property
+    def cache_type(self) -> CacheType:
+        return CacheType.COVARIANCE
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def underlying(self) -> Any:
+        """Get the underlying CovarianceCache instance."""
+        return self._cache
+
+    def get(self, key: str) -> Optional[Any]:
+        """
+        Get estimator state by date key.
+
+        Args:
+            key: Date key in format "date:YYYYMMDD"
+
+        Returns:
+            IncrementalCovarianceEstimator or None if not found
+
+        Raises:
+            ValueError: If key format is invalid
+        """
+        if not key.startswith("date:"):
+            raise ValueError(f"Invalid key format: {key}. Expected 'date:YYYYMMDD'")
+
+        date_str = key.split(":")[1]
+        try:
+            date = datetime.strptime(date_str, "%Y%m%d")
+        except ValueError as e:
+            raise ValueError(f"Invalid date format in key: {key}") from e
+
+        # CovarianceCache.load_state needs n_assets, which we don't have here
+        # Return None to indicate lookup should use underlying cache directly
+        result = self._cache.load_state(date, n_assets=0)
+        if result is not None:
+            self._hits += 1
+        else:
+            self._misses += 1
+        return result
+
+    def put(self, key: str, value: Any) -> None:
+        """
+        Save estimator state by date key.
+
+        Args:
+            key: Date key in format "date:YYYYMMDD"
+            value: IncrementalCovarianceEstimator instance
+
+        Raises:
+            ValueError: If key format is invalid or value is wrong type
+        """
+        if not key.startswith("date:"):
+            raise ValueError(f"Invalid key format: {key}. Expected 'date:YYYYMMDD'")
+
+        date_str = key.split(":")[1]
+        try:
+            date = datetime.strptime(date_str, "%Y%m%d")
+        except ValueError as e:
+            raise ValueError(f"Invalid date format in key: {key}") from e
+
+        from src.backtest.covariance_cache import IncrementalCovarianceEstimator
+        if not isinstance(value, IncrementalCovarianceEstimator):
+            raise ValueError(
+                f"Value must be IncrementalCovarianceEstimator, got {type(value)}"
+            )
+
+        self._cache.save_state(date, value)
+
+    def clear(self) -> None:
+        """Clear statistics (cache files are not deleted)."""
+        self._hits = 0
+        self._misses = 0
+
+    def get_stats(self) -> UnifiedCacheStats:
+        return UnifiedCacheStats(
+            name=self._name,
+            cache_type=CacheType.COVARIANCE,
+            hits=self._hits,
+            misses=self._misses,
+        )
+
+
+class SubsetCovarianceCacheAdapter(CacheInterface[Any]):
+    """
+    SubsetCovarianceCacheのアダプター
+
+    src.backtest.covariance_cache.SubsetCovarianceCache を統一インターフェースに適合させる。
+
+    Note:
+        get() is not directly supported - use underlying.get_or_compute() instead.
+        This adapter primarily provides cache statistics and cleanup interface.
+    """
+
+    def __init__(
+        self,
+        name: str = "subset_covariance_cache",
+        storage_backend: Optional["StorageBackend"] = None,
+        halflife: int = 60,
+    ):
+        """
+        Initialize subset covariance cache adapter.
+
+        Args:
+            name: Cache name for identification
+            storage_backend: StorageBackend for S3/local operations
+            halflife: Halflife for covariance calculation
+        """
+        self._name = name
+        self._storage_backend = storage_backend
+
+        # Lazy import
+        from src.backtest.covariance_cache import SubsetCovarianceCache
+        self._cache = SubsetCovarianceCache(
+            storage_backend=storage_backend,
+            halflife=halflife,
+        )
+
+    @property
+    def cache_type(self) -> CacheType:
+        return CacheType.SUBSET_COVARIANCE
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def underlying(self) -> Any:
+        """Get the underlying SubsetCovarianceCache instance."""
+        return self._cache
+
+    def get(self, key: str) -> Optional[Any]:
+        """
+        Not directly supported - use underlying.get_or_compute().
+
+        Returns:
+            None (always)
+        """
+        return None
+
+    def put(self, key: str, value: Any) -> None:
+        """
+        Not directly supported - cache is populated via get_or_compute().
+        """
+        pass
+
+    def clear(self) -> None:
+        """Clear the subset cache."""
+        self._cache.clear_cache()
+
+    def get_stats(self) -> UnifiedCacheStats:
+        # SubsetCovarianceCache doesn't expose stats, use memory cache size
+        memory_cache_size = len(self._cache._memory_cache)
+        return UnifiedCacheStats(
+            name=self._name,
+            cache_type=CacheType.SUBSET_COVARIANCE,
+            size=memory_cache_size,
+            max_size=self._cache._max_memory_cache_size,
+        )
 
 
 class UnifiedCacheManager:
@@ -503,7 +707,7 @@ class UnifiedCacheManager:
         if storage_config is not None:
             from src.utils.storage_backend import get_storage_backend
             self._storage_backend = get_storage_backend(storage_config)
-            logger.info(f"UnifiedCacheManager: StorageBackend initialized (backend={storage_config.backend})")
+            logger.info(f"UnifiedCacheManager: StorageBackend initialized (s3_bucket={storage_config.s3_bucket})")
 
         # 初期化時にデフォルトキャッシュを遅延作成するためのフラグ
         self._default_caches_initialized = False

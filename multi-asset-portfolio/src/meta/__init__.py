@@ -114,6 +114,28 @@ from .dynamic_params import (
     detect_volatility_regime,
     detect_market_regime,
 )
+from .alpha_scorer import (
+    AlphaScorer,
+    AlphaScoringConfig,
+    AlphaFilterConfig,
+    AlphaScore,
+    AlphaRankingResult,
+    create_alpha_scorer_from_settings,
+    quick_alpha_ranking,
+)
+from .enhanced_alpha_scorer import (
+    EnhancedAlphaScorer,
+    EnhancedAlphaResult,
+    OptimizableParams,
+    create_enhanced_alpha_scorer,
+    quick_enhanced_alpha_ranking,
+)
+from .alpha_param_optimizer import (
+    AlphaParamOptimizer,
+    AlphaOptimizationError,
+    OptimizationHistory,
+    create_alpha_param_optimizer,
+)
 
 __all__ = [
     # Scorer
@@ -212,4 +234,23 @@ __all__ = [
     "create_params_manager",
     "detect_volatility_regime",
     "detect_market_regime",
+    # Alpha Scorer
+    "AlphaScorer",
+    "AlphaScoringConfig",
+    "AlphaFilterConfig",
+    "AlphaScore",
+    "AlphaRankingResult",
+    "create_alpha_scorer_from_settings",
+    "quick_alpha_ranking",
+    # Enhanced Alpha Scorer
+    "EnhancedAlphaScorer",
+    "EnhancedAlphaResult",
+    "OptimizableParams",
+    "create_enhanced_alpha_scorer",
+    "quick_enhanced_alpha_ranking",
+    # Alpha Param Optimizer
+    "AlphaParamOptimizer",
+    "AlphaOptimizationError",
+    "OptimizationHistory",
+    "create_alpha_param_optimizer",
 ]

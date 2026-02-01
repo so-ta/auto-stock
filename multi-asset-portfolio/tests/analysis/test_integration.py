@@ -139,7 +139,13 @@ class TestEndToEndFlow:
         with patch.object(BenchmarkFetcher, "fetch_benchmarks") as mock_fetch:
             mock_fetch.return_value = sample_benchmark_prices
 
-            fetcher = BenchmarkFetcher(cache_enabled=False)
+            # Create a mock storage backend with required methods
+            mock_backend = MagicMock()
+            mock_backend.exists.return_value = False
+            mock_backend.read_parquet.return_value = None
+            mock_backend.write_parquet.return_value = None
+
+            fetcher = BenchmarkFetcher(storage_backend=mock_backend)
             prices = fetcher.fetch_benchmarks("2020-01-01", "2023-12-31", ["SPY", "QQQ", "DIA"])
 
         # 2. リターン計算
@@ -472,7 +478,11 @@ class TestEdgeCases:
         """BenchmarkFetcherに無効な日付"""
         from src.analysis.benchmark_fetcher import BenchmarkFetcher
 
-        fetcher = BenchmarkFetcher(cache_enabled=False)
+        # Create a mock storage backend
+        mock_backend = MagicMock()
+        mock_backend.exists.return_value = False
+
+        fetcher = BenchmarkFetcher(storage_backend=mock_backend)
 
         # 日付が逆順の場合はValueError
         with pytest.raises(ValueError, match="start_date must be before"):
@@ -548,7 +558,11 @@ class TestBenchmarkFetcherMocked:
         with patch("yfinance.download") as mock_download:
             mock_download.return_value = yfinance_mock_data
 
-            fetcher = BenchmarkFetcher(cache_enabled=False)
+            # Create a mock storage backend
+            mock_backend = MagicMock()
+            mock_backend.exists.return_value = False
+
+            fetcher = BenchmarkFetcher(storage_backend=mock_backend)
             prices = fetcher.fetch_benchmarks("2020-01-01", "2023-12-31", ["SPY", "QQQ"])
             returns = fetcher.calculate_returns(prices, frequency="daily")
 
@@ -563,7 +577,11 @@ class TestBenchmarkFetcherMocked:
         with patch("yfinance.download") as mock_download:
             mock_download.return_value = yfinance_mock_data_single
 
-            fetcher = BenchmarkFetcher(cache_enabled=False)
+            # Create a mock storage backend
+            mock_backend = MagicMock()
+            mock_backend.exists.return_value = False
+
+            fetcher = BenchmarkFetcher(storage_backend=mock_backend)
             prices = fetcher.fetch_benchmarks("2020-01-01", "2023-12-31", ["SPY"])
             returns = fetcher.calculate_returns(prices)
             stats = fetcher.get_benchmark_stats(returns)

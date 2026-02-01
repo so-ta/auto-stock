@@ -159,14 +159,16 @@ class TestQualityChecker:
         settings.data_quality.price_change_threshold = 0.5
         settings.data_quality.min_volume_threshold = 0
         settings.data_quality.staleness_hours = 24
+        settings.data_quality.ohlc_inconsistency_threshold = 0.01
         return settings
 
     @pytest.fixture
     def valid_ohlcv_df(self):
         """Create valid OHLCV DataFrame."""
         n = 30
-        base_date = datetime.utcnow() - timedelta(days=n)
-        dates = [base_date + timedelta(days=i) for i in range(n)]
+        # Use 23 hours ago instead of n days to be within staleness threshold
+        base_date = datetime.utcnow() - timedelta(hours=23)
+        dates = [base_date - timedelta(days=n-1-i) for i in range(n)]
         np.random.seed(42)
         prices = 100 * np.exp(np.cumsum(np.random.normal(0, 0.01, n)))
 

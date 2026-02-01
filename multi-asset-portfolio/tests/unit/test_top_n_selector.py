@@ -351,9 +351,10 @@ class TestTopNSelector:
 
     def test_min_score_filter_all_excluded(self):
         """Test behavior when all strategies are below min_score."""
-        from src.meta.top_n_selector import TopNSelector
+        from src.meta.top_n_selector import TopNSelector, TopNSelectorConfig
 
-        selector = TopNSelector(n=5, min_score=1.0, cash_score=0.5, include_cash=False)
+        config = TopNSelectorConfig(n=5, min_score=1.0, cash_score=0.5, include_cash=False)
+        selector = TopNSelector(config=config)
 
         evaluations = {
             "AAPL": {"low": {"score": 0.5}},
@@ -383,9 +384,10 @@ class TestTopNSelector:
 
     def test_multiple_strategies_same_asset(self):
         """Test handling of multiple strategies for same asset."""
-        from src.meta.top_n_selector import TopNSelector
+        from src.meta.top_n_selector import TopNSelector, TopNSelectorConfig
 
-        selector = TopNSelector(n=5, cash_score=0.0, include_cash=False)
+        config = TopNSelectorConfig(n=5, cash_score=0.0, include_cash=False)
+        selector = TopNSelector(config=config)
 
         # Multiple strategies for AAPL
         evaluations = {

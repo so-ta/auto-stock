@@ -18,9 +18,19 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, TYPE_CHECKING, Union
 
+import numpy as np
 import pandas as pd
+
+from src.utils.metrics import (
+    calculate_sharpe_ratio,
+    calculate_max_drawdown,
+    calculate_volatility,
+)
+
+if TYPE_CHECKING:
+    from src.utils.storage_backend import StorageBackend
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +47,10 @@ class BenchmarkFetcher:
     主要な株式指数ETFのデータをyfinanceで取得し、
     リターン計算・累積リターン計算機能を提供。
 
+    StorageBackend is required (S3 mandatory).
+
     Attributes:
         BENCHMARKS: 対応ベンチマークの辞書
-        cache_dir: キャッシュディレクトリ（オプション）
     """
 
     BENCHMARKS: Dict[str, str] = {
@@ -53,27 +64,29 @@ class BenchmarkFetcher:
 
     def __init__(
         self,
-        cache_dir: Optional[Union[str, Path]] = None,
-        cache_enabled: bool = True,
+        storage_backend: "StorageBackend",
     ) -> None:
         """
         初期化
 
         Parameters
         ----------
-        cache_dir : str or Path, optional
-            キャッシュディレクトリ。Noneの場合は ".cache/benchmarks"
-        cache_enabled : bool
-            キャッシュを有効にするか
+        storage_backend : StorageBackend
+            ストレージバックエンド（S3/ローカル）（必須）
+            Must have exists(), read_parquet(), and write_parquet() methods.
         """
-        self._cache_enabled = cache_enabled
-        if cache_dir is not None:
-            self._cache_dir = Path(cache_dir)
-        else:
-            self._cache_dir = Path(".cache/benchmarks")
+        # Check for required methods instead of strict type check
+        # This allows for mocking in tests
+        required_methods = ["exists", "read_parquet", "write_parquet"]
+        for method in required_methods:
+            if not hasattr(storage_backend, method):
+                raise TypeError(
+                    f"storage_backend must have '{method}' method. "
+                    "Expected StorageBackend instance or compatible object."
+                )
 
-        if self._cache_enabled:
-            self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._backend = storage_backend
+        self._cache_subdir = "benchmarks"
 
     def fetch_benchmarks(
         self,
@@ -126,12 +139,11 @@ class BenchmarkFetcher:
                 logger.warning(f"Unknown benchmarks (will still attempt fetch): {invalid}")
             tickers = benchmarks
 
-        # キャッシュチェック
-        if self._cache_enabled:
-            cached_df = self._load_from_cache(tickers, start_date, end_date)
-            if cached_df is not None:
-                logger.info(f"Loaded {len(tickers)} benchmarks from cache")
-                return cached_df
+        # キャッシュチェック（常に有効）
+        cached_df = self._load_from_cache(tickers, start_date, end_date)
+        if cached_df is not None:
+            logger.info(f"Loaded {len(tickers)} benchmarks from cache")
+            return cached_df
 
         # yfinanceでデータ取得
         try:
@@ -154,7 +166,7 @@ class BenchmarkFetcher:
         except Exception as e:
             raise BenchmarkFetcherError(f"Failed to fetch data from yfinance: {e}")
 
-        if df.empty:
+        if df is None or len(df) == 0:
             raise BenchmarkFetcherError("No data returned from yfinance")
 
         # Adj Close列を抽出
@@ -181,9 +193,8 @@ class BenchmarkFetcher:
             # 前方補完
             prices = prices.ffill()
 
-        # キャッシュに保存
-        if self._cache_enabled:
-            self._save_to_cache(prices, tickers, start_date, end_date)
+        # キャッシュに保存（常に有効）
+        self._save_to_cache(prices, tickers, start_date, end_date)
 
         logger.info(f"Fetched {len(prices)} days of benchmark data")
         return prices
@@ -213,7 +224,7 @@ class BenchmarkFetcher:
         ValueError
             無効な頻度が指定された場合
         """
-        if prices.empty:
+        if prices is None or len(prices) == 0:
             return pd.DataFrame()
 
         valid_frequencies = ["daily", "weekly", "monthly"]
@@ -250,7 +261,7 @@ class BenchmarkFetcher:
         pd.DataFrame
             累積リターンのDataFrame（初期値1.0から開始）
         """
-        if returns.empty:
+        if returns is None or len(returns) == 0:
             return pd.DataFrame()
 
         cumulative = (1 + returns).cumprod()
@@ -279,7 +290,7 @@ class BenchmarkFetcher:
         pd.DataFrame
             統計情報（年率リターン、ボラティリティ、シャープレシオ等）
         """
-        if returns.empty:
+        if returns is None or len(returns) == 0:
             return pd.DataFrame()
 
         stats = {}
@@ -290,31 +301,31 @@ class BenchmarkFetcher:
             if len(r) < 2:
                 continue
 
-            # 年率リターン
-            annual_return = r.mean() * trading_days_per_year
+            r_array = r.values
 
-            # 年率ボラティリティ
-            annual_vol = r.std() * (trading_days_per_year ** 0.5)
+            # Use unified metrics module
+            annual_return = float(np.mean(r_array)) * trading_days_per_year
+            annual_vol = calculate_volatility(
+                r_array, annualization_factor=trading_days_per_year
+            )
+            sharpe = calculate_sharpe_ratio(
+                r_array,
+                risk_free_rate=risk_free_rate,
+                annualization_factor=trading_days_per_year,
+            )
+            max_dd = calculate_max_drawdown(returns=r_array)
 
-            # シャープレシオ
-            if annual_vol > 0:
-                sharpe = (annual_return - risk_free_rate) / annual_vol
-            else:
-                sharpe = 0.0
-
-            # 最大ドローダウン
+            # Calculate cumulative return for total_return
             cumulative = (1 + r).cumprod()
-            rolling_max = cumulative.expanding().max()
-            drawdown = (cumulative - rolling_max) / rolling_max
-            max_drawdown = drawdown.min()
+            total_ret = cumulative.iloc[-1] - 1 if len(cumulative) > 0 else 0
 
             stats[ticker] = {
                 "name": self.BENCHMARKS.get(ticker, ticker),
                 "annual_return": round(annual_return, 4),
                 "annual_volatility": round(annual_vol, 4),
                 "sharpe_ratio": round(sharpe, 4),
-                "max_drawdown": round(max_drawdown, 4),
-                "total_return": round(cumulative.iloc[-1] - 1, 4) if len(cumulative) > 0 else 0,
+                "max_drawdown": round(-max_dd, 4),  # Return as negative for consistency
+                "total_return": round(total_ret, 4),
             }
 
         return pd.DataFrame(stats).T
@@ -324,11 +335,11 @@ class BenchmarkFetcher:
         tickers: List[str],
         start_date: str,
         end_date: str,
-    ) -> Path:
-        """キャッシュファイルパスを生成"""
+    ) -> str:
+        """キャッシュファイルパスを生成（StorageBackend用）"""
         tickers_str = "_".join(sorted(tickers))
         filename = f"benchmarks_{tickers_str}_{start_date}_{end_date}.parquet"
-        return self._cache_dir / filename
+        return f"{self._cache_subdir}/{filename}"
 
     def _load_from_cache(
         self,
@@ -336,11 +347,18 @@ class BenchmarkFetcher:
         start_date: str,
         end_date: str,
     ) -> Optional[pd.DataFrame]:
-        """キャッシュからデータを読み込み"""
+        """キャッシュからデータを読み込み（StorageBackend経由）"""
         cache_path = self._get_cache_path(tickers, start_date, end_date)
-        if cache_path.exists():
+        if self._backend.exists(cache_path):
             try:
-                return pd.read_parquet(cache_path)
+                df = self._backend.read_parquet(cache_path)
+                # polars DataFrameの場合はpandasに変換
+                if hasattr(df, 'to_pandas'):
+                    df = df.to_pandas()
+                # Dateインデックスを復元（polars変換で失われる場合がある）
+                if 'Date' in df.columns and not isinstance(df.index, pd.DatetimeIndex):
+                    df = df.set_index('Date')
+                return df
             except Exception as e:
                 logger.warning(f"Failed to load cache: {e}")
         return None
@@ -352,10 +370,10 @@ class BenchmarkFetcher:
         start_date: str,
         end_date: str,
     ) -> None:
-        """データをキャッシュに保存"""
+        """データをキャッシュに保存（StorageBackend経由）"""
         cache_path = self._get_cache_path(tickers, start_date, end_date)
         try:
-            df.to_parquet(cache_path)
+            self._backend.write_parquet(df, cache_path)
             logger.debug(f"Saved to cache: {cache_path}")
         except Exception as e:
             logger.warning(f"Failed to save cache: {e}")

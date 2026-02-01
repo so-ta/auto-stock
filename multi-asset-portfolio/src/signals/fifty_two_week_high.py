@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
-from .base import ParameterSpec, Signal, SignalResult
+from .base import ParameterSpec, Signal, SignalResult, TimeframeAffinity, TimeframeConfig
 from .registry import SignalRegistry
 
 
@@ -65,6 +65,22 @@ class FiftyTwoWeekHighMomentumSignal(Signal):
     """
 
     signal_name = "fifty_two_week_high_momentum"
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """52-Week High: long-term only (63-504 days).
+
+        Based on George & Hwang (2004), the 52-week high effect requires
+        longer lookback periods. Short periods (< 63 days) lack the
+        anchoring effect that drives this anomaly.
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.LONG_TERM_ONLY,
+            min_period=63,
+            max_period=504,
+            # Only half_year (126) and yearly (252) make sense for this signal
+            supported_variants=["half_year", "yearly"],
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:

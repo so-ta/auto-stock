@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 class IntraClusterMethod(str, Enum):
     """クラスタ内最適化手法"""
     MIN_VARIANCE = "min_variance"      # 最小分散
-    MAX_SHARPE = "max_sharpe"          # 最大シャープ比
+    MAX_SHARPE = "max_sharpe"          # 最大シャープ比（期待リターン考慮）
     EQUAL_WEIGHT = "equal_weight"      # 等重み
     RISK_PARITY = "risk_parity"        # リスクパリティ
 
@@ -68,6 +68,7 @@ class InterClusterMethod(str, Enum):
     RISK_PARITY = "risk_parity"        # リスクパリティ（逆ボラ加重）
     EQUAL_WEIGHT = "equal_weight"      # 等重み
     MIN_VARIANCE = "min_variance"      # 最小分散
+    ALPHA_WEIGHTED = "alpha_weighted"  # アルファ加重（期待リターン考慮）
 
 
 # =============================================================================
@@ -214,6 +215,9 @@ class NestedClusteredOptimization:
         self._assets: list[str] = []
         self._linkage_matrix: NDArray[np.float64] | None = None
         self._cluster_labels: NDArray[np.int32] | None = None
+        self._alpha_scores: dict[str, float] | None = None
+        self._expected_returns: dict[str, float] | pd.Series | None = None
+        self._risk_free_rate: float = 0.0
 
         # クラスタ内最適化キャッシュ
         self._cluster_weights_cache: dict[str, dict[str, float]] = {}
@@ -224,15 +228,30 @@ class NestedClusteredOptimization:
         self._cache_hits: int = 0
         self._cache_misses: int = 0
 
-    def fit(self, returns: pd.DataFrame) -> NCOResult:
+    def fit(
+        self,
+        returns: pd.DataFrame,
+        alpha_scores: dict[str, float] | None = None,
+        expected_returns: dict[str, float] | pd.Series | None = None,
+        risk_free_rate: float = 0.0,
+    ) -> NCOResult:
         """リターンデータから最適配分を計算
 
         Args:
             returns: リターンデータ（列=アセット、行=日付）
+            alpha_scores: アルファスコア辞書（アセット -> スコア）。
+                         inter_cluster_method="alpha_weighted"の場合に使用。
+            expected_returns: 期待リターン辞書（アセット -> 期待リターン）。
+                         intra_cluster_method="max_sharpe"の場合に使用。
+            risk_free_rate: リスクフリーレート（max_sharpe計算用）
 
         Returns:
             NCOResult: 配分結果
         """
+        self._alpha_scores = alpha_scores
+        self._expected_returns = expected_returns
+        self._risk_free_rate = risk_free_rate
+
         if returns.empty:
             logger.warning("Empty returns data")
             return NCOResult(weights=pd.Series(dtype=float))
@@ -476,6 +495,21 @@ class NestedClusteredOptimization:
             weights = np.ones(n) / n
         elif self.config.intra_cluster_method == "risk_parity":
             weights = self._risk_parity_weights(cov_cluster)
+        elif self.config.intra_cluster_method == "max_sharpe":
+            # 期待リターンを抽出
+            exp_ret = None
+            if self._expected_returns is not None:
+                if isinstance(self._expected_returns, pd.Series):
+                    exp_ret = np.array([
+                        self._expected_returns.get(a, 0.0) for a in assets
+                    ])
+                else:
+                    exp_ret = np.array([
+                        self._expected_returns.get(a, 0.0) for a in assets
+                    ])
+            weights = self._max_sharpe_weights(
+                cov_cluster, exp_ret, self._risk_free_rate
+            )
         else:
             weights = np.ones(n) / n
 
@@ -544,6 +578,76 @@ class NestedClusteredOptimization:
         # フォールバック: 等重み
         return np.ones(n) / n
 
+    def _max_sharpe_weights(
+        self,
+        cov: NDArray[np.float64],
+        expected_returns: NDArray[np.float64] | None = None,
+        risk_free_rate: float = 0.0,
+    ) -> NDArray[np.float64]:
+        """クラスタ内でシャープレシオ最大化ウェイトを計算
+
+        max w'μ / sqrt(w'Σw)
+        s.t. sum(w) = 1, w >= 0
+
+        Args:
+            cov: 共分散行列
+            expected_returns: 期待リターン（Noneの場合は等期待リターンを仮定）
+            risk_free_rate: リスクフリーレート
+
+        Returns:
+            重み配列
+        """
+        n = cov.shape[0]
+
+        # 期待リターンがない場合は等期待リターンを仮定
+        if expected_returns is None:
+            expected_returns = np.ones(n) / n * 0.1  # 10%のベースリターン
+
+        # 超過リターン
+        excess_returns = expected_returns - risk_free_rate
+
+        # 目的関数: 負のシャープレシオ（最小化のため）
+        def neg_sharpe(w: NDArray[np.float64]) -> float:
+            port_return = np.dot(w, excess_returns)
+            port_var = np.dot(w, np.dot(cov, w))
+            port_vol = np.sqrt(max(port_var, 1e-10))
+            return -port_return / port_vol
+
+        # 制約: 重みの合計 = 1
+        constraints = [
+            {"type": "eq", "fun": lambda w: np.sum(w) - 1.0},
+        ]
+
+        # 境界: 0 <= w <= 1
+        bounds = [(0.0, 1.0) for _ in range(n)]
+
+        # 初期値: 等重み
+        w0 = np.ones(n) / n
+
+        # 最適化
+        try:
+            result = minimize(
+                neg_sharpe,
+                w0,
+                method="SLSQP",
+                bounds=bounds,
+                constraints=constraints,
+                options={"maxiter": self.config.max_iter, "ftol": 1e-10},
+            )
+
+            if result.success:
+                weights = result.x
+                # 負の重みを0にクリップして正規化
+                weights = np.clip(weights, 0.0, None)
+                if weights.sum() > 0:
+                    weights = weights / weights.sum()
+                    return weights
+        except Exception as e:
+            logger.warning(f"Max sharpe optimization failed: {e}")
+
+        # フォールバック: 等重み
+        return np.ones(n) / n
+
     def _risk_parity_weights(self, cov: NDArray[np.float64]) -> NDArray[np.float64]:
         """リスクパリティ重みを計算
 
@@ -592,6 +696,45 @@ class NestedClusteredOptimization:
             # 最小分散（クラスタを独立と仮定）
             inv_vars = 1.0 / cluster_vars
             inter_weights = inv_vars / inv_vars.sum()
+
+        elif self.config.inter_cluster_method == "alpha_weighted":
+            # アルファ加重（期待リターン考慮）
+            if self._alpha_scores:
+                # 各クラスタの平均アルファを計算
+                cluster_alphas = []
+                for cluster in clusters:
+                    alphas = [
+                        self._alpha_scores.get(asset, 0.0)
+                        for asset in cluster.assets
+                    ]
+                    # クラスタ内重みで加重平均
+                    if cluster.weights_intra:
+                        weighted_alpha = sum(
+                            cluster.weights_intra.get(asset, 0.0) * self._alpha_scores.get(asset, 0.0)
+                            for asset in cluster.assets
+                        )
+                    else:
+                        weighted_alpha = np.mean(alphas) if alphas else 0.0
+                    cluster_alphas.append(weighted_alpha)
+
+                cluster_alphas = np.array(cluster_alphas)
+
+                # Softmax変換（数値安定性のためmax減算）
+                max_alpha = np.max(cluster_alphas)
+                exp_alphas = np.exp(cluster_alphas - max_alpha)
+                inter_weights = exp_alphas / exp_alphas.sum()
+
+                logger.info(
+                    "Alpha-weighted inter-cluster allocation: alphas=%s, weights=%s",
+                    cluster_alphas.tolist(),
+                    inter_weights.tolist(),
+                )
+            else:
+                # アルファスコアがない場合はリスクパリティにフォールバック
+                logger.warning("No alpha scores provided, falling back to risk_parity")
+                cluster_vols = np.sqrt(cluster_vars)
+                inv_vols = 1.0 / cluster_vols
+                inter_weights = inv_vols / inv_vols.sum()
 
         else:
             inter_weights = np.ones(len(clusters)) / len(clusters)

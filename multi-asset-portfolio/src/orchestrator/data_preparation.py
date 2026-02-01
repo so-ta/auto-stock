@@ -6,6 +6,8 @@ This module handles:
 1. Data fetching via MultiSourceAdapter
 2. Data cutoff for backtesting (prevents future data leakage)
 3. Quality checks and asset exclusion
+
+Cache operations are delegated to data_cache submodules for modularity.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ import pickle
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import structlog
 
@@ -25,6 +27,13 @@ if TYPE_CHECKING:
     from src.config.settings import Settings
     from src.data.quality_checker import DataQualityReport
     from src.utils.logger import AuditLogger
+    from src.utils.storage_backend import StorageBackend
+
+from src.utils.hash_utils import compute_universe_hash
+
+# Cache managers (extracted for modularity)
+from src.orchestrator.data_cache.quality_cache import QualityCacheManager, QualityCheckCache
+from src.orchestrator.data_cache.price_cache import PriceCacheManager
 
 # Universe expansion support (optional - imported on demand)
 try:
@@ -39,25 +48,7 @@ except ImportError:
 logger = structlog.get_logger(__name__)
 
 
-@dataclass
-class QualityCheckCache:
-    """Cache for quality check results with invalidation support.
-
-    Attributes:
-        date: The date when the cache was created
-        universe_hash: Hash of the universe (symbol list)
-        quality_config_hash: Hash of quality check configuration
-        reports: Quality reports for each symbol
-        excluded_assets: List of excluded asset symbols
-        last_bar_dates: Last bar date for each symbol (for incremental check)
-    """
-
-    date: datetime
-    universe_hash: str
-    quality_config_hash: str
-    reports: dict[str, "DataQualityReport"]
-    excluded_assets: list[str]
-    last_bar_dates: dict[str, datetime] = field(default_factory=dict)
+# Note: QualityCheckCache is now imported from data_cache.quality_cache
 
 
 @dataclass
@@ -87,6 +78,7 @@ class DataPreparation:
         settings: "Settings",
         output_dir: Path | None = None,
         audit_logger: "AuditLogger | None" = None,
+        storage_backend: "Optional[StorageBackend]" = None,
     ) -> None:
         """
         Initialize DataPreparation.
@@ -95,11 +87,13 @@ class DataPreparation:
             settings: Application settings
             output_dir: Directory for cache and outputs
             audit_logger: Optional audit logger for detailed logging
+            storage_backend: Optional StorageBackend for S3 price cache support
         """
         self._settings = settings
         self._output_dir = output_dir or Path("data/output")
         self._audit_logger = audit_logger
         self._logger = logger.bind(component="data_preparation")
+        self._storage_backend = storage_backend
 
         # Data stores
         self._raw_data: dict[str, "pl.DataFrame"] = {}
@@ -108,6 +102,31 @@ class DataPreparation:
         self._quality_summary: dict[str, list[str]] = {}
         self._fetch_summary: dict[str, list[str]] = {}
         self._warnings: list[str] = []
+
+        # Cache managers (initialized lazily)
+        self._quality_cache_manager: QualityCacheManager | None = None
+        self._price_cache_manager: PriceCacheManager | None = None
+
+    @property
+    def quality_cache_manager(self) -> QualityCacheManager:
+        """Get quality cache manager (lazy initialization)."""
+        if self._quality_cache_manager is None:
+            self._quality_cache_manager = QualityCacheManager(
+                settings=self._settings,
+                cache_dir=self._get_cache_dir(),
+                storage_backend=self._storage_backend,
+            )
+        return self._quality_cache_manager
+
+    @property
+    def price_cache_manager(self) -> PriceCacheManager | None:
+        """Get price cache manager (requires StorageBackend)."""
+        if self._price_cache_manager is None and self._storage_backend is not None:
+            self._price_cache_manager = PriceCacheManager(
+                settings=self._settings,
+                storage_backend=self._storage_backend,
+            )
+        return self._price_cache_manager
 
     @property
     def settings(self) -> "Settings":
@@ -118,10 +137,15 @@ class DataPreparation:
     # Quality Check Cache Methods
     # =========================================================================
     def _get_cache_dir(self) -> Path:
-        """Get quality check cache directory."""
-        cache_dir = self._output_dir / ".cache" / "quality"
+        """Get quality check cache directory (local mode only)."""
+        from src.config.settings import get_cache_path
+        cache_dir = Path(get_cache_path("quality"))
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir
+
+    def _get_cache_subdir(self) -> str:
+        """Get cache subdirectory for StorageBackend."""
+        return "quality"
 
     def _compute_universe_hash(self, universe: list[str]) -> str:
         """Compute hash of universe (symbol list).
@@ -132,9 +156,7 @@ class DataPreparation:
         Returns:
             MD5 hash of sorted symbols
         """
-        sorted_symbols = sorted(universe)
-        hash_input = ",".join(sorted_symbols).encode("utf-8")
-        return hashlib.md5(hash_input).hexdigest()[:16]
+        return compute_universe_hash(universe)
 
     def _compute_quality_config_hash(self) -> str:
         """Compute hash of quality configuration.
@@ -167,7 +189,7 @@ class DataPreparation:
         return self._get_cache_dir() / f"{date_str}.pkl"
 
     def _load_quality_cache(self, date: datetime) -> QualityCheckCache | None:
-        """Load quality check cache from disk.
+        """Load quality check cache from disk or StorageBackend.
 
         Args:
             date: The date to load cache for
@@ -175,16 +197,26 @@ class DataPreparation:
         Returns:
             QualityCheckCache if valid cache exists, None otherwise
         """
-        cache_path = self._get_cache_path(date)
-        if not cache_path.exists():
-            return None
+        date_str = date.strftime("%Y%m%d")
+        cache_key = f"{date_str}.pkl"
 
         try:
-            with open(cache_path, "rb") as f:
-                cache = pickle.load(f)
+            if self._storage_backend is not None:
+                # Use StorageBackend
+                cache = self._storage_backend.read_pickle(
+                    f"{self._get_cache_subdir()}/{cache_key}"
+                )
+            else:
+                # Local file
+                cache_path = self._get_cache_path(date)
+                if not cache_path.exists():
+                    return None
+                with open(cache_path, "rb") as f:
+                    cache = pickle.load(f)
+
             if isinstance(cache, QualityCheckCache):
                 return cache
-        except (pickle.PickleError, EOFError, TypeError) as e:
+        except (pickle.PickleError, EOFError, TypeError, FileNotFoundError) as e:
             self._logger.warning(f"Failed to load quality cache: {e}")
 
         return None
@@ -198,7 +230,7 @@ class DataPreparation:
         excluded_assets: list[str],
         last_bar_dates: dict[str, datetime],
     ) -> None:
-        """Save quality check cache to disk.
+        """Save quality check cache to disk or StorageBackend.
 
         Args:
             date: The date for the cache
@@ -217,11 +249,23 @@ class DataPreparation:
             last_bar_dates=last_bar_dates,
         )
 
-        cache_path = self._get_cache_path(date)
+        date_str = date.strftime("%Y%m%d")
+        cache_key = f"{date_str}.pkl"
+
         try:
-            with open(cache_path, "wb") as f:
-                pickle.dump(cache, f, protocol=pickle.HIGHEST_PROTOCOL)
-            self._logger.debug(f"Saved quality cache to {cache_path}")
+            if self._storage_backend is not None:
+                # Use StorageBackend
+                self._storage_backend.write_pickle(
+                    cache,
+                    f"{self._get_cache_subdir()}/{cache_key}"
+                )
+                self._logger.debug(f"Saved quality cache via StorageBackend: {cache_key}")
+            else:
+                # Local file
+                cache_path = self._get_cache_path(date)
+                with open(cache_path, "wb") as f:
+                    pickle.dump(cache, f, protocol=pickle.HIGHEST_PROTOCOL)
+                self._logger.debug(f"Saved quality cache to {cache_path}")
         except (pickle.PickleError, OSError) as e:
             self._logger.warning(f"Failed to save quality cache: {e}")
 
@@ -294,11 +338,12 @@ class DataPreparation:
         CurrencyConverter, and CalendarManager.
 
         New data flow:
-        1. UniverseLoader -> ticker list
-        2. MultiSourceAdapter -> batch fetch with progress
+        1. Load from cache (partial)
+        2. Fetch missing symbols via MultiSourceAdapter
         3. CurrencyConverter -> USD conversion
         4. CalendarManager -> common calendar alignment
-        5. Quality checks with summary report
+        5. Save to cache
+        6. Quality checks with summary report
         """
         try:
             from tqdm import tqdm
@@ -327,6 +372,17 @@ class DataPreparation:
             parallel_workers=parallel_workers,
         )
 
+        # Step 1: Load from cache
+        cached_prices, missing_symbols = self._load_from_cache_partial(
+            universe, start_date, end_date
+        )
+        self._raw_data.update(cached_prices)
+
+        # If all symbols are in cache, skip fetch
+        if not missing_symbols:
+            self._logger.info(f"All {len(universe)} symbols loaded from cache")
+            return self._raw_data
+
         # Initialize components
         adapter = MultiSourceAdapter(settings=self.settings)
         converter = CurrencyConverter(base_currency=base_currency)
@@ -338,12 +394,13 @@ class DataPreparation:
             "failed": [],
             "converted": [],
             "aligned": [],
+            "from_cache": list(cached_prices.keys()),
         }
 
-        # Batch processing with progress
+        # Batch processing with progress (only for missing symbols)
         batches = [
-            universe[i:i + batch_size]
-            for i in range(0, len(universe), batch_size)
+            missing_symbols[i:i + batch_size]
+            for i in range(0, len(missing_symbols), batch_size)
         ]
 
         progress_iter = tqdm(batches, desc="Fetching data") if tqdm else batches
@@ -387,6 +444,9 @@ class DataPreparation:
                         )
                         fetch_results["failed"].append(symbol)
 
+                # Save batch to cache after processing
+                self._save_batch_to_cache(batch_data, start_date, end_date)
+
             except Exception as e:
                 self._logger.error(f"Batch fetch failed: {e}")
                 fetch_results["failed"].extend(batch)
@@ -412,15 +472,316 @@ class DataPreparation:
         # Store fetch summary
         self._fetch_summary = fetch_results
 
+        from_cache = len(fetch_results.get("from_cache", []))
         self._logger.info(
             "Data fetch completed (expanded mode)",
-            success=len(fetch_results["success"]),
+            from_cache=from_cache,
+            fetched=len(fetch_results["success"]),
             failed=len(fetch_results["failed"]),
             converted=len(fetch_results["converted"]),
             aligned=len(fetch_results["aligned"]),
         )
 
         return self._raw_data
+
+    def _load_from_cache_partial(
+        self,
+        universe: list[str],
+        start_date: datetime,
+        end_date: datetime,
+    ) -> tuple[dict[str, "pl.DataFrame"], list[str]]:
+        """
+        キャッシュから価格データを部分的に読み込む。
+
+        StorageBackend対応:
+        - storage_backend指定時: S3/ローカルを透過的に操作
+        - storage_backend未指定時: ローカルファイルシステムを直接操作
+
+        Args:
+            universe: シンボルのリスト
+            start_date: 開始日
+            end_date: 終了日
+
+        Returns:
+            (読み込めた価格データ, 読み込めなかったシンボルのリスト)
+        """
+        import polars as pl
+
+        prices: dict[str, pl.DataFrame] = {}
+        missing_symbols: list[str] = []
+
+        # StorageBackend経由の場合
+        if self._storage_backend is not None:
+            return self._load_from_cache_via_backend(universe, start_date, end_date)
+
+        # ローカルファイルシステムの場合
+        from src.config.settings import get_cache_path
+        cache_dir = Path(get_cache_path("prices"))
+
+        if not cache_dir.exists():
+            return {}, list(universe)
+
+        # キャッシュファイルのマッピングを作成
+        cache_symbol_map: dict[str, Path] = {}
+        for pf in cache_dir.glob("*.parquet"):
+            cache_name = pf.stem
+            # ファイル名から元のシンボルを復元
+            original_symbol = cache_name.replace("_X", "=X") if cache_name.endswith("_X") else cache_name
+            cache_symbol_map[original_symbol] = pf
+
+        for symbol in universe:
+            pf = cache_symbol_map.get(symbol)
+            if pf is None:
+                missing_symbols.append(symbol)
+                continue
+
+            try:
+                df = pl.read_parquet(pf)
+                df = self._filter_by_date_range(df, start_date, end_date)
+
+                if df is not None and len(df) > 0:
+                    prices[symbol] = df
+                else:
+                    missing_symbols.append(symbol)
+
+            except Exception as e:
+                self._logger.debug(f"Failed to load {symbol} from cache: {e}")
+                missing_symbols.append(symbol)
+
+        if prices:
+            self._logger.info(
+                f"Loaded {len(prices)}/{len(universe)} symbols from cache"
+            )
+
+        return prices, missing_symbols
+
+    def _load_from_cache_via_backend(
+        self,
+        universe: list[str],
+        start_date: datetime,
+        end_date: datetime,
+    ) -> tuple[dict[str, "pl.DataFrame"], list[str]]:
+        """StorageBackend経由でキャッシュを読み込む。"""
+        import polars as pl
+
+        prices: dict[str, pl.DataFrame] = {}
+        missing_symbols: list[str] = []
+
+        # キャッシュファイル一覧を取得
+        cache_files = self._storage_backend.list_files("prices", "*.parquet")
+
+        # シンボル -> ファイルパスのマッピング
+        cache_symbol_map: dict[str, str] = {}
+        for rel_path in cache_files:
+            # prices/AAPL.parquet -> AAPL
+            filename = rel_path.split("/")[-1] if "/" in rel_path else rel_path
+            cache_name = filename.replace(".parquet", "")
+            original_symbol = cache_name.replace("_X", "=X") if cache_name.endswith("_X") else cache_name
+            cache_symbol_map[original_symbol] = f"prices/{filename}"
+
+        for symbol in universe:
+            rel_path = cache_symbol_map.get(symbol)
+            if rel_path is None:
+                # シンボル名からパスを構築して確認
+                safe_symbol = symbol.replace("=", "_").replace("/", "_")
+                rel_path = f"prices/{safe_symbol}.parquet"
+                if not self._storage_backend.exists(rel_path):
+                    missing_symbols.append(symbol)
+                    continue
+
+            try:
+                df = self._storage_backend.read_parquet(rel_path)
+                df = self._filter_by_date_range(df, start_date, end_date)
+
+                if df is not None and len(df) > 0:
+                    prices[symbol] = df
+                else:
+                    missing_symbols.append(symbol)
+
+            except Exception as e:
+                self._logger.debug(f"Failed to load {symbol} from backend: {e}")
+                missing_symbols.append(symbol)
+
+        if prices:
+            self._logger.info(
+                f"Loaded {len(prices)}/{len(universe)} symbols from cache (via backend)"
+            )
+
+        return prices, missing_symbols
+
+    def _filter_by_date_range(
+        self,
+        df: "pl.DataFrame",
+        start_date: datetime,
+        end_date: datetime,
+    ) -> "pl.DataFrame | None":
+        """DataFrameを日付範囲でフィルタリング。"""
+        import polars as pl
+
+        # 日付列を特定
+        date_col = None
+        for col in ["timestamp", "date", "datetime", "time"]:
+            if col in df.columns:
+                date_col = col
+                break
+
+        if date_col is None:
+            return None
+
+        # 日付でフィルタリング
+        if df[date_col].dtype == pl.Date:
+            start_filter = start_date.date() if hasattr(start_date, 'date') else start_date
+            end_filter = end_date.date() if hasattr(end_date, 'date') else end_date
+        else:
+            start_filter = start_date
+            end_filter = end_date
+
+        return df.filter(
+            (pl.col(date_col) >= start_filter) &
+            (pl.col(date_col) <= end_filter)
+        )
+
+    def _save_batch_to_cache(
+        self,
+        batch_data: dict[str, Any],
+        start_date: datetime,
+        end_date: datetime,
+    ) -> None:
+        """
+        バッチデータをキャッシュに保存する（既存データとマージ）。
+
+        StorageBackend対応:
+        - storage_backend指定時: S3/ローカルを透過的に操作
+        - storage_backend未指定時: ローカルファイルシステムを直接操作
+
+        Args:
+            batch_data: シンボル -> OHLCVData の辞書
+            start_date: データ開始日
+            end_date: データ終了日
+        """
+        import polars as pl
+
+        saved_count = 0
+        merged_count = 0
+
+        for symbol, ohlcv_data in batch_data.items():
+            if ohlcv_data is None:
+                continue
+
+            # OHLCVData の data 属性を取得
+            if hasattr(ohlcv_data, "data"):
+                new_df = ohlcv_data.data
+                if new_df is None or (hasattr(new_df, "is_empty") and new_df.is_empty()):
+                    continue
+            else:
+                continue
+
+            try:
+                # ファイル名に使用できない文字を置換
+                safe_symbol = symbol.replace("=", "_").replace("/", "_")
+                rel_path = f"prices/{safe_symbol}.parquet"
+
+                # StorageBackend経由の場合
+                if self._storage_backend is not None:
+                    merged = self._save_to_backend_with_merge(
+                        new_df, rel_path, symbol
+                    )
+                    if merged:
+                        merged_count += 1
+                    else:
+                        saved_count += 1
+                    continue
+
+                # ローカルファイルシステムの場合
+                from src.config.settings import get_cache_path
+                cache_dir = Path(get_cache_path("prices"))
+                cache_path = cache_dir / f"{safe_symbol}.parquet"
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # 既存のキャッシュがあればマージ
+                if cache_path.exists():
+                    try:
+                        existing_df = pl.read_parquet(cache_path)
+                        merged_df = self._merge_dataframes(existing_df, new_df)
+                        if merged_df is not None:
+                            merged_df.write_parquet(cache_path)
+                            merged_count += 1
+                            continue
+                    except Exception as e:
+                        self._logger.debug(f"Cache merge failed for {symbol}, overwriting: {e}")
+
+                # Polars DataFrame の場合
+                if hasattr(new_df, "write_parquet"):
+                    new_df.write_parquet(cache_path)
+                # Pandas DataFrame の場合
+                elif hasattr(new_df, "to_parquet"):
+                    new_df.to_parquet(cache_path)
+
+                saved_count += 1
+            except Exception as e:
+                self._logger.debug(f"Failed to cache {symbol}: {e}")
+
+        total = saved_count + merged_count
+        if total > 0:
+            backend_info = " (via backend)" if self._storage_backend else ""
+            self._logger.info(
+                f"Cached {total} symbols (new: {saved_count}, merged: {merged_count}){backend_info}"
+            )
+
+    def _save_to_backend_with_merge(
+        self,
+        new_df: "pl.DataFrame",
+        rel_path: str,
+        symbol: str,
+    ) -> bool:
+        """StorageBackend経由でキャッシュを保存（マージ対応）。
+
+        Returns:
+            True if merged with existing, False if new save
+        """
+        import polars as pl
+
+        merged = False
+
+        # 既存データがあればマージ
+        if self._storage_backend.exists(rel_path):
+            try:
+                existing_df = self._storage_backend.read_parquet(rel_path)
+                merged_df = self._merge_dataframes(existing_df, new_df)
+                if merged_df is not None:
+                    self._storage_backend.write_parquet(merged_df, rel_path)
+                    merged = True
+                    return merged
+            except Exception as e:
+                self._logger.debug(f"Merge failed for {symbol}, overwriting: {e}")
+
+        # 新規保存
+        self._storage_backend.write_parquet(new_df, rel_path)
+        return merged
+
+    def _merge_dataframes(
+        self,
+        existing_df: "pl.DataFrame",
+        new_df: "pl.DataFrame",
+    ) -> "pl.DataFrame | None":
+        """2つのDataFrameをマージ（重複は新しいデータを優先）。"""
+        import polars as pl
+
+        # 日付列を特定
+        date_col = None
+        for col in ["timestamp", "date", "datetime", "time"]:
+            if col in existing_df.columns and col in new_df.columns:
+                date_col = col
+                break
+
+        if date_col is None:
+            return None
+
+        # マージ（重複は新しいデータを優先）
+        combined = pl.concat([existing_df, new_df])
+        combined = combined.unique(subset=[date_col], keep="last")
+        combined = combined.sort(date_col)
+        return combined
 
     def apply_data_cutoff(self, cutoff_date: datetime) -> None:
         """

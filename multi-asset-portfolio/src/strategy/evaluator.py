@@ -25,17 +25,14 @@ from typing import Any, Protocol
 
 import numpy as np
 
-from ..backtest.numba_accelerate import (
-    calculate_max_drawdown_pct_numba,
-    calculate_sharpe_ratio_numba,
-    calculate_volatility_numba,
+from ..utils.metrics import (
+    calculate_sharpe_ratio as calc_sharpe,
+    calculate_max_drawdown as calc_max_dd,
+    calculate_volatility as calc_vol,
 )
 from .gate_checker import GateCheckResult, GateChecker, GateConfig, StrategyMetrics
 
 logger = logging.getLogger(__name__)
-
-# Flag to enable/disable Numba acceleration
-USE_NUMBA = True
 
 
 class EvaluationStatus(Enum):
@@ -273,53 +270,33 @@ class BaseMetricsCalculator(ABC):
 class DefaultMetricsCalculator(BaseMetricsCalculator):
     """デフォルトのメトリクス計算実装
 
-    Phase 3Aのmetrics.pyが完成するまでの暫定実装。
-
-    Numba JIT Acceleration (v1.1.0+):
-    - calculate_sharpe_ratio, calculate_max_drawdown等がNumba JIT高速化
+    Uses unified metrics module (src/utils/metrics.py).
     """
 
     def calculate_sharpe_ratio(self, returns: np.ndarray) -> float:
         """シャープレシオを計算（年率化）
 
-        Uses Numba JIT when USE_NUMBA=True.
+        Uses unified metrics module with Numba acceleration.
         """
         if len(returns) == 0:
             return 0.0
 
-        # Use Numba accelerated version if enabled
-        if USE_NUMBA:
-            return float(calculate_sharpe_ratio_numba(
-                returns.astype(np.float64),
-                risk_free_rate=0.0,
-                annualization_factor=self.annualization_factor,
-            ))
-
-        # Fallback to pure NumPy
-        mean_return = np.mean(returns)
-        std_return = np.std(returns, ddof=1)
-        if std_return == 0:
-            return 0.0
-        daily_sharpe = mean_return / std_return
-        return float(daily_sharpe * np.sqrt(self.annualization_factor))
+        return calc_sharpe(
+            returns,
+            risk_free_rate=0.0,
+            annualization_factor=self.annualization_factor,
+        )
 
     def calculate_max_drawdown(self, returns: np.ndarray) -> float:
         """最大ドローダウンを計算（%）
 
-        Uses Numba JIT when USE_NUMBA=True.
+        Uses unified metrics module with Numba acceleration.
         """
         if len(returns) == 0:
             return 0.0
 
-        # Use Numba accelerated version if enabled
-        if USE_NUMBA:
-            return float(calculate_max_drawdown_pct_numba(returns.astype(np.float64)))
-
-        # Fallback to pure NumPy
-        cumulative = np.cumprod(1 + returns)
-        running_max = np.maximum.accumulate(cumulative)
-        drawdowns = (running_max - cumulative) / running_max
-        return float(np.max(drawdowns) * 100)
+        # Note: calc_max_dd returns fraction, multiply by 100 for percentage
+        return calc_max_dd(returns=returns) * 100
 
     def calculate_win_rate(self, trades: list[dict[str, Any]]) -> float:
         """勝率を計算（%）"""
@@ -348,20 +325,15 @@ class DefaultMetricsCalculator(BaseMetricsCalculator):
     def calculate_volatility(self, returns: np.ndarray) -> float:
         """年率ボラティリティを計算
 
-        Uses Numba JIT when USE_NUMBA=True.
+        Uses unified metrics module with Numba acceleration.
         """
         if len(returns) == 0:
             return 0.0
 
-        # Use Numba accelerated version if enabled
-        if USE_NUMBA:
-            return float(calculate_volatility_numba(
-                returns.astype(np.float64),
-                annualization_factor=self.annualization_factor,
-            ))
-
-        # Fallback to pure NumPy
-        return float(np.std(returns, ddof=1) * np.sqrt(self.annualization_factor))
+        return calc_vol(
+            returns,
+            annualization_factor=self.annualization_factor,
+        )
 
     def calculate_all(
         self,

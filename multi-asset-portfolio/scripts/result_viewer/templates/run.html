@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}バックテスト実行 - バックテスト管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .run-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--dark-color);
+    }
+
+    .form-group .help-text {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    select.form-control {
+        appearance: none;
+        background: white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") right 0.75rem center/1.5em no-repeat;
+        cursor: pointer;
+    }
+
+    .date-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .period-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .period-btn {
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .period-btn:hover {
+        border-color: var(--primary-color);
+        background: rgba(52, 152, 219, 0.1);
+    }
+
+    .period-btn.active {
+        border-color: var(--primary-color);
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .advanced-section {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .advanced-toggle {
+        cursor: pointer;
+        color: var(--primary-color);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .advanced-toggle:hover {
+        text-decoration: underline;
+    }
+
+    .advanced-content {
+        display: none;
+        margin-top: 1rem;
+    }
+
+    .advanced-content.show {
+        display: block;
+    }
+
+    /* キャッシュカバレッジ・推定コストセクション */
+    .check-section {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+    }
+
+    .check-section h3 {
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .progress-bar-container {
+        margin-bottom: 1rem;
+    }
+
+    .progress-bar-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(135deg, var(--secondary-color) 0%, #27ae60 100%);
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .progress-bar-fill.warning {
+        background: linear-gradient(135deg, var(--warning-color) 0%, #e67e22 100%);
+    }
+
+    .progress-bar-fill.danger {
+        background: linear-gradient(135deg, var(--danger-color) 0%, #c0392b 100%);
+    }
+
+    .estimate-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .estimate-item {
+        text-align: center;
+        padding: 1rem;
+        background: white;
+        border-radius: 4px;
+    }
+
+    .estimate-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--dark-color);
+    }
+
+    .estimate-label {
+        font-size: 0.8rem;
+        color: #666;
+    }
+
+    /* 実行ボタン */
+    .btn-run {
+        width: 100%;
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--secondary-color) 0%, #27ae60 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 1.5rem;
+    }
+
+    .btn-run:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+    }
+
+    .btn-run:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-warning {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+    }
+
+    .alert-danger {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .alert-info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="run-container">
+    <h2 style="margin-bottom: 1.5rem; color: var(--dark-color);">バックテスト実行</h2>
+
+    <div id="alert-container"></div>
+
+    <div class="card">
+        <!-- ユニバース選択 -->
+        <div class="form-group">
+            <label for="universe">ユニバース</label>
+            <select id="universe" class="form-control" onchange="updatePreview()">
+                <option value="">-- 選択してください --</option>
+                {% for universe in universes %}
+                <option value="{{ universe.name }}"
+                        data-count="{{ universe.symbol_count }}"
+                        data-markets="{{ universe.markets|join(', ') }}"
+                        data-types="{{ universe.asset_types|join(', ') }}">
+                    {{ universe.name }} ({{ universe.symbol_count }} 銘柄)
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 期間設定 -->
+        <div class="form-group">
+            <label>期間</label>
+            <div class="period-buttons">
+                {% for preset in period_presets %}
+                <button type="button" class="period-btn" data-years="{{ preset.years }}"
+                        onclick="applyPeriodPreset({{ preset.years }}, this)">
+                    {{ preset.name }}
+                </button>
+                {% endfor %}
+            </div>
+            <div class="date-inputs">
+                <div>
+                    <label for="start-date" style="font-size: 0.85rem; font-weight: normal;">開始日</label>
+                    <input type="date" id="start-date" class="form-control" onchange="updatePreview()">
+                </div>
+                <div>
+                    <label for="end-date" style="font-size: 0.85rem; font-weight: normal;">終了日</label>
+                    <input type="date" id="end-date" class="form-control" onchange="updatePreview()">
+                </div>
+            </div>
+        </div>
+
+        <!-- リバランス頻度 -->
+        <div class="form-group">
+            <label for="frequency">リバランス頻度</label>
+            <select id="frequency" class="form-control" onchange="updatePreview()">
+                {% for freq in frequency_presets %}
+                <option value="{{ freq.value }}" {% if freq.value == 'monthly' %}selected{% endif %}>
+                    {{ freq.name }} ({{ freq.description }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 詳細設定（折りたたみ） -->
+        <div class="advanced-toggle" onclick="toggleAdvanced()">
+            <span id="advanced-arrow">&#9654;</span> 詳細設定
+        </div>
+        <div id="advanced-content" class="advanced-content">
+            <div class="form-group">
+                <label for="initial-capital">初期資金 ($)</label>
+                <input type="number" id="initial-capital" class="form-control"
+                       value="{{ defaults.initial_capital }}" min="1000" step="1000">
+            </div>
+        </div>
+    </div>
+
+    <!-- 実行前チェック -->
+    <div class="check-section">
+        <h3>実行前チェック</h3>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar-label">
+                <span>価格データキャッシュ</span>
+                <span id="price-coverage-text">-- %</span>
+            </div>
+            <div class="progress-bar">
+                <div id="price-coverage-bar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar-label">
+                <span>シグナルキャッシュ</span>
+                <span id="signal-coverage-text">-- %</span>
+            </div>
+            <div class="progress-bar">
+                <div id="signal-coverage-bar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="estimate-grid">
+            <div class="estimate-item">
+                <div class="estimate-value" id="rebalance-count">--</div>
+                <div class="estimate-label">リバランス回数</div>
+            </div>
+            <div class="estimate-item">
+                <div class="estimate-value" id="estimated-time">--</div>
+                <div class="estimate-label">推定時間（キャッシュ使用時）</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 実行ボタン -->
+    <button type="button" class="btn-run" id="btn-run" onclick="runBacktest()">
+        バックテストを実行
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+        // デフォルト期間を5年に設定
+        applyPeriodPreset(5, document.querySelector('.period-btn[data-years="5"]'));
+    });
+
+    function applyPeriodPreset(years, btn) {
+        const today = new Date();
+        const start = new Date(today);
+
+        if (years === 0) {
+            start.setFullYear(today.getFullYear() - 20);
+        } else {
+            start.setFullYear(today.getFullYear() - years);
+        }
+
+        document.getElementById('start-date').value = start.toISOString().split('T')[0];
+        document.getElementById('end-date').value = today.toISOString().split('T')[0];
+
+        // ボタンのアクティブ状態を更新
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+
+        updatePreview();
+    }
+
+    function toggleAdvanced() {
+        const content = document.getElementById('advanced-content');
+        const arrow = document.getElementById('advanced-arrow');
+        content.classList.toggle('show');
+        arrow.innerHTML = content.classList.contains('show') ? '&#9660;' : '&#9654;';
+    }
+
+    function updatePreview() {
+        const universe = document.getElementById('universe').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const frequency = document.getElementById('frequency').value;
+
+        if (!universe || !startDate || !endDate) {
+            return;
+        }
+
+        // キャッシュカバレッジを取得
+        fetch(`/backtest/api/cache-coverage?universe=${universe}`)
+            .then(r => r.json())
+            .then(data => {
+                const priceCoverage = data.price_coverage || 0;
+                const signalCoverage = data.signal_coverage || 0;
+
+                document.getElementById('price-coverage-text').textContent =
+                    `${priceCoverage.toFixed(1)}% (${data.price_cached || 0}/${data.total_symbols || 0})`;
+                document.getElementById('signal-coverage-text').textContent =
+                    `${signalCoverage.toFixed(1)}%`;
+
+                // プログレスバー更新
+                const priceBar = document.getElementById('price-coverage-bar');
+                priceBar.style.width = `${priceCoverage}%`;
+                priceBar.className = 'progress-bar-fill';
+                if (priceCoverage < 50) priceBar.classList.add('danger');
+                else if (priceCoverage < 80) priceBar.classList.add('warning');
+
+                const signalBar = document.getElementById('signal-coverage-bar');
+                signalBar.style.width = `${signalCoverage}%`;
+                signalBar.className = 'progress-bar-fill';
+                if (signalCoverage < 50) signalBar.classList.add('danger');
+                else if (signalCoverage < 80) signalBar.classList.add('warning');
+            })
+            .catch(err => {
+                console.error('Failed to fetch cache coverage:', err);
+            });
+
+        // 推定時間を取得
+        fetch(`/backtest/api/estimate?universe=${universe}&start_date=${startDate}&end_date=${endDate}&frequency=${frequency}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('rebalance-count').textContent = data.total_rebalances || '--';
+                document.getElementById('estimated-time').textContent = data.estimated_display || '--';
+            })
+            .catch(err => {
+                console.error('Failed to fetch estimate:', err);
+            });
+    }
+
+    function showAlert(message, type) {
+        const container = document.getElementById('alert-container');
+        container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    }
+
+    function clearAlerts() {
+        document.getElementById('alert-container').innerHTML = '';
+    }
+
+    function runBacktest() {
+        const btnRun = document.getElementById('btn-run');
+        const universe = document.getElementById('universe').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        clearAlerts();
+
+        // バリデーション
+        if (!universe) {
+            showAlert('ユニバースを選択してください。', 'warning');
+            return;
+        }
+        if (!startDate || !endDate) {
+            showAlert('開始日と終了日を入力してください。', 'warning');
+            return;
+        }
+        if (new Date(startDate) >= new Date(endDate)) {
+            showAlert('開始日は終了日より前である必要があります。', 'warning');
+            return;
+        }
+
+        btnRun.disabled = true;
+        btnRun.innerHTML = '<span class="spinner"></span> 実行中...';
+
+        const configOverrides = {
+            backtest: {
+                initial_capital: parseFloat(document.getElementById('initial-capital').value) || 100000,
+            }
+        };
+
+        const request = {
+            universe_file: universe,
+            start_date: startDate,
+            end_date: endDate,
+            frequency: document.getElementById('frequency').value,
+            config_overrides: configOverrides,
+        };
+
+        fetch('/backtest/api/start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(request),
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || `HTTPエラー: ${response.status}`);
+            }
+            return data;
+        })
+        .then(data => {
+            if (data.run_id) {
+                // 統合ビュー（リアルタイムエクイティカーブ表示）に遷移
+                window.location.href = `/backtest/view/${data.run_id}`;
+            } else {
+                throw new Error(data.detail || 'バックテストの開始に失敗しました');
+            }
+        })
+        .catch(err => {
+            showAlert(`エラー: ${err.message}`, 'danger');
+            btnRun.disabled = false;
+            btnRun.innerHTML = 'バックテストを実行';
+        });
+    }
+
+</script>
+{% endblock %}

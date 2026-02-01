@@ -63,19 +63,19 @@ universe:
 
 ```bash
 # 日次リバランス
-python scripts/run_standard_backtest.py \
-  --frequency daily \
-  --output results/backtest_daily_standard.json
+python scripts/run_backtest.py \
+  -f daily \
+  --start 2010-01-01 --end 2024-12-31
 
 # 週次リバランス
-python scripts/run_standard_backtest.py \
-  --frequency weekly \
-  --output results/backtest_weekly_standard.json
+python scripts/run_backtest.py \
+  -f weekly \
+  --start 2010-01-01 --end 2024-12-31
 
 # 月次リバランス
-python scripts/run_standard_backtest.py \
-  --frequency monthly \
-  --output results/backtest_monthly_standard.json
+python scripts/run_backtest.py \
+  -f monthly \
+  --start 2010-01-01 --end 2024-12-31
 ```
 
 ### Pythonコード例
@@ -221,8 +221,8 @@ result = engine.run(universe, prices, config, None)
 
 ## 関連ファイル
 
-- `scripts/run_standard_backtest.py` - 標準バックテスト実行スクリプト
-- `scripts/validate_backtest.py` - バックテスト検証スクリプト
+- `scripts/run_backtest.py` - メインバックテスト実行スクリプト
+- `scripts/backtest_results.py` - 結果管理CLI
 - `config/universe_standard.yaml` - 統一ユニバース設定
 - `src/backtest/factory.py` - エンジンファクトリ
 - `src/backtest/base.py` - 統一インターフェース
@@ -257,15 +257,14 @@ result = engine.run(universe, prices, config, None)
 ### 検証スクリプト
 
 ```bash
-# 単一ファイル検証
-python scripts/validate_backtest.py results/backtest_daily_standard.json
+# 結果一覧を確認
+python scripts/backtest_results.py list
 
-# ベースラインとの比較
-python scripts/validate_backtest.py results/backtest_daily_standard.json \
-    --baseline results/baseline.json
+# 統計情報を表示
+python scripts/backtest_results.py stats
 
-# JSON出力
-python scripts/validate_backtest.py results/backtest_daily_standard.json --json
+# 特定の結果を詳細表示
+python scripts/backtest_results.py show <archive_name>
 ```
 
 ---

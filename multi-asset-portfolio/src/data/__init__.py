@@ -16,7 +16,13 @@ from .calendar_manager import (
     get_trading_days,
     is_trading_day,
 )
-from .universe_loader import UniverseConfig, UniverseLoader, UniverseLoaderError
+from .universe_loader import (
+    Symbol,
+    UniverseLoader,
+    UniverseLoaderError,
+    ConfigNotFoundError,
+    InvalidVersionError,
+)
 from .duckdb_layer import (
     DuckDBDataLayer,
     DuckDBLayerConfig,
@@ -48,6 +54,12 @@ from .sec_edgar import (
     InsiderTransaction,
     create_sec_client,
 )
+from .asset_master import (
+    AssetMaster,
+    AssetInfo,
+    load_asset_master,
+    get_asset_info,
+)
 
 __all__ = [
     # Batch Fetcher
@@ -66,9 +78,11 @@ __all__ = [
     "get_trading_days",
     "align_to_common_calendar",
     # Universe
-    "UniverseConfig",
+    "Symbol",
     "UniverseLoader",
     "UniverseLoaderError",
+    "ConfigNotFoundError",
+    "InvalidVersionError",
     # DuckDB Layer (HI-003)
     "DuckDBDataLayer",
     "DuckDBLayerConfig",
@@ -96,4 +110,9 @@ __all__ = [
     "SECEdgarError",
     "InsiderTransaction",
     "create_sec_client",
+    # Asset Master
+    "AssetMaster",
+    "AssetInfo",
+    "load_asset_master",
+    "get_asset_info",
 ]

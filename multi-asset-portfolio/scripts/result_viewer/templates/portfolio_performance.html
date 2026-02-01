@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}パフォーマンス - {{ portfolio.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .period-filter {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .period-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .period-btn:hover {
+        background-color: #f8f9fa;
+    }
+
+    .period-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--dark-color);
+    }
+
+    .metric-value.positive {
+        color: var(--secondary-color);
+    }
+
+    .metric-value.negative {
+        color: var(--danger-color);
+    }
+
+    .metric-label {
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+        margin-top: 0.25rem;
+    }
+
+    .chart-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+    }
+
+    .chart-container {
+        height: 300px;
+    }
+
+    .chart-container.tall {
+        height: 400px;
+    }
+
+    .export-section {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .data-table {
+        font-size: 0.85rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .data-table th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 1;
+    }
+
+    .rebalance-marker {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: var(--warning-color);
+        border-radius: 50%;
+        margin-left: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">{{ portfolio.name }} - パフォーマンス</h2>
+        <p style="color: #666; margin-top: 0.25rem;">{{ snapshot_count }}日分のデータ</p>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <div class="period-filter">
+            <button class="period-btn active" data-period="all">全期間</button>
+            <button class="period-btn" data-period="1y">1年</button>
+            <button class="period-btn" data-period="6m">6ヶ月</button>
+            <button class="period-btn" data-period="3m">3ヶ月</button>
+            <button class="period-btn" data-period="1m">1ヶ月</button>
+        </div>
+        <a href="/portfolios/{{ portfolio.id }}" class="btn btn-secondary">詳細に戻る</a>
+    </div>
+</div>
+
+<!-- パフォーマンス指標 -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-value {{ 'positive' if metrics.total_return > 0 else 'negative' if metrics.total_return < 0 else '' }}">
+            {{ "{:+.2f}".format(metrics.total_return * 100) }}%
+        </div>
+        <div class="metric-label">累積リターン</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value {{ 'positive' if metrics.annualized_return > 0 else 'negative' if metrics.annualized_return < 0 else '' }}">
+            {{ "{:+.2f}".format(metrics.annualized_return * 100) }}%
+        </div>
+        <div class="metric-label">年率リターン</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{ "{:.2f}".format(metrics.volatility * 100) }}%</div>
+        <div class="metric-label">ボラティリティ (年率)</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{ "{:.2f}".format(metrics.sharpe_ratio) }}</div>
+        <div class="metric-label">シャープレシオ</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value negative">{{ "{:.2f}".format(metrics.max_drawdown * 100) }}%</div>
+        <div class="metric-label">最大ドローダウン</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{ "{:.1f}".format(metrics.win_rate * 100) }}%</div>
+        <div class="metric-label">勝率 (日次)</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{ metrics.rebalance_count }}</div>
+        <div class="metric-label">リバランス回数</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{ snapshot_count }}</div>
+        <div class="metric-label">記録日数</div>
+    </div>
+</div>
+
+<!-- 資産推移チャート -->
+<div class="chart-section">
+    <h3 class="section-title">資産推移</h3>
+    <div class="chart-container tall">
+        <canvas id="valueChart"></canvas>
+    </div>
+</div>
+
+<!-- 累積リターンチャート -->
+<div class="chart-section">
+    <h3 class="section-title">累積リターン</h3>
+    <div class="chart-container">
+        <canvas id="returnChart"></canvas>
+    </div>
+</div>
+
+<!-- 日次リターン分布 -->
+<div class="chart-section">
+    <h3 class="section-title">日次リターン分布</h3>
+    <div class="chart-container">
+        <canvas id="dailyReturnChart"></canvas>
+    </div>
+</div>
+
+<!-- エクスポート -->
+<div class="card">
+    <div class="export-section">
+        <button class="btn btn-secondary" onclick="exportCSV()">CSVエクスポート</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const portfolioId = '{{ portfolio.id }}';
+    const currency = '{{ portfolio.currency }}';
+    const timeseriesData = {{ timeseries | safe }};
+
+    let valueChart, returnChart, dailyReturnChart;
+
+    function formatCurrency(value) {
+        if (currency === 'JPY') {
+            return '¥' + Math.round(value).toLocaleString();
+        }
+        return '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function initCharts() {
+        if (!timeseriesData.dates || timeseriesData.dates.length === 0) {
+            return;
+        }
+
+        // 資産推移チャート
+        const valueCtx = document.getElementById('valueChart').getContext('2d');
+        valueChart = new Chart(valueCtx, {
+            type: 'line',
+            data: {
+                labels: timeseriesData.dates,
+                datasets: [{
+                    label: '総資産',
+                    data: timeseriesData.total_value,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHitRadius: 10,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => formatCurrency(ctx.raw)
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: (value) => formatCurrency(value)
+                        }
+                    }
+                }
+            }
+        });
+
+        // 累積リターンチャート
+        const returnCtx = document.getElementById('returnChart').getContext('2d');
+        returnChart = new Chart(returnCtx, {
+            type: 'line',
+            data: {
+                labels: timeseriesData.dates,
+                datasets: [{
+                    label: '累積リターン',
+                    data: timeseriesData.cumulative_return,
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.raw.toFixed(2) + '%'
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: (value) => value + '%'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 日次リターン分布（ヒストグラム風）
+        const dailyReturns = timeseriesData.daily_return.filter(r => r !== 0);
+        const bins = {};
+        const binSize = 0.5;
+
+        dailyReturns.forEach(r => {
+            const bin = Math.floor(r / binSize) * binSize;
+            bins[bin] = (bins[bin] || 0) + 1;
+        });
+
+        const sortedBins = Object.keys(bins).map(Number).sort((a, b) => a - b);
+        const binLabels = sortedBins.map(b => b.toFixed(1) + '%');
+        const binCounts = sortedBins.map(b => bins[b]);
+        const binColors = sortedBins.map(b => b >= 0 ? 'rgba(46, 204, 113, 0.7)' : 'rgba(231, 76, 60, 0.7)');
+
+        const dailyCtx = document.getElementById('dailyReturnChart').getContext('2d');
+        dailyReturnChart = new Chart(dailyCtx, {
+            type: 'bar',
+            data: {
+                labels: binLabels,
+                datasets: [{
+                    label: '日数',
+                    data: binCounts,
+                    backgroundColor: binColors,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: { display: true, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // 期間フィルタ
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const period = this.dataset.period;
+            let startIndex = 0;
+
+            if (period !== 'all') {
+                const totalDays = timeseriesData.dates.length;
+                const periodDays = {
+                    '1m': 30,
+                    '3m': 90,
+                    '6m': 180,
+                    '1y': 365
+                };
+                startIndex = Math.max(0, totalDays - periodDays[period]);
+            }
+
+            // Update charts
+            const filteredDates = timeseriesData.dates.slice(startIndex);
+            const filteredValue = timeseriesData.total_value.slice(startIndex);
+            const filteredReturn = timeseriesData.cumulative_return.slice(startIndex);
+
+            valueChart.data.labels = filteredDates;
+            valueChart.data.datasets[0].data = filteredValue;
+            valueChart.update();
+
+            returnChart.data.labels = filteredDates;
+            returnChart.data.datasets[0].data = filteredReturn;
+            returnChart.update();
+        });
+    });
+
+    // CSVエクスポート
+    async function exportCSV() {
+        try {
+            const response = await fetch(`/portfolios/api/${portfolioId}/export`);
+            if (response.ok) {
+                const data = await response.json();
+                alert('エクスポート完了: ' + data.file_path);
+            } else {
+                const error = await response.json();
+                alert('エクスポートに失敗しました: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('エクスポートに失敗しました: ' + error.message);
+        }
+    }
+
+    // Initialize
+    initCharts();
+</script>
+{% endblock %}

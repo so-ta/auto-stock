@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-from .base import ParameterSpec, Signal, SignalResult
+from .base import ParameterSpec, Signal, SignalResult, TimeframeAffinity, TimeframeConfig
 from .registry import SignalRegistry
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,25 @@ class LeadLagSignal(Signal):
     """
 
     signal_name = "lead_lag"
+
+    @classmethod
+    def timeframe_config(cls) -> TimeframeConfig:
+        """Lead-Lag: cross-sectional relative signal (30-120 days).
+
+        Requires sufficient lookback for correlation stability.
+        Based on Oxford research showing optimal 30-120 day windows
+        for detecting statistically significant lead-lag relationships.
+
+        Only 'long' (60 days) is supported:
+        - 'short' (5 days) and 'medium' (20 days) are too short for stable correlation
+        - 'half_year' (126 days) and 'yearly' (252 days) exceed the 120-day max
+        """
+        return TimeframeConfig(
+            affinity=TimeframeAffinity.MEDIUM_TERM,
+            min_period=30,
+            max_period=120,
+            supported_variants=["long"],  # 60 days only
+        )
 
     @classmethod
     def parameter_specs(cls) -> List[ParameterSpec]:

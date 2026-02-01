@@ -7,10 +7,12 @@ This package provides:
 - cache_manager: Unified cache manager with adapters (task_032_16)
 - memory_profiler: Memory profiling with psutil (P3)
 - dataframe_utils: Polars/Pandas conversion utilities (task_013_6)
+- progress_tracker: Backtest progress tracking for live monitoring
 """
 
 from src.utils.logger import get_logger, setup_logging
 from src.utils.reproducibility import SeedManager, get_run_info
+from src.utils.progress_tracker import ProgressTracker, ProgressData
 from src.utils.memory_profiler import (
     MemoryProfiler,
     MemorySnapshot,
@@ -76,4 +78,7 @@ __all__ = [
     "is_polars",
     "is_pandas",
     "ConversionTracker",
+    # Progress Tracker
+    "ProgressTracker",
+    "ProgressData",
 ]

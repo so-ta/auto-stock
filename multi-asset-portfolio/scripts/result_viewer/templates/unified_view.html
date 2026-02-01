@@ -1,0 +1,3160 @@
+{% extends "base.html" %}
+
+{% block title %}{{ archive.name if archive else id }} - バックテスト{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Tab Navigation */
+    .tab-nav {
+        display: flex;
+        gap: 0;
+        margin-bottom: 1.5rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 1rem 1.5rem;
+        border: none;
+        background: transparent;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 3px solid transparent;
+    }
+
+    .tab-btn:hover {
+        background: #f8f9fa;
+        color: var(--dark-color);
+    }
+
+    .tab-btn.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+        background: #f8f9fa;
+    }
+
+    .tab-btn:disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Extended Stats Grid */
+    .stats-grid-extended {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 1200px) {
+        .stats-grid-extended {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid-extended {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Live Indicator */
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        background: var(--danger-color);
+        color: white;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        animation: pulse-live 2s infinite;
+    }
+
+    .live-indicator::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        background: white;
+        border-radius: 50%;
+        animation: blink 1s infinite;
+    }
+
+    @keyframes pulse-live {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.3; }
+    }
+
+    /* Phase Progress */
+    .phase-progress {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .phase-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .phase-item.active {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .phase-item.completed {
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    .phase-item .phase-count {
+        font-weight: 600;
+    }
+
+    /* Progress Bar */
+    .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: var(--primary-color);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    /* Benchmark Selector */
+    .benchmark-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .benchmark-selector label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .benchmark-selector input[type="text"] {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    /* Comparison Table */
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 0.75rem 1rem;
+        text-align: right;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .comparison-table th:first-child,
+    .comparison-table td:first-child {
+        text-align: left;
+    }
+
+    .comparison-table thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .comparison-table .portfolio-header {
+        background-color: rgba(44, 62, 80, 0.15) !important;
+        font-weight: 700;
+    }
+
+    .comparison-table .portfolio-cell {
+        background-color: rgba(44, 62, 80, 0.08);
+        font-weight: 600;
+    }
+
+    /* Pie Chart Container */
+    .pie-chart-container {
+        display: flex;
+        gap: 2rem;
+        align-items: flex-start;
+    }
+
+    .pie-chart-wrapper {
+        width: 300px;
+        height: 300px;
+    }
+
+    .holdings-table-wrapper {
+        flex: 1;
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    @media (max-width: 900px) {
+        .pie-chart-container {
+            flex-direction: column;
+        }
+        .pie-chart-wrapper {
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+    }
+
+    /* Weight Bar */
+    .weight-bar-container {
+        width: 100px;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .weight-bar {
+        height: 100%;
+        background: var(--primary-color);
+        border-radius: 4px;
+    }
+
+    /* Filter Input */
+    .filter-input {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        max-width: 900px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: var(--dark-color);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    /* Changes Grid */
+    .changes-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .changes-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .change-category {
+        padding: 1rem;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+
+    .change-category h4 {
+        margin: 0 0 1rem 0;
+        font-size: 0.9rem;
+        color: var(--dark-color);
+    }
+
+    .change-category.added h4 { color: var(--secondary-color); }
+    .change-category.removed h4 { color: var(--danger-color); }
+    .change-category.increased h4 { color: #3498db; }
+    .change-category.decreased h4 { color: var(--warning-color); }
+
+    .change-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 0.85rem;
+    }
+
+    .change-item:last-child {
+        border-bottom: none;
+    }
+
+    /* Loading Spinner */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+
+    /* Stacked Area Chart */
+    .stacked-chart-container {
+        height: 350px;
+    }
+
+    /* Stats Grid for Running */
+    .stats-grid {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .stat-card-mini {
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .stat-card-mini .stat-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .stat-card-mini .stat-label {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+
+    /* Spinner for loading */
+    .spinner {
+        width: 24px;
+        height: 24px;
+        margin: 0 auto;
+        border: 3px solid #e9ecef;
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* 展開可能な行のスタイル */
+    .btn-expand {
+        background: none;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .btn-expand:hover {
+        background: #f8f9fa;
+    }
+
+    .btn-expand.expanded {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .rebalance-detail-row {
+        background: #f8f9fa;
+    }
+
+    .rebalance-detail-row td {
+        padding: 0 !important;
+    }
+
+    .inline-changes-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        padding: 1rem 1.5rem;
+    }
+
+    @media (max-width: 1200px) {
+        .inline-changes-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .inline-changes-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .inline-change-category {
+        padding: 0.75rem;
+        border-radius: 6px;
+        background: white;
+        border: 1px solid var(--border-color);
+    }
+
+    .inline-change-category h5 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .inline-change-category.added h5 { color: var(--secondary-color); }
+    .inline-change-category.removed h5 { color: var(--danger-color); }
+    .inline-change-category.increased h5 { color: #3498db; }
+    .inline-change-category.decreased h5 { color: var(--warning-color); }
+
+    .inline-change-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        font-size: 0.8rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .inline-change-item:last-child {
+        border-bottom: none;
+    }
+
+    /* ベンチマーク比較サマリー */
+    .benchmark-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .benchmark-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .benchmark-summary-card {
+        padding: 1.25rem;
+        border-radius: 8px;
+        background: #f8f9fa;
+        text-align: center;
+    }
+
+    .benchmark-summary-card.portfolio {
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: white;
+    }
+
+    .benchmark-summary-card h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .benchmark-summary-card .portfolio h4 {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .benchmark-summary-card .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .benchmark-summary-card .sub-value {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .benchmark-summary-card.portfolio .sub-value {
+        color: rgba(255,255,255,0.7);
+    }
+
+    .outperform { color: var(--secondary-color); }
+    .underperform { color: var(--danger-color); }
+
+    .loading-placeholder {
+        text-align: center;
+        color: #999;
+        padding: 2rem;
+    }
+
+    /* リバランスカードスタイル */
+    .rebalance-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    .rebalance-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .rebalance-card-date {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .rebalance-number {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .rebalance-date {
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .rebalance-card-stats {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .rebalance-card-stats .stat-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .rebalance-card-stats .stat-label {
+        font-size: 0.75rem;
+        color: #666;
+    }
+
+    .rebalance-card-stats .stat-value {
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .rebalance-card-body {
+        padding: 1rem 1.25rem;
+    }
+
+    .rebalance-changes-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+
+    @media (max-width: 1200px) {
+        .rebalance-changes-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .rebalance-changes-grid {
+            grid-template-columns: 1fr;
+        }
+        .rebalance-card-header {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: flex-start;
+        }
+        .rebalance-card-stats {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+
+    .rebalance-change-section {
+        padding: 0.75rem;
+        border-radius: 6px;
+        background: #fafafa;
+    }
+
+    .rebalance-change-section h5 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .rebalance-change-section h5 .count {
+        font-size: 0.75rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.1);
+    }
+
+    .rebalance-change-section.added h5 { color: var(--secondary-color); }
+    .rebalance-change-section.removed h5 { color: var(--danger-color); }
+    .rebalance-change-section.increased h5 { color: #3498db; }
+    .rebalance-change-section.decreased h5 { color: var(--warning-color); }
+
+    .rebalance-change-list {
+        font-size: 0.8rem;
+    }
+
+    .rebalance-change-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.2rem 0;
+    }
+
+    .rebalance-change-item .ticker {
+        font-weight: 500;
+    }
+
+    .rebalance-no-changes {
+        color: #999;
+        font-size: 0.8rem;
+        font-style: italic;
+    }
+
+    /* Reliability Banner */
+    .reliability-banner {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        background: #f8f9fa;
+        border: 1px solid var(--border-color);
+    }
+
+    .reliability-banner.reliability-high {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-color: #28a745;
+    }
+
+    .reliability-banner.reliability-medium {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        border-color: #ffc107;
+    }
+
+    .reliability-banner.reliability-low {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border-color: #dc3545;
+    }
+
+    .reliability-banner.reliability-unreliable {
+        background: linear-gradient(135deg, #d6d8d9 0%, #c6c8ca 100%);
+        border-color: #6c757d;
+    }
+
+    .reliability-score {
+        text-align: center;
+        min-width: 80px;
+    }
+
+    .reliability-score .score-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--dark-color);
+    }
+
+    .reliability-score .score-label {
+        font-size: 0.75rem;
+        color: #666;
+    }
+
+    .reliability-level {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .reliability-reasons {
+        flex: 1;
+        font-size: 0.85rem;
+    }
+
+    .reliability-reasons summary {
+        cursor: pointer;
+        color: #666;
+    }
+
+    .reliability-reasons ul {
+        margin: 0.5rem 0 0 1rem;
+        padding: 0;
+        list-style-type: disc;
+    }
+
+    .reliability-reasons li {
+        margin: 0.25rem 0;
+        color: #555;
+    }
+
+    /* Log Tab Styles */
+    .log-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .log-controls select,
+    .log-controls input[type="text"] {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .log-controls input[type="text"] {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .log-entries {
+        max-height: 600px;
+        overflow-y: auto;
+        background: #1e1e1e;
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    }
+
+    .log-entry {
+        padding: 0.4rem 0.75rem;
+        border-left: 3px solid transparent;
+        margin-bottom: 2px;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        color: #d4d4d4;
+    }
+
+    .log-entry.ERROR {
+        background: rgba(220, 53, 69, 0.15);
+        border-left-color: #dc3545;
+        color: #f8d7da;
+    }
+
+    .log-entry.WARNING {
+        background: rgba(255, 193, 7, 0.15);
+        border-left-color: #ffc107;
+        color: #fff3cd;
+    }
+
+    .log-entry.INFO {
+        background: rgba(23, 162, 184, 0.1);
+        border-left-color: #17a2b8;
+        color: #d1ecf1;
+    }
+
+    .log-entry.DEBUG {
+        background: rgba(108, 117, 125, 0.1);
+        border-left-color: #6c757d;
+        color: #adb5bd;
+    }
+
+    .log-entry.CRITICAL {
+        background: rgba(139, 0, 0, 0.2);
+        border-left-color: #8b0000;
+        color: #ff6b6b;
+    }
+
+    .log-time {
+        color: #888;
+        margin-right: 0.5rem;
+    }
+
+    .log-level {
+        font-weight: 600;
+        margin-right: 0.5rem;
+        min-width: 70px;
+        display: inline-block;
+    }
+
+    .log-component {
+        color: #9cdcfe;
+        margin-right: 0.5rem;
+    }
+
+    .log-message {
+        color: inherit;
+    }
+
+    .log-empty {
+        text-align: center;
+        color: #888;
+        padding: 2rem;
+    }
+
+    .log-stats {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+    }
+
+    .log-stat-item {
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        background: #f8f9fa;
+    }
+
+    .log-stat-item.error { background: #f8d7da; color: #721c24; }
+    .log-stat-item.warning { background: #fff3cd; color: #856404; }
+    .log-stat-item.info { background: #d1ecf1; color: #0c5460; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ヘッダー -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div>
+        <a href="/" style="color: var(--primary-color); text-decoration: none;">&larr; ダッシュボードに戻る</a>
+        <h2 style="margin-top: 0.5rem; color: var(--dark-color);">
+            {% if archive and archive.name %}{{ archive.name }}{% else %}バックテスト{% endif %}
+            {% if is_running %}
+            <span class="live-indicator">LIVE</span>
+            {% elif is_completed %}
+            <span class="tag" style="margin-left: 0.5rem; background: var(--secondary-color); color: white;">完了</span>
+            {% elif is_failed %}
+            <span class="tag" style="margin-left: 0.5rem; background: var(--danger-color); color: white;">失敗</span>
+            {% elif is_archived %}
+            <span class="tag" style="margin-left: 0.5rem; background: var(--primary-color); color: white;">アーカイブ</span>
+            {% endif %}
+        </h2>
+        <p style="color: #666; font-size: 0.9rem;">
+            <code>{{ id }}</code>
+            {% if archive_id and archive_id != id %}
+            &rarr; <code>{{ archive_id }}</code>
+            {% endif %}
+            {% if archive %}
+            {% for tag in archive.tags or [] %}
+            <span class="tag" style="margin-left: 0.5rem;">{{ tag }}</span>
+            {% endfor %}
+            {% endif %}
+        </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        {% if is_running %}
+        <button class="btn btn-danger" onclick="stopBacktest()">停止</button>
+        {% endif %}
+        {% if archive_id %}
+        <button class="btn btn-danger" onclick="deleteArchive('{{ archive_id }}')">削除</button>
+        {% elif is_running or is_completed or is_failed %}
+        <button class="btn btn-secondary" onclick="deleteProgress()">進捗削除</button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ===== 実行中モード ===== -->
+{% if is_running or is_failed %}
+<div class="card" id="progress-card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">
+            実行進捗
+            {% if is_failed %}
+            <span class="tag" style="margin-left: 0.5rem; background: var(--danger-color); color: white;">失敗</span>
+            {% endif %}
+        </h3>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <span id="elapsed-time" style="font-size: 0.9rem;">経過: --:--</span>
+            <span id="eta-display" style="color: #666; font-size: 0.9rem;">
+                {% if is_failed %}
+                失敗
+                {% elif progress and progress.estimated_completion %}
+                推定完了: {{ progress.estimated_completion[11:16] }}
+                {% else %}
+                初期化中...
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- 工程別進捗 -->
+    <div class="phase-progress" id="phase-progress">
+        {% set phase_names = {'initializing': '初期化', 'data_loading': 'データ読込', 'signal_precompute': 'シグナル計算', 'backtest': 'バックテスト', 'saving': '保存'} %}
+        {% for phase_key in ['initializing', 'data_loading', 'signal_precompute', 'backtest', 'saving'] %}
+        {% set phase_data = (progress.phases or {}).get(phase_key, {'current': 0, 'total': 0, 'status': 'pending'}) %}
+        <div class="phase-item {% if phase_data.status == 'running' %}active{% elif phase_data.status == 'completed' %}completed{% endif %}" data-phase="{{ phase_key }}">
+            <span>{{ phase_names.get(phase_key, phase_key) }}</span>
+            {% if phase_data.total > 0 %}
+            <span class="phase-count">{{ phase_data.current }}/{{ phase_data.total }}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 全体進捗バー -->
+    <div class="progress-bar-container">
+        {% set progress_pct = ((progress.current_rebalance or 0) / (progress.total_rebalances or 1) * 100)|round|int if progress else 0 %}
+        <div class="progress-bar" id="overall-progress" style="width: {{ progress_pct }}%;"></div>
+    </div>
+
+    <!-- 進捗詳細 -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+        <div>
+            <div style="font-size: 0.85rem; color: #666;">
+                現在の日付: <strong id="current-date">{{ progress.current_date if progress else '--' }}</strong>
+            </div>
+            <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                リバランス: <strong id="rebalance-count">{{ progress.current_rebalance or 0 }}/{{ progress.total_rebalances or 0 }}</strong>
+            </div>
+        </div>
+        <div id="cache-stats-section">
+            {% if progress and progress.cache_stats and progress.cache_stats|length > 0 %}
+            <div style="font-size: 0.85rem; color: #666;">
+                <strong>キャッシュ統計</strong>
+                {% for cache_name, stats in progress.cache_stats.items() %}
+                {% set total = stats.hits + stats.misses %}
+                <div>{{ cache_name }}: {% if total > 0 %}{{ "%.1f"|format(stats.hits / total * 100) }}%{% else %}--{% endif %}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 警告表示エリア -->
+<div class="card" id="warning-card" style="margin-bottom: 1.5rem; {% if not progress or not progress.warnings or progress.warnings|length == 0 %}display: none;{% endif %} border-left: 4px solid var(--warning-color);">
+    <div class="card-header">
+        <h3 class="card-title" style="color: var(--warning-color);">警告</h3>
+    </div>
+    <div id="warning-content" style="font-family: monospace; font-size: 0.85rem; padding: 0.5rem; background: #fffbf0; max-height: 150px; overflow-y: auto;">
+        {% if progress and progress.warnings %}
+        {% for warning in progress.warnings %}
+        <div style="padding: 0.25rem 0; border-bottom: 1px solid #fff0d0;">{{ warning }}</div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- エラー表示エリア -->
+<div class="card" id="error-card" style="margin-bottom: 1.5rem; {% if not progress or not progress.errors or progress.errors|length == 0 %}display: none;{% endif %} border-left: 4px solid var(--danger-color);">
+    <div class="card-header">
+        <h3 class="card-title" style="color: var(--danger-color);">エラー</h3>
+    </div>
+    <div id="error-content" style="font-family: monospace; font-size: 0.85rem; padding: 0.5rem; background: #fff5f5; max-height: 300px; overflow-y: auto;">
+        {% if progress and progress.errors %}
+        {% for error in progress.errors %}
+        <div style="padding: 0.25rem 0; border-bottom: 1px solid #ffe0e0;">{{ error }}</div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+{% if is_failed %}
+<!-- 失敗時のアクションボタン -->
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.5rem; text-align: center;">
+    <p style="color: #666; margin-bottom: 1rem;">バックテストが失敗しました。エラーログを確認してください。</p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="/backtest/run" class="btn btn-primary">新しいバックテストを実行</a>
+        <button class="btn btn-secondary" onclick="deleteProgress()">進捗を削除</button>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- ===== 完了/アーカイブモード ===== -->
+
+<!-- 信頼性バナー（reliability情報がある場合のみ） -->
+{% if reliability %}
+<div class="reliability-banner reliability-{{ reliability.level }}">
+    <div class="reliability-score">
+        <span class="score-value">{{ (reliability.score * 100)|round(0)|int }}%</span>
+        <div class="score-label">信頼性スコア</div>
+    </div>
+    <div class="reliability-level">
+        {% if reliability.level == 'high' %}
+            ✓ 信頼性: 高
+        {% elif reliability.level == 'medium' %}
+            信頼性: 中
+        {% elif reliability.level == 'low' %}
+            ⚠️ 信頼性: 低
+        {% else %}
+            ⛔ 信頼性なし
+        {% endif %}
+    </div>
+    {% if reliability.reasons %}
+    <details class="reliability-reasons">
+        <summary>詳細 ({{ reliability.reasons|length }}件)</summary>
+        <ul>
+        {% for reason in reliability.reasons %}
+            <li>{{ reason }}</li>
+        {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- 主要指標（完了/アーカイブ時のみ） -->
+{% if (is_completed or is_archived) and archive %}
+<div class="stats-grid-extended">
+    <div class="stat-card {% if archive.metrics.total_return > 0 %}success{% else %}danger{% endif %}">
+        <div class="stat-value">{{ "%.1f"|format((archive.metrics.total_return or 0) * 100) }}%</div>
+        <div class="stat-label">トータルリターン</div>
+    </div>
+    <div class="stat-card {% if archive.metrics.annual_return > 0 %}success{% else %}danger{% endif %}">
+        <div class="stat-value">{{ "%.1f"|format((archive.metrics.annual_return or 0) * 100) }}%</div>
+        <div class="stat-label">年率リターン</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-value">{{ "%.2f"|format(archive.metrics.sharpe_ratio or 0) }}</div>
+        <div class="stat-label">シャープレシオ</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-value">{{ "%.1f"|format((archive.metrics.max_drawdown or 0) * 100) }}%</div>
+        <div class="stat-label">最大ドローダウン</div>
+    </div>
+    <div class="stat-card {% if (archive.metrics.profit_factor or 0) > 1 %}success{% else %}warning{% endif %}">
+        <div class="stat-value">{{ "%.2f"|format(archive.metrics.profit_factor or 0) }}</div>
+        <div class="stat-label">プロフィットファクター</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-value">{{ "%.1f"|format((archive.metrics.expected_shortfall or 0) * 100) }}%</div>
+        <div class="stat-label">CVaR (ES)</div>
+    </div>
+</div>
+{% elif is_completed and not archive %}
+<!-- 完了したがアーカイブがまだ読み込まれていない場合 -->
+<div class="card" style="margin-bottom: 1.5rem; padding: 2rem; text-align: center;">
+    <div class="spinner" style="margin-bottom: 1rem;"></div>
+    <p style="color: #666;">結果を読み込んでいます...</p>
+    <p style="font-size: 0.85rem; color: #999;">ページが自動的に更新されます</p>
+</div>
+{% endif %}
+
+<!-- タブナビゲーション -->
+<div class="tab-nav">
+    <button class="tab-btn active" data-tab="overview">サマリー</button>
+    <button class="tab-btn" data-tab="performance" {% if is_running and not archive %}disabled title="完了後に利用可能"{% endif %}>パフォーマンス</button>
+    <button class="tab-btn" data-tab="benchmark" {% if is_running %}disabled title="完了後に利用可能"{% endif %}>ベンチマーク比較</button>
+    <button class="tab-btn" data-tab="composition">ポートフォリオ構成</button>
+    <button class="tab-btn" data-tab="rebalance">リバランス詳細</button>
+    <button class="tab-btn" data-tab="logs" {% if is_running %}disabled title="完了後に利用可能"{% endif %}>ログ</button>
+    <button class="tab-btn" data-tab="settings">設定</button>
+</div>
+
+<!-- Tab 1: 進捗・概要 -->
+<div id="tab-overview" class="tab-content active">
+    <!-- エクイティカーブ -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                エクイティカーブ
+                {% if is_running %}
+                <span id="chart-live-badge" style="font-size: 0.75rem; color: var(--secondary-color); margin-left: 0.5rem;">
+                    リアルタイム更新中...
+                </span>
+                {% endif %}
+            </h3>
+            <div id="chart-stats" style="font-size: 0.85rem; color: #666;">
+                <span id="stat-value">$--</span> |
+                <span id="stat-return">--%</span>
+            </div>
+        </div>
+        <div class="chart-container" style="height: 350px;">
+            <canvas id="equityChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 2カラムレイアウト：進捗/キャッシュ + メトリクス -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+        <!-- 進捗/キャッシュ情報 -->
+        <div class="card" id="progress-section" {% if not is_running and not execution_info %}style="display: none;"{% endif %}>
+            <div class="card-header">
+                <h3 class="card-title">{% if is_running %}キャッシュ統計{% else %}実行情報{% endif %}</h3>
+            </div>
+            {% if is_running and progress and progress.cache_stats %}
+            <table id="cache-stats-table">
+                <thead>
+                    <tr>
+                        <th>キャッシュ</th>
+                        <th class="text-right">ヒット率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cache_name, stats in progress.cache_stats.items() %}
+                    <tr>
+                        <td>{{ cache_name }}</td>
+                        <td class="text-right">
+                            {% set total = stats.hits + stats.misses %}
+                            {% if total > 0 %}
+                            {{ "%.1f"|format(stats.hits / total * 100) }}%
+                            {% else %}
+                            --
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% elif execution_info %}
+            <table>
+                <tr>
+                    <td>開始時刻</td>
+                    <td class="text-right">{{ execution_info.start_time[:19] if execution_info.start_time else '--' }}</td>
+                </tr>
+                <tr>
+                    <td>終了時刻</td>
+                    <td class="text-right">{{ execution_info.end_time[:19] if execution_info.end_time else '--' }}</td>
+                </tr>
+                <tr>
+                    <td>実行時間</td>
+                    <td class="text-right">{{ "%.1f"|format(execution_info.duration_seconds or 0) }}秒</td>
+                </tr>
+                {% if execution_info.cache_stats %}
+                <tr>
+                    <td colspan="2"><strong>キャッシュ統計</strong></td>
+                </tr>
+                {% for cache_name, stats in execution_info.cache_stats.items() %}
+                <tr>
+                    <td style="padding-left: 1rem;">{{ cache_name }}</td>
+                    <td class="text-right">{{ "%.1f"|format((stats.hit_rate or 0) * 100) }}%</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </table>
+            {% else %}
+            <div style="padding: 1rem; text-align: center; color: #666;">
+                {% if is_running %}統計収集中...{% else %}実行情報なし{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- パフォーマンスメトリクス -->
+        <div class="card" id="metrics-section">
+            <div class="card-header">
+                <h3 class="card-title">パフォーマンス{% if is_running %}（暫定）{% endif %}</h3>
+            </div>
+            <table>
+                <tr>
+                    <td>累積リターン</td>
+                    <td class="text-right {% if archive and archive.metrics.total_return > 0 %}positive{% elif archive %}negative{% endif %}" id="metric-return">
+                        {% if archive %}{{ "%.2f"|format((archive.metrics.total_return or 0) * 100) }}%{% else %}--{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>現在価値</td>
+                    <td class="text-right" id="metric-value">
+                        {% if archive %}${{ "{:,.0f}".format(archive.trading_stats.get('final_value', 0)) }}{% else %}--{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>最大ドローダウン</td>
+                    <td class="text-right negative" id="metric-drawdown">
+                        {% if archive %}{{ "%.2f"|format((archive.metrics.max_drawdown or 0) * 100) }}%{% else %}--{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>データポイント数</td>
+                    <td class="text-right" id="metric-datapoints">
+                        {% if archive %}{{ archive.trading_stats.get('n_days', 0) }}{% else %}0{% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- 現在の保有銘柄（Top 5） -->
+    <div class="card" id="holdings-section">
+        <div class="card-header">
+            <h3 class="card-title">現在の保有銘柄（Top 5）</h3>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>銘柄</th>
+                    <th class="text-right">ウェイト</th>
+                </tr>
+            </thead>
+            <tbody id="holdings-tbody">
+                <tr>
+                    <td colspan="2" style="text-align: center; color: #666;">{% if is_running %}データ待機中...{% else %}データ読込中...{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ベンチマーク比較サマリー -->
+    <div class="card" id="benchmark-summary-section" {% if not (is_completed or is_archived) %}style="display: none;"{% endif %}>
+        <div class="card-header">
+            <h3 class="card-title">ベンチマーク比較</h3>
+        </div>
+        <div id="benchmark-summary-content">
+            <div class="loading-placeholder">読み込み中...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 2: パフォーマンス -->
+<div id="tab-performance" class="tab-content">
+    {% if (is_completed or is_archived) and archive and timeseries != "null" %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">パフォーマンスチャート</h3>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h4 style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">累積リターン (%)</h4>
+                <div class="chart-container">
+                    <canvas id="returnChart"></canvas>
+                </div>
+            </div>
+            <div>
+                <h4 style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">ドローダウン (%)</h4>
+                <div class="chart-container">
+                    <canvas id="drawdownChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 詳細指標 -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">パフォーマンス指標</h3>
+            </div>
+            <table>
+                <tr>
+                    <td>トータルリターン</td>
+                    <td class="text-right {% if archive.metrics.total_return > 0 %}positive{% else %}negative{% endif %}">
+                        {{ "%.2f"|format((archive.metrics.total_return or 0) * 100) }}%
+                    </td>
+                </tr>
+                <tr>
+                    <td>年率リターン</td>
+                    <td class="text-right {% if archive.metrics.annual_return > 0 %}positive{% else %}negative{% endif %}">
+                        {{ "%.2f"|format((archive.metrics.annual_return or 0) * 100) }}%
+                    </td>
+                </tr>
+                <tr>
+                    <td>シャープレシオ</td>
+                    <td class="text-right">{{ "%.3f"|format(archive.metrics.sharpe_ratio or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>ソルティノレシオ</td>
+                    <td class="text-right">{{ "%.3f"|format(archive.metrics.sortino_ratio or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>カルマーレシオ</td>
+                    <td class="text-right">{{ "%.3f"|format(archive.metrics.calmar_ratio or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>最大ドローダウン</td>
+                    <td class="text-right negative">{{ "%.2f"|format((archive.metrics.max_drawdown or 0) * 100) }}%</td>
+                </tr>
+                <tr>
+                    <td>ボラティリティ</td>
+                    <td class="text-right">{{ "%.2f"|format((archive.metrics.volatility or 0) * 100) }}%</td>
+                </tr>
+                <tr>
+                    <td>勝率</td>
+                    <td class="text-right">{{ "%.1f"|format((archive.metrics.win_rate or 0) * 100) }}%</td>
+                </tr>
+                <tr>
+                    <td>プロフィットファクター</td>
+                    <td class="text-right {% if (archive.metrics.profit_factor or 0) > 1 %}positive{% else %}negative{% endif %}">
+                        {{ "%.3f"|format(archive.metrics.profit_factor or 0) }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>VaR (95%)</td>
+                    <td class="text-right negative">{{ "%.2f"|format((archive.metrics.var_95 or 0) * 100) }}%</td>
+                </tr>
+                <tr>
+                    <td>Expected Shortfall (CVaR)</td>
+                    <td class="text-right negative">{{ "%.2f"|format((archive.metrics.expected_shortfall or 0) * 100) }}%</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">取引統計</h3>
+            </div>
+            <table>
+                <tr>
+                    <td>初期資金</td>
+                    <td class="text-right">${{ "{:,.0f}".format(archive.trading_stats.get('initial_value', 0)) }}</td>
+                </tr>
+                <tr>
+                    <td>最終資産</td>
+                    <td class="text-right">${{ "{:,.0f}".format(archive.trading_stats.get('final_value', 0)) }}</td>
+                </tr>
+                <tr>
+                    <td>取引日数</td>
+                    <td class="text-right">{{ archive.trading_stats.get('n_days', 0) }}日</td>
+                </tr>
+                <tr>
+                    <td>リバランス回数</td>
+                    <td class="text-right">{{ archive.trading_stats.get('n_rebalances', 0) }}回</td>
+                </tr>
+                <tr>
+                    <td>取引回数</td>
+                    <td class="text-right">{{ archive.trading_stats.get('n_trades', 0) }}回</td>
+                </tr>
+                <tr>
+                    <td>総回転率</td>
+                    <td class="text-right">{{ "%.1f" % ((archive.trading_stats.get('total_turnover', 0)) * 100) }}%</td>
+                </tr>
+                <tr>
+                    <td>平均回転率</td>
+                    <td class="text-right">{{ "%.1f" % ((archive.trading_stats.get('avg_turnover', 0)) * 100) }}%</td>
+                </tr>
+                <tr>
+                    <td>取引コスト累計</td>
+                    <td class="text-right">${{ "{:,.0f}".format(archive.trading_stats.get('total_transaction_costs', 0)) }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div style="padding: 3rem; text-align: center; color: #666;">
+            {% if is_running %}
+            <p>バックテスト完了後にパフォーマンス詳細が表示されます。</p>
+            {% else %}
+            <p>パフォーマンスデータがありません。</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab 3: ベンチマーク比較 -->
+<div id="tab-benchmark" class="tab-content">
+    {% if (is_completed or is_archived) and archive_id %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">ベンチマーク選択</h3>
+        </div>
+        <div class="benchmark-selector">
+            <label><input type="checkbox" class="benchmark-check" value="SPY" checked> SPY (S&P 500)</label>
+            <label><input type="checkbox" class="benchmark-check" value="QQQ" checked> QQQ (Nasdaq 100)</label>
+            <label><input type="checkbox" class="benchmark-check" value="DIA"> DIA (Dow Jones)</label>
+            <label><input type="checkbox" class="benchmark-check" value="IWM"> IWM (Russell 2000)</label>
+            <label><input type="checkbox" class="benchmark-check" value="VT"> VT (All World)</label>
+            <label><input type="checkbox" class="benchmark-check" value="EWJ"> EWJ (Japan)</label>
+            <input type="text" id="customTickers" placeholder="カスタムティッカー（例: AAPL,MSFT）">
+            <button class="btn btn-primary" onclick="loadBenchmarkComparison()">比較</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">累積リターン比較</h3>
+            <span id="benchmarkLoading" style="display: none;"><span class="loading-spinner"></span> 読込中...</span>
+        </div>
+        <div class="chart-container" style="height: 400px;">
+            <canvas id="benchmarkChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">比較指標</h3>
+        </div>
+        <div id="benchmarkStatsTable">
+            <p style="color: #666; text-align: center; padding: 2rem;">「比較」ボタンをクリックしてベンチマークを読み込んでください</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div style="padding: 3rem; text-align: center; color: #666;">
+            {% if is_running %}
+            <p>バックテスト完了後にベンチマーク比較が利用可能になります。</p>
+            {% else %}
+            <p>ベンチマーク比較データがありません。</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab 4: ポートフォリオ構成 -->
+<div id="tab-composition" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">ポートフォリオ構成</h3>
+            <span id="compositionDate" style="color: #666; font-size: 0.9rem;"></span>
+        </div>
+        <div class="pie-chart-container">
+            <div class="pie-chart-wrapper">
+                <canvas id="compositionPieChart"></canvas>
+            </div>
+            <div class="holdings-table-wrapper">
+                <h4 style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">上位保有銘柄</h4>
+                <table id="topHoldingsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>ティッカー</th>
+                            <th class="text-right">ウェイト</th>
+                            <th>分布</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #666;">データ読込中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if archive_id %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">全銘柄ウェイト</h3>
+        </div>
+        <input type="text" class="filter-input" id="weightFilter" placeholder="ティッカーで検索...">
+        <div style="max-height: 400px; overflow-y: auto;">
+            <table id="allWeightsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>ティッカー</th>
+                        <th class="text-right">ウェイト (%)</th>
+                        <th>分布</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #666;">データ読込中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">ウェイト推移（上位10銘柄）</h3>
+        </div>
+        <div class="stacked-chart-container">
+            <canvas id="weightHistoryChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab 5: リバランス詳細 -->
+<div id="tab-rebalance" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">リバランス履歴</h3>
+            <span style="font-size: 0.85rem; color: #666;">{{ rebalances|length if rebalances else 0 }}回のリバランス</span>
+        </div>
+        <div id="rebalance-cards-container" style="max-height: 800px; overflow-y: auto;">
+            {% if rebalances %}
+            {% for reb in rebalances|reverse %}
+            <div class="rebalance-card" data-index="{{ rebalances|length - loop.index }}">
+                <div class="rebalance-card-header">
+                    <div class="rebalance-card-date">
+                        <span class="rebalance-number">#{{ rebalances|length - loop.index + 1 }}</span>
+                        <span class="rebalance-date">{{ reb.get('date', '') or (reb.get('timestamp', '')|string)[:10] or '-' }}</span>
+                    </div>
+                    <div class="rebalance-card-stats">
+                        <span class="stat-item">
+                            <span class="stat-label">価値</span>
+                            <span class="stat-value">${{ "{:,.0f}".format(reb.get('portfolio_value', 0) or 0) }}</span>
+                        </span>
+                        <span class="stat-item">
+                            <span class="stat-label">回転率</span>
+                            <span class="stat-value">{{ "%.1f" % ((reb.get('turnover', 0) or 0) * 100) }}%</span>
+                        </span>
+                        <span class="stat-item">
+                            <span class="stat-label">コスト</span>
+                            <span class="stat-value">${{ "{:,.0f}".format(reb.get('transaction_cost', 0) or 0) }}</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="rebalance-card-body" id="rebalance-detail-{{ rebalances|length - loop.index }}">
+                    <div class="loading-placeholder">詳細を読み込み中...</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; color: #666; padding: 3rem;">
+                {% if is_running %}リバランス待機中...{% else %}リバランスデータがありません{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Tab 6: ログ -->
+<div id="tab-logs" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">実行ログ</h3>
+        </div>
+        {% if archive_id %}
+        <div class="log-controls">
+            <select id="log-level-filter">
+                <option value="all">全て</option>
+                <option value="ERROR">エラー</option>
+                <option value="WARNING">警告</option>
+                <option value="INFO">情報</option>
+                <option value="DEBUG">デバッグ</option>
+            </select>
+            <input type="text" id="log-search" placeholder="検索...">
+            <button id="log-refresh" class="btn btn-secondary">更新</button>
+        </div>
+        <div class="log-stats" id="log-stats">
+            <!-- JavaScriptで動的に描画 -->
+        </div>
+        <div class="log-entries" id="log-container">
+            <div class="log-empty">ログを読み込んでいます...</div>
+        </div>
+        {% else %}
+        <div style="padding: 2rem; text-align: center; color: #666;">
+            <p>{% if is_running %}バックテスト実行中のため、ログは完了後に利用可能です。{% else %}ログデータがありません。{% endif %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tab 7: 設定 -->
+<div id="tab-settings" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">設定情報</h3>
+        </div>
+        {% if archive %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="metric-item">
+                <div class="metric-label">設定ハッシュ</div>
+                <div style="font-family: monospace; font-size: 0.85rem;">{{ archive.config_hash }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">ユニバースハッシュ</div>
+                <div style="font-family: monospace; font-size: 0.85rem;">{{ archive.universe_hash }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">コードバージョン</div>
+                <div style="font-family: monospace; font-size: 0.85rem;">{{ archive.code_version }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">エンジン</div>
+                <div>{{ archive.engine_name }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">期間</div>
+                <div>{{ archive.start_date.strftime('%Y-%m-%d') if archive.start_date else '-' }} ~ {{ archive.end_date.strftime('%Y-%m-%d') if archive.end_date else '-' }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">ユニバースサイズ</div>
+                <div>{{ archive.universe|length }} 銘柄</div>
+            </div>
+        </div>
+
+        {% if archive.config_snapshot %}
+        <details style="margin-top: 1rem;">
+            <summary style="cursor: pointer; color: var(--primary-color);">詳細設定を表示</summary>
+            <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-top: 0.5rem; overflow-x: auto; font-size: 0.85rem;">{{ archive.config_snapshot | tojson(indent=2) }}</pre>
+        </details>
+        {% endif %}
+        {% elif progress %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="metric-item">
+                <div class="metric-label">実行ID</div>
+                <div style="font-family: monospace; font-size: 0.85rem;">{{ id }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">ユニバースサイズ</div>
+                <div>{{ progress.universe_size or '--' }} 銘柄</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">リバランス頻度</div>
+                <div>{{ progress.frequency or '--' }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">開始時刻</div>
+                <div>{{ progress.start_time[:19] if progress.start_time else '--' }}</div>
+            </div>
+        </div>
+        {% else %}
+        <div style="padding: 2rem; text-align: center; color: #666;">設定情報がありません</div>
+        {% endif %}
+    </div>
+
+    {% if archive %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">メタデータ</h3>
+        </div>
+        <table>
+            <tr>
+                <td>作成日時</td>
+                <td>{{ archive.created_at.strftime('%Y-%m-%d %H:%M:%S') if archive.created_at else '-' }}</td>
+            </tr>
+            <tr>
+                <td>説明</td>
+                <td>{{ archive.description or '-' }}</td>
+            </tr>
+            {% if archive.warnings %}
+            <tr>
+                <td>警告</td>
+                <td style="color: var(--warning-color);">{{ archive.warnings|join(', ') }}</td>
+            </tr>
+            {% endif %}
+            {% if archive.errors %}
+            <tr>
+                <td>エラー</td>
+                <td style="color: var(--danger-color);">{{ archive.errors|join(', ') }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+<!-- End of is_running else block -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const backtestId = '{{ id }}';
+    const archiveId = '{{ archive_id or "" }}';
+    const isRunning = {{ 'true' if is_running else 'false' }};
+    const isCompleted = {{ 'true' if is_completed else 'false' }};
+    const isFailed = {{ 'true' if is_failed else 'false' }};
+    const isArchived = {{ 'true' if is_archived else 'false' }};
+    const timeseries = {{ timeseries | safe }};
+
+    // Chart instances (only used in completed/archived mode)
+    let equityChart = null;
+    let returnChart = null;
+    let drawdownChart = null;
+    let benchmarkChart = null;
+    let compositionPieChart = null;
+    let weightHistoryChart = null;
+
+    // SSE connections
+    let progressEventSource = null;
+    let sseRetryCount = 0;
+    const maxSSERetries = 10;
+    const sseRetryDelay = 2000;  // 2秒
+
+    // Initial capital
+    const initialCapital = {{ initial_capital or 1000000 }};
+
+    // Elapsed time tracking
+    const startTime = '{{ progress.start_time if progress else "" }}';
+    let elapsedTimer = null;
+
+    // Update elapsed time display
+    function updateElapsedTime() {
+        if (!startTime) return;
+
+        const start = new Date(startTime);
+        const now = new Date();
+        const elapsed = Math.floor((now - start) / 1000);
+
+        const hours = Math.floor(elapsed / 3600);
+        const minutes = Math.floor((elapsed % 3600) / 60);
+        const seconds = elapsed % 60;
+
+        const formatted = hours > 0
+            ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            : `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+        const elapsedEl = document.getElementById('elapsed-time');
+        if (elapsedEl) {
+            elapsedEl.textContent = `経過: ${formatted}`;
+        }
+    }
+
+    // Show error in error card
+    function showError(message) {
+        const errorCard = document.getElementById('error-card');
+        const errorContent = document.getElementById('error-content');
+
+        if (errorCard && errorContent) {
+            errorCard.style.display = 'block';
+            const errorLine = document.createElement('div');
+            errorLine.textContent = message;
+            errorLine.style.padding = '0.25rem 0';
+            errorLine.style.borderBottom = '1px solid #ffe0e0';
+            errorContent.appendChild(errorLine);
+        }
+    }
+
+    // Show warning in warning card
+    function showWarning(message) {
+        const warningCard = document.getElementById('warning-card');
+        const warningContent = document.getElementById('warning-content');
+
+        if (warningCard && warningContent) {
+            warningCard.style.display = 'block';
+            const warningLine = document.createElement('div');
+            warningLine.textContent = message;
+            warningLine.style.padding = '0.25rem 0';
+            warningLine.style.borderBottom = '1px solid #fff0d0';
+            warningContent.appendChild(warningLine);
+        }
+    }
+
+    // Chart data for live updates (not used in running mode)
+    let chartData = {
+        labels: [],
+        values: [],
+        returns: []
+    };
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            const tabId = 'tab-' + btn.dataset.tab;
+            document.getElementById(tabId).classList.add('active');
+
+            // Load data when switching to specific tabs
+            if (btn.dataset.tab === 'benchmark' && archiveId && !benchmarkLoaded) {
+                loadBenchmarkComparison();
+            }
+            if (btn.dataset.tab === 'composition') {
+                loadPortfolioComposition();
+            }
+            if (btn.dataset.tab === 'rebalance' && archiveId) {
+                loadAllRebalanceDetails();
+            }
+        });
+    });
+
+    // Initialize equity chart
+    function initEquityChart() {
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        equityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'ポートフォリオ価値',
+                    data: chartData.values,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const returnPct = ((value / initialCapital) - 1) * 100;
+                                return `$${value.toLocaleString()} (${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        ticks: { maxTicksLimit: 10, font: { size: 10 } }
+                    },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: function(value) { return '$' + (value / 1000).toFixed(0) + 'K'; },
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Update equity chart with new data points
+    function updateEquityChart(newPoints) {
+        for (const point of newPoints) {
+            chartData.labels.push(point.date);
+            chartData.values.push(point.portfolio_value);
+            chartData.returns.push(point.cumulative_return);
+        }
+
+        if (equityChart) {
+            equityChart.data.labels = chartData.labels;
+            equityChart.data.datasets[0].data = chartData.values;
+            equityChart.update('none');
+        }
+
+        // Update metrics
+        if (chartData.values.length > 0) {
+            const latestValue = chartData.values[chartData.values.length - 1];
+            const latestReturn = chartData.returns[chartData.returns.length - 1];
+
+            document.getElementById('stat-value').textContent = '$' + latestValue.toLocaleString();
+            document.getElementById('stat-return').textContent = (latestReturn >= 0 ? '+' : '') + (latestReturn * 100).toFixed(2) + '%';
+
+            document.getElementById('metric-value').textContent = '$' + latestValue.toLocaleString();
+            document.getElementById('metric-return').textContent = (latestReturn >= 0 ? '+' : '') + (latestReturn * 100).toFixed(2) + '%';
+            document.getElementById('metric-datapoints').textContent = chartData.values.length;
+
+            // Calculate max drawdown
+            let maxValue = initialCapital;
+            let maxDrawdown = 0;
+            for (const val of chartData.values) {
+                if (val > maxValue) maxValue = val;
+                const dd = (maxValue - val) / maxValue;
+                if (dd > maxDrawdown) maxDrawdown = dd;
+            }
+            document.getElementById('metric-drawdown').textContent = '-' + (maxDrawdown * 100).toFixed(2) + '%';
+        }
+
+        // Update holdings from latest point
+        if (newPoints.length > 0) {
+            const latest = newPoints[newPoints.length - 1];
+            updateHoldings(latest.weights_top5 || {});
+        }
+    }
+
+    // Update holdings table
+    function updateHoldings(weights) {
+        const tbody = document.getElementById('holdings-tbody');
+        const entries = Object.entries(weights).sort((a, b) => b[1] - a[1]);
+
+        if (entries.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: #666;">データなし</td></tr>';
+            return;
+        }
+
+        let html = '';
+        for (const [symbol, weight] of entries) {
+            html += `<tr>
+                <td><strong>${symbol}</strong></td>
+                <td class="text-right">${(weight * 100).toFixed(1)}%</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    // Track displayed warnings and errors to avoid duplicates
+    let displayedWarnings = new Set();
+    let displayedErrors = new Set();
+
+    // Update progress display
+    function updateProgress(data) {
+        console.log('updateProgress called:', data);
+
+        // Update phase progress
+        const phases = data.phases || {};
+        document.querySelectorAll('.phase-item').forEach(el => {
+            const phaseKey = el.dataset.phase;
+            const phaseData = phases[phaseKey] || { status: 'pending', current: 0, total: 0 };
+
+            el.classList.remove('active', 'completed');
+            if (phaseData.status === 'running') {
+                el.classList.add('active');
+            } else if (phaseData.status === 'completed') {
+                el.classList.add('completed');
+            }
+
+            // Update or create count element
+            let countEl = el.querySelector('.phase-count');
+            if (phaseData.total > 0) {
+                if (!countEl) {
+                    countEl = document.createElement('span');
+                    countEl.className = 'phase-count';
+                    el.appendChild(countEl);
+                }
+                countEl.textContent = `${phaseData.current}/${phaseData.total}`;
+            } else if (countEl) {
+                countEl.textContent = '';
+            }
+        });
+
+        // Update overall progress
+        const progressPct = data.total_rebalances > 0
+            ? (data.current_rebalance / data.total_rebalances * 100)
+            : 0;
+        const progressBar = document.getElementById('overall-progress');
+        if (progressBar) {
+            progressBar.style.width = progressPct + '%';
+        }
+
+        // Update current date and rebalance count
+        const currentDateEl = document.getElementById('current-date');
+        if (currentDateEl) {
+            currentDateEl.textContent = data.current_date || '--';
+        }
+
+        const rebalanceCountEl = document.getElementById('rebalance-count');
+        if (rebalanceCountEl) {
+            rebalanceCountEl.textContent = `${data.current_rebalance || 0}/${data.total_rebalances || 0}`;
+        }
+
+        // Update ETA
+        const etaEl = document.getElementById('eta-display');
+        if (etaEl) {
+            if (data.status === 'failed') {
+                etaEl.textContent = '失敗';
+            } else if (data.estimated_completion) {
+                etaEl.textContent = '推定完了: ' + data.estimated_completion.slice(11, 16);
+            }
+        }
+
+        // Update cache stats
+        if (data.cache_stats && Object.keys(data.cache_stats).length > 0) {
+            const cacheSection = document.getElementById('cache-stats-section');
+            if (cacheSection) {
+                let html = '<div style="font-size: 0.85rem; color: #666;"><strong>キャッシュ統計</strong>';
+                for (const [name, stats] of Object.entries(data.cache_stats)) {
+                    const total = (stats.hits || 0) + (stats.misses || 0);
+                    const rate = total > 0 ? (stats.hits / total * 100).toFixed(1) + '%' : '--';
+                    html += `<div>${name}: ${rate}</div>`;
+                }
+                html += '</div>';
+                cacheSection.innerHTML = html;
+            }
+        }
+
+        // Display new warnings
+        if (data.warnings && data.warnings.length > 0) {
+            for (const warning of data.warnings) {
+                if (!displayedWarnings.has(warning)) {
+                    displayedWarnings.add(warning);
+                    showWarning(warning);
+                }
+            }
+        }
+
+        // Display new errors
+        if (data.errors && data.errors.length > 0) {
+            for (const error of data.errors) {
+                if (!displayedErrors.has(error)) {
+                    displayedErrors.add(error);
+                    showError(error);
+                }
+            }
+        }
+
+        // Handle completion
+        if (data.status === 'completed' || data.status === 'failed') {
+            // Remove live indicator
+            document.querySelector('.live-indicator')?.remove();
+
+            // Stop elapsed timer
+            if (elapsedTimer) {
+                clearInterval(elapsedTimer);
+                elapsedTimer = null;
+            }
+
+            if (data.status === 'completed') {
+                // For completed, wait a bit for archive to be created, then reload
+                setTimeout(() => {
+                    checkAndReloadForArchive();
+                }, 3000);
+            } else {
+                // For failed, just reload to show the failure UI with logs
+                // (Don't reload immediately, let user see the final errors first)
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        }
+    }
+
+    // Show completion message
+    function showCompletionMessage(message) {
+        const chartContainer = document.querySelector('.chart-container');
+        if (chartContainer) {
+            const overlay = document.createElement('div');
+            overlay.id = 'completion-overlay';
+            overlay.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; font-size: 1.1rem; color: #333; z-index: 10;';
+            overlay.innerHTML = `<div style="text-align: center;"><div style="margin-bottom: 0.5rem;">${message}</div><div class="spinner"></div></div>`;
+            chartContainer.style.position = 'relative';
+            chartContainer.appendChild(overlay);
+        }
+    }
+
+    // Check if archive is ready and reload
+    let archiveCheckCount = 0;
+    const maxArchiveChecks = 10;
+
+    async function checkAndReloadForArchive() {
+        archiveCheckCount++;
+
+        try {
+            // Check if archive_id is available
+            const response = await fetch(`/backtest/api/progress/${backtestId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'completed') {
+                    // Check if .result file has archive_id
+                    const resultResponse = await fetch(`/backtest/api/${backtestId}/state`);
+                    if (resultResponse.ok) {
+                        const state = await resultResponse.json();
+                        if (state.archive_id) {
+                            // Archive is ready, reload
+                            window.location.reload();
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error checking archive:', err);
+        }
+
+        // Retry if not ready
+        if (archiveCheckCount < maxArchiveChecks) {
+            console.log(`Waiting for archive... (${archiveCheckCount}/${maxArchiveChecks})`);
+            setTimeout(checkAndReloadForArchive, 2000);
+        } else {
+            // Give up and reload anyway
+            window.location.reload();
+        }
+    }
+
+    // Setup SSE for progress updates
+    function setupProgressSSE() {
+        if (progressEventSource) {
+            progressEventSource.close();
+        }
+
+        progressEventSource = new EventSource(`/backtest/api/progress/${backtestId}/stream`);
+
+        progressEventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            sseRetryCount = 0;  // 成功時はリトライカウントをリセット
+
+            if (data.error) {
+                console.error('Progress error:', data.error);
+                // エラー表示
+                showError(data.error);
+                progressEventSource.close();
+                // エラーでも初期化待機中は再試行
+                if (data.error.includes('timeout') || data.error.includes('not found')) {
+                    retryProgressSSE();
+                }
+                return;
+            }
+
+            if (data.status === 'done') {
+                updateProgress(data.final);
+                progressEventSource.close();
+                return;
+            }
+
+            // 初期化中の場合は待機状態を表示
+            if (data.status === 'initializing') {
+                console.log('Waiting for backtest to initialize...', data.wait_count);
+                const etaEl = document.getElementById('eta-display');
+                if (etaEl) {
+                    etaEl.textContent = `初期化中... (${data.wait_count || 0}秒待機)`;
+                }
+                return;
+            }
+
+            // 進捗データにエラーがある場合
+            if (data.errors && data.errors.length > 0) {
+                for (const err of data.errors) {
+                    showError(err);
+                }
+            }
+
+            updateProgress(data);
+        };
+
+        progressEventSource.onerror = function(e) {
+            console.error('Progress SSE error:', e);
+            progressEventSource.close();
+            retryProgressSSE();
+        };
+    }
+
+    function retryProgressSSE() {
+        if (sseRetryCount < maxSSERetries) {
+            sseRetryCount++;
+            console.log(`Retrying SSE connection (${sseRetryCount}/${maxSSERetries})...`);
+            setTimeout(setupProgressSSE, sseRetryDelay);
+        } else {
+            console.error('Max SSE retries reached');
+        }
+    }
+
+    // Setup SSE for timeseries updates
+    let timeseriesRetryCount = 0;
+
+    function setupTimeseriesSSE() {
+        if (timeseriesEventSource) {
+            timeseriesEventSource.close();
+        }
+
+        timeseriesEventSource = new EventSource(`/backtest/api/progress/${backtestId}/timeseries/stream`);
+
+        timeseriesEventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            timeseriesRetryCount = 0;  // 成功時はリトライカウントをリセット
+
+            if (data.error) {
+                console.error('Timeseries error:', data.error);
+                timeseriesEventSource.close();
+                if (data.error.includes('timeout') || data.error.includes('not found')) {
+                    retryTimeseriesSSE();
+                }
+                return;
+            }
+
+            if (data.timeseries && data.timeseries.length > 0) {
+                updateEquityChart(data.timeseries);
+            }
+
+            if (data.status === 'done') {
+                timeseriesEventSource.close();
+            }
+        };
+
+        timeseriesEventSource.onerror = function(e) {
+            console.error('Timeseries SSE error:', e);
+            timeseriesEventSource.close();
+            retryTimeseriesSSE();
+        };
+    }
+
+    function retryTimeseriesSSE() {
+        if (timeseriesRetryCount < maxSSERetries) {
+            timeseriesRetryCount++;
+            console.log(`Retrying timeseries SSE (${timeseriesRetryCount}/${maxSSERetries})...`);
+            setTimeout(setupTimeseriesSSE, sseRetryDelay);
+        } else {
+            console.error('Max timeseries SSE retries reached');
+        }
+    }
+
+    // Load initial timeseries for running backtest
+    async function loadInitialTimeseries() {
+        try {
+            const response = await fetch(`/backtest/api/progress/${backtestId}/timeseries`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.timeseries && data.timeseries.length > 0) {
+                    updateEquityChart(data.timeseries);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load initial timeseries:', err);
+        }
+    }
+
+    // Load timeseries from archive
+    function loadArchiveTimeseries() {
+        if (timeseries) {
+            // Update chart
+            chartData.labels = timeseries.dates;
+            chartData.values = timeseries.portfolio_value;
+            chartData.returns = timeseries.cumulative_return.map(r => r / 100);
+
+            if (equityChart) {
+                equityChart.data.labels = chartData.labels;
+                equityChart.data.datasets[0].data = chartData.values;
+                equityChart.update();
+            }
+
+            // Update stats
+            if (chartData.values.length > 0) {
+                const latestValue = chartData.values[chartData.values.length - 1];
+                const latestReturn = chartData.returns[chartData.returns.length - 1];
+
+                document.getElementById('stat-value').textContent = '$' + latestValue.toLocaleString();
+                document.getElementById('stat-return').textContent = (latestReturn >= 0 ? '+' : '') + (latestReturn * 100).toFixed(2) + '%';
+            }
+
+            // Initialize performance charts
+            initPerformanceCharts();
+        }
+    }
+
+    // Initialize performance charts (return and drawdown)
+    function initPerformanceCharts() {
+        if (!timeseries) return;
+
+        const returnCtx = document.getElementById('returnChart');
+        if (returnCtx) {
+            returnChart = new Chart(returnCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: timeseries.dates,
+                    datasets: [{
+                        label: '累積リターン',
+                        data: timeseries.cumulative_return,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: true, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                        y: {
+                            display: true,
+                            ticks: {
+                                callback: function(value) { return value + '%'; },
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const ddCtx = document.getElementById('drawdownChart');
+        if (ddCtx) {
+            drawdownChart = new Chart(ddCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: timeseries.dates,
+                    datasets: [{
+                        label: 'ドローダウン',
+                        data: timeseries.drawdown,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.3)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: true, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                        y: {
+                            display: true,
+                            max: 0,
+                            ticks: {
+                                callback: function(value) { return value + '%'; },
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Benchmark comparison
+    let benchmarkLoaded = false;
+
+    async function loadBenchmarkComparison() {
+        console.log('loadBenchmarkComparison called, archiveId:', archiveId);
+
+        if (!archiveId) {
+            document.getElementById('benchmarkStatsTable').innerHTML =
+                '<p style="color: var(--danger-color); text-align: center; padding: 2rem;">アーカイブIDが未設定です</p>';
+            return;
+        }
+
+        const loadingEl = document.getElementById('benchmarkLoading');
+        if (loadingEl) loadingEl.style.display = 'inline';
+
+        const benchmarks = [];
+        document.querySelectorAll('.benchmark-check:checked').forEach(cb => {
+            benchmarks.push(cb.value);
+        });
+
+        // 最低1つは選択
+        if (benchmarks.length === 0) {
+            benchmarks.push('SPY', 'QQQ');
+        }
+
+        const customTickers = document.getElementById('customTickers')?.value.trim() || '';
+
+        let url = `/api/archive/${archiveId}/benchmark-comparison?benchmarks=${benchmarks.join(',')}`;
+        if (customTickers) {
+            url += `&custom_tickers=${encodeURIComponent(customTickers)}`;
+        }
+
+        try {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+                console.warn('Benchmark fetch warning:', data.error);
+                showBenchmarkWarning(data.error);
+            }
+
+            updateBenchmarkChart(data);
+            updateBenchmarkStats(data.stats);
+            benchmarkLoaded = true;
+        } catch (err) {
+            console.error('Failed to load benchmark comparison:', err);
+            document.getElementById('benchmarkStatsTable').innerHTML =
+                `<p style="color: var(--danger-color); text-align: center; padding: 2rem;">データ取得失敗: ${err.message}</p>`;
+        } finally {
+            if (loadingEl) loadingEl.style.display = 'none';
+        }
+    }
+
+    function showBenchmarkWarning(message) {
+        const chartContainer = document.getElementById('benchmarkChart')?.parentElement;
+        if (!chartContainer) return;
+
+        // 既存の警告を削除
+        const existing = chartContainer.querySelector('.benchmark-warning');
+        if (existing) existing.remove();
+
+        const warning = document.createElement('div');
+        warning.className = 'benchmark-warning';
+        warning.style.cssText = 'background: #fff3cd; color: #856404; padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.9rem;';
+        warning.textContent = message;
+        chartContainer.insertBefore(warning, chartContainer.firstChild);
+    }
+
+    function updateBenchmarkChart(data) {
+        const ctx = document.getElementById('benchmarkChart').getContext('2d');
+
+        if (benchmarkChart) {
+            benchmarkChart.destroy();
+        }
+
+        const datasets = [{
+            label: 'Portfolio',
+            data: data.portfolio.cumulative_return,
+            borderColor: '#2c3e50',
+            backgroundColor: 'transparent',
+            borderWidth: 3,
+            pointRadius: 0,
+        }];
+
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+        let colorIndex = 0;
+
+        for (const [ticker, benchData] of Object.entries(data.benchmarks)) {
+            datasets.push({
+                label: benchData.name || ticker,
+                data: benchData.cumulative_return,
+                borderColor: colors[colorIndex % colors.length],
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                pointRadius: 0,
+                borderDash: [5, 5],
+            });
+            colorIndex++;
+        }
+
+        benchmarkChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: data.portfolio.dates, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top' } },
+                scales: {
+                    x: { display: true, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: function(value) { return value.toFixed(1) + '%'; },
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateBenchmarkStats(stats) {
+        const container = document.getElementById('benchmarkStatsTable');
+
+        if (!stats || Object.keys(stats).length === 0) {
+            container.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">統計データがありません</p>';
+            return;
+        }
+
+        const keys = Object.keys(stats);
+        const portfolioFirst = keys.includes('Portfolio')
+            ? ['Portfolio', ...keys.filter(k => k !== 'Portfolio')]
+            : keys;
+
+        let html = `
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>指標</th>
+                        ${portfolioFirst.map(k => `<th class="${k === 'Portfolio' ? 'portfolio-header' : ''}">${stats[k].name || k}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>トータルリターン</td>
+                        ${portfolioFirst.map(k => {
+                            const s = stats[k];
+                            const isPortfolio = k === 'Portfolio';
+                            return `<td class="${s.total_return > 0 ? 'positive' : 'negative'}${isPortfolio ? ' portfolio-cell' : ''}">${s.total_return.toFixed(1)}%</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td>年率リターン</td>
+                        ${portfolioFirst.map(k => {
+                            const s = stats[k];
+                            const isPortfolio = k === 'Portfolio';
+                            return `<td class="${s.annual_return > 0 ? 'positive' : 'negative'}${isPortfolio ? ' portfolio-cell' : ''}">${s.annual_return.toFixed(1)}%</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td>ボラティリティ</td>
+                        ${portfolioFirst.map(k => {
+                            const s = stats[k];
+                            const isPortfolio = k === 'Portfolio';
+                            return `<td class="${isPortfolio ? 'portfolio-cell' : ''}">${s.annual_volatility.toFixed(1)}%</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td>シャープレシオ</td>
+                        ${portfolioFirst.map(k => {
+                            const s = stats[k];
+                            const isPortfolio = k === 'Portfolio';
+                            return `<td class="${isPortfolio ? 'portfolio-cell' : ''}">${s.sharpe_ratio.toFixed(2)}</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td>最大ドローダウン</td>
+                        ${portfolioFirst.map(k => {
+                            const s = stats[k];
+                            const isPortfolio = k === 'Portfolio';
+                            return `<td class="negative${isPortfolio ? ' portfolio-cell' : ''}">${s.max_drawdown.toFixed(1)}%</td>`;
+                        }).join('')}
+                    </tr>
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    // Portfolio Composition
+    async function loadPortfolioComposition() {
+        const targetId = archiveId || backtestId;
+
+        try {
+            // Load from archive if available
+            if (archiveId) {
+                const compResponse = await fetch(`/api/archive/${archiveId}/portfolio-composition?top_n=10`);
+                const compData = await compResponse.json();
+
+                document.getElementById('compositionDate').textContent = compData.date ? `(${compData.date} 時点)` : '';
+
+                updateCompositionPieChart(compData.top_holdings);
+                updateTopHoldingsTable(compData.top_holdings);
+                updateAllWeightsTable(compData.weights);
+
+                // Load weight history
+                const histResponse = await fetch(`/api/archive/${archiveId}/weight-history?top_n=10`);
+                const histData = await histResponse.json();
+                updateWeightHistoryChart(histData);
+            } else if (isRunning) {
+                // For running backtest, get latest snapshot
+                const response = await fetch(`/backtest/api/progress/${backtestId}/timeseries`);
+                const data = await response.json();
+
+                if (data.timeseries && data.timeseries.length > 0) {
+                    const latest = data.timeseries[data.timeseries.length - 1];
+                    document.getElementById('compositionDate').textContent = latest.date ? `(${latest.date} 時点)` : '';
+
+                    const weights = latest.weights_top5 || {};
+                    const holdings = Object.entries(weights)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([ticker, weight]) => ({ ticker, weight: weight * 100 }));
+
+                    updateCompositionPieChart(holdings);
+                    updateTopHoldingsTable(holdings);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load portfolio composition:', err);
+        }
+    }
+
+    function updateCompositionPieChart(holdings) {
+        const ctx = document.getElementById('compositionPieChart').getContext('2d');
+
+        if (compositionPieChart) {
+            compositionPieChart.destroy();
+        }
+
+        if (!holdings || holdings.length === 0) {
+            return;
+        }
+
+        const labels = holdings.map(h => h.ticker);
+        const data = holdings.map(h => h.weight);
+        const colors = [
+            '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+            '#1abc9c', '#34495e', '#e67e22', '#16a085', '#c0392b', '#95a5a6'
+        ];
+
+        compositionPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'right', labels: { font: { size: 10 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateTopHoldingsTable(holdings) {
+        const tbody = document.querySelector('#topHoldingsTable tbody');
+        if (!holdings || holdings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">データなし</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = holdings.map((h, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${h.ticker}</strong></td>
+                <td class="text-right">${h.weight.toFixed(2)}%</td>
+                <td>
+                    <div class="weight-bar-container">
+                        <div class="weight-bar" style="width: ${Math.min(h.weight * 5, 100)}%;"></div>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updateAllWeightsTable(weights) {
+        const tbody = document.querySelector('#allWeightsTable tbody');
+        if (!weights) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">データなし</td></tr>';
+            return;
+        }
+
+        const sortedWeights = Object.entries(weights).sort((a, b) => b[1] - a[1]);
+
+        function renderTable(filter = '') {
+            const filtered = sortedWeights.filter(([ticker]) =>
+                ticker.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            tbody.innerHTML = filtered.map(([ticker, weight], i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><strong>${ticker}</strong></td>
+                    <td class="text-right">${weight.toFixed(2)}%</td>
+                    <td>
+                        <div class="weight-bar-container">
+                            <div class="weight-bar" style="width: ${Math.min(weight * 5, 100)}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        renderTable();
+
+        const filterInput = document.getElementById('weightFilter');
+        if (filterInput) {
+            filterInput.addEventListener('input', (e) => {
+                renderTable(e.target.value);
+            });
+        }
+    }
+
+    function updateWeightHistoryChart(data) {
+        const ctx = document.getElementById('weightHistoryChart');
+        if (!ctx) return;
+
+        if (weightHistoryChart) {
+            weightHistoryChart.destroy();
+        }
+
+        if (!data.dates || data.dates.length === 0) {
+            return;
+        }
+
+        const colors = [
+            'rgba(52, 152, 219, 0.7)', 'rgba(231, 76, 60, 0.7)', 'rgba(46, 204, 113, 0.7)',
+            'rgba(243, 156, 18, 0.7)', 'rgba(155, 89, 182, 0.7)', 'rgba(26, 188, 156, 0.7)',
+            'rgba(52, 73, 94, 0.7)', 'rgba(230, 126, 34, 0.7)', 'rgba(22, 160, 133, 0.7)',
+            'rgba(192, 57, 43, 0.7)'
+        ];
+
+        const datasets = data.tickers.map((ticker, i) => ({
+            label: ticker,
+            data: data.weights[ticker],
+            backgroundColor: colors[i % colors.length],
+            borderColor: colors[i % colors.length].replace('0.7', '1'),
+            borderWidth: 1,
+            fill: true,
+        }));
+
+        weightHistoryChart = new Chart(ctx.getContext('2d'), {
+            type: 'line',
+            data: { labels: data.dates, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        mode: 'index',
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: true, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                    y: {
+                        display: true,
+                        stacked: true,
+                        ticks: {
+                            callback: function(value) { return value + '%'; },
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Rebalance Details - Auto-load on tab view
+    const loadedRebalanceDetails = new Set();
+    let rebalanceDetailsLoading = false;
+
+    async function loadRebalanceDetail(index) {
+        if (loadedRebalanceDetails.has(index) || !archiveId) return;
+
+        const contentDiv = document.getElementById(`rebalance-detail-${index}`);
+        if (!contentDiv) return;
+
+        try {
+            const response = await fetch(`/api/archive/${archiveId}/rebalance-detail/${index}`);
+            const data = await response.json();
+
+            const renderChangeList = (items, type) => {
+                if (items.length === 0) {
+                    return '<div class="rebalance-no-changes">なし</div>';
+                }
+                const displayItems = items.slice(0, 6);
+                const remaining = items.length - 6;
+                let html = '<div class="rebalance-change-list">';
+                displayItems.forEach(c => {
+                    let valueText = '';
+                    if (type === 'added') {
+                        valueText = `<span class="positive">+${c.after.toFixed(1)}%</span>`;
+                    } else if (type === 'removed') {
+                        valueText = `<span class="negative">-${c.before.toFixed(1)}%</span>`;
+                    } else if (type === 'increased') {
+                        valueText = `<span class="positive">+${c.diff.toFixed(1)}%</span>`;
+                    } else {
+                        valueText = `<span class="negative">${c.diff.toFixed(1)}%</span>`;
+                    }
+                    html += `<div class="rebalance-change-item"><span class="ticker">${c.ticker}</span>${valueText}</div>`;
+                });
+                if (remaining > 0) {
+                    html += `<div style="color: #999; font-size: 0.75rem; margin-top: 0.25rem;">他 ${remaining} 銘柄</div>`;
+                }
+                html += '</div>';
+                return html;
+            };
+
+            contentDiv.innerHTML = `
+                <div class="rebalance-changes-grid">
+                    <div class="rebalance-change-section added">
+                        <h5>新規追加 <span class="count">${data.changes.added.length}</span></h5>
+                        ${renderChangeList(data.changes.added, 'added')}
+                    </div>
+                    <div class="rebalance-change-section removed">
+                        <h5>削除 <span class="count">${data.changes.removed.length}</span></h5>
+                        ${renderChangeList(data.changes.removed, 'removed')}
+                    </div>
+                    <div class="rebalance-change-section increased">
+                        <h5>増加 <span class="count">${data.changes.increased.length}</span></h5>
+                        ${renderChangeList(data.changes.increased, 'increased')}
+                    </div>
+                    <div class="rebalance-change-section decreased">
+                        <h5>減少 <span class="count">${data.changes.decreased.length}</span></h5>
+                        ${renderChangeList(data.changes.decreased, 'decreased')}
+                    </div>
+                </div>
+            `;
+
+            loadedRebalanceDetails.add(index);
+
+        } catch (err) {
+            console.error('Failed to load rebalance detail:', err);
+            contentDiv.innerHTML = '<div style="color: var(--danger-color); padding: 0.5rem;">詳細の取得に失敗しました</div>';
+        }
+    }
+
+    async function loadAllRebalanceDetails() {
+        if (rebalanceDetailsLoading || !archiveId) return;
+        rebalanceDetailsLoading = true;
+
+        const cards = document.querySelectorAll('.rebalance-card');
+        for (const card of cards) {
+            const index = parseInt(card.dataset.index, 10);
+            if (!isNaN(index)) {
+                await loadRebalanceDetail(index);
+            }
+        }
+
+        rebalanceDetailsLoading = false;
+    }
+
+    // Load Benchmark Summary for Overview tab
+    async function loadBenchmarkSummary() {
+        if (!archiveId) {
+            const section = document.getElementById('benchmark-summary-section');
+            if (section) section.style.display = 'none';
+            return;
+        }
+
+        const contentDiv = document.getElementById('benchmark-summary-content');
+        if (!contentDiv) return;
+
+        try {
+            const response = await fetch(`/api/archive/${archiveId}/benchmark-comparison?benchmarks=SPY,QQQ`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            const portfolio = data.stats?.Portfolio || {};
+            const spy = data.stats?.SPY || {};
+            const qqq = data.stats?.QQQ || {};
+
+            const portfolioReturn = portfolio.total_return || 0;
+            const spyReturn = spy.total_return || 0;
+            const qqqReturn = qqq.total_return || 0;
+
+            const spyDiff = portfolioReturn - spyReturn;
+            const qqqDiff = portfolioReturn - qqqReturn;
+
+            contentDiv.innerHTML = `
+                <div class="benchmark-summary-grid">
+                    <div class="benchmark-summary-card portfolio">
+                        <h4>ポートフォリオ</h4>
+                        <div class="value">${portfolioReturn >= 0 ? '+' : ''}${portfolioReturn.toFixed(1)}%</div>
+                        <div class="sub-value">シャープ: ${(portfolio.sharpe_ratio || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="benchmark-summary-card">
+                        <h4>vs SPY (S&P 500)</h4>
+                        <div class="value ${spyDiff >= 0 ? 'outperform' : 'underperform'}">
+                            ${spyDiff >= 0 ? '+' : ''}${spyDiff.toFixed(1)}%
+                        </div>
+                        <div class="sub-value">SPY: ${spyReturn >= 0 ? '+' : ''}${spyReturn.toFixed(1)}%</div>
+                    </div>
+                    <div class="benchmark-summary-card">
+                        <h4>vs QQQ (Nasdaq 100)</h4>
+                        <div class="value ${qqqDiff >= 0 ? 'outperform' : 'underperform'}">
+                            ${qqqDiff >= 0 ? '+' : ''}${qqqDiff.toFixed(1)}%
+                        </div>
+                        <div class="sub-value">QQQ: ${qqqReturn >= 0 ? '+' : ''}${qqqReturn.toFixed(1)}%</div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="#" onclick="document.querySelector('[data-tab=benchmark]').click(); return false;" style="color: var(--primary-color); text-decoration: none;">
+                        詳細なベンチマーク比較を見る →
+                    </a>
+                </div>
+            `;
+
+            // Show section
+            const section = document.getElementById('benchmark-summary-section');
+            if (section) section.style.display = 'block';
+
+        } catch (err) {
+            console.error('Failed to load benchmark summary:', err);
+            contentDiv.innerHTML = '<div style="color: #999; text-align: center; padding: 1rem;">ベンチマークデータの取得に失敗しました</div>';
+        }
+    }
+
+    // Stop backtest
+    async function stopBacktest() {
+        if (!confirm('このバックテストを停止しますか？')) {
+            return;
+        }
+
+        try {
+            const jobsResponse = await fetch('/backtest/api/jobs?status=running');
+            const jobs = await jobsResponse.json();
+            const job = jobs.find(j => j.run_id === backtestId);
+
+            if (job) {
+                await fetch(`/backtest/api/job/${job.job_id}/stop`, { method: 'POST' });
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error('Failed to stop backtest:', err);
+            alert('停止に失敗しました');
+        }
+    }
+
+    // Delete progress
+    async function deleteProgress() {
+        if (!confirm('この実行記録を削除しますか？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/backtest/api/progress/${backtestId}`, { method: 'DELETE' });
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                alert('削除に失敗しました');
+            }
+        } catch (err) {
+            console.error('Failed to delete progress:', err);
+            alert('削除に失敗しました');
+        }
+    }
+
+    // Delete archive
+    async function deleteArchive(archiveId) {
+        if (!confirm('このバックテスト結果を削除しますか？\n\nこの操作は取り消せません。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/archive/${archiveId}`, { method: 'DELETE' });
+            if (response.ok) {
+                window.location.href = '/history';
+            } else {
+                const data = await response.json();
+                alert('削除に失敗しました: ' + (data.detail || '不明なエラー'));
+            }
+        } catch (err) {
+            console.error('Failed to delete archive:', err);
+            alert('削除に失敗しました');
+        }
+    }
+
+    // ========================================
+    // Log Tab Functions
+    // ========================================
+
+    let allLogs = [];
+    let currentLogFilter = 'all';
+    let currentSearchTerm = '';
+
+    async function loadLogs() {
+        if (!archiveId) return;
+
+        const container = document.getElementById('log-container');
+        const statsEl = document.getElementById('log-stats');
+
+        try {
+            const response = await fetch(`/backtest/api/logs/${archiveId}`);
+            if (!response.ok) {
+                container.innerHTML = '<div class="log-empty">ログの読み込みに失敗しました</div>';
+                return;
+            }
+
+            const data = await response.json();
+            allLogs = data.logs || [];
+
+            // Update stats
+            if (statsEl) {
+                const errorCount = allLogs.filter(l => l.level === 'ERROR' || l.level === 'CRITICAL').length;
+                const warningCount = allLogs.filter(l => l.level === 'WARNING').length;
+                const infoCount = allLogs.filter(l => l.level === 'INFO').length;
+
+                statsEl.innerHTML = `
+                    <span class="log-stat-item error">エラー: ${errorCount}</span>
+                    <span class="log-stat-item warning">警告: ${warningCount}</span>
+                    <span class="log-stat-item info">情報: ${infoCount}</span>
+                    <span class="log-stat-item">合計: ${data.total}</span>
+                `;
+            }
+
+            renderLogs();
+        } catch (err) {
+            console.error('Failed to load logs:', err);
+            container.innerHTML = '<div class="log-empty">ログの読み込みに失敗しました</div>';
+        }
+    }
+
+    function renderLogs() {
+        const container = document.getElementById('log-container');
+        if (!container) return;
+
+        let filteredLogs = allLogs;
+
+        // Apply level filter
+        if (currentLogFilter !== 'all') {
+            filteredLogs = filteredLogs.filter(log => log.level === currentLogFilter);
+        }
+
+        // Apply search filter
+        if (currentSearchTerm) {
+            const term = currentSearchTerm.toLowerCase();
+            filteredLogs = filteredLogs.filter(log =>
+                (log.event && log.event.toLowerCase().includes(term)) ||
+                (log.message && log.message.toLowerCase().includes(term)) ||
+                (log.component && log.component.toLowerCase().includes(term))
+            );
+        }
+
+        if (filteredLogs.length === 0) {
+            container.innerHTML = '<div class="log-empty">該当するログがありません</div>';
+            return;
+        }
+
+        container.innerHTML = filteredLogs.map(log => {
+            const time = log.timestamp ? log.timestamp.split(' ').pop() : '';
+            const event = log.event || '';
+            const message = log.message || '';
+            const component = log.component || '';
+            const displayMsg = message ? `${event}: ${message}` : event;
+
+            return `
+                <div class="log-entry ${log.level}">
+                    <span class="log-time">${time}</span>
+                    <span class="log-level">[${log.level}]</span>
+                    ${component ? `<span class="log-component">[${component}]</span>` : ''}
+                    <span class="log-message">${escapeHtml(displayMsg)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function setupLogEventListeners() {
+        const levelFilter = document.getElementById('log-level-filter');
+        const searchInput = document.getElementById('log-search');
+        const refreshBtn = document.getElementById('log-refresh');
+
+        if (levelFilter) {
+            levelFilter.addEventListener('change', (e) => {
+                currentLogFilter = e.target.value;
+                renderLogs();
+            });
+        }
+
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    currentSearchTerm = e.target.value;
+                    renderLogs();
+                }, 300);
+            });
+        }
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', loadLogs);
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('DOMContentLoaded - isRunning:', isRunning, 'isFailed:', isFailed, 'isCompleted:', isCompleted, 'isArchived:', isArchived);
+
+        if (isRunning) {
+            // Running mode: only progress tracking, no charts
+            // Start elapsed time timer
+            if (startTime) {
+                elapsedTimer = setInterval(updateElapsedTime, 1000);
+                updateElapsedTime();  // Initial update
+            }
+
+            // Setup SSE for progress updates only
+            setupProgressSSE();
+
+        } else if (isFailed) {
+            // Failed mode: show elapsed time (stopped), logs already displayed from server
+            if (startTime) {
+                updateElapsedTime();  // Show final elapsed time
+            }
+            // No SSE needed - page is static
+
+        } else if (isCompleted || isArchived) {
+            // Completed/archived mode: show charts and data
+            initEquityChart();
+
+            if (archiveId && timeseries && timeseries !== null) {
+                loadArchiveTimeseries();
+                // Load benchmark summary for overview tab
+                loadBenchmarkSummary();
+            } else if (isCompleted && !archiveId) {
+                // Completed but archive not ready yet - wait and retry
+                showCompletionMessage('アーカイブを読み込んでいます...');
+                setTimeout(checkAndReloadForArchive, 2000);
+            }
+
+            // Setup log tab
+            if (archiveId) {
+                setupLogEventListeners();
+                // Load logs when logs tab is clicked
+                const logsTab = document.querySelector('.tab-btn[data-tab="logs"]');
+                if (logsTab) {
+                    logsTab.addEventListener('click', () => {
+                        if (allLogs.length === 0) {
+                            loadLogs();
+                        }
+                    }, { once: true });
+                }
+            }
+        }
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+        if (progressEventSource) progressEventSource.close();
+        if (elapsedTimer) clearInterval(elapsedTimer);
+    });
+</script>
+{% endblock %}
